@@ -19,6 +19,12 @@ const Navbar = () => {
                   href="/"
                   className="text-white hover:bg-blue-700 rounded-md px-3 py-2 text-sm font-medium"
                 >
+                  Homepage
+                </a>
+                <a
+                  href="/housing-profile"
+                  className="text-white hover:bg-blue-700 rounded-md px-3 py-2 text-sm font-medium"
+                >
                   Housing Profile
                 </a>
                 <a
