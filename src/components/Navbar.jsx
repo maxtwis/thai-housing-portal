@@ -76,6 +76,13 @@ const Navbar = () => {
             className="text-white hover:bg-blue-700 block rounded-md px-3 py-2 text-base font-medium"
             onClick={() => setIsOpen(false)}
           >
+            Homepage
+          </a>
+          <a
+            href="/housing-profile"
+            className="text-white hover:bg-blue-700 block rounded-md px-3 py-2 text-base font-medium"
+            onClick={() => setIsOpen(false)}
+          >
             Housing Profile
           </a>
           <a

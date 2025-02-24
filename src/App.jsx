@@ -1,6 +1,7 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
+import Footer from './components/Footer';
 import Dashboard from './pages/Dashboard';
 import About from './pages/About';
 import Report from './pages/Report';
@@ -20,9 +21,7 @@ function App() {
           <Route path="/housing-stock" element={<HousingStock />} />
         </Routes>
       </main>
-      <footer className="bg-gray-800 text-white p-4 text-center">
-        <p>© 2025 Thailand Housing Data Portal</p>
-      </footer>
+      <Footer />
     </div>
   );
 }
