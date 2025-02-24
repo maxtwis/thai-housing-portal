@@ -7,6 +7,38 @@
     <title>Thai Housing Profile</title>
     <link href='https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css' rel='stylesheet' />
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+      body {
+        margin: 0;
+        font-family: 'Sarabun', sans-serif;
+      }
+
+      #root:empty {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background: #f8fafc;
+      }
+      
+      #root:empty:before {
+        content: '';
+        width: 40px;
+        height: 40px;
+        border: 3px solid #e2e8f0;
+        border-top-color: #1d4ed8;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+      
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+
+      .mapboxgl-map {
+        font-family: 'Sarabun', sans-serif;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
