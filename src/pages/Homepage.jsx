@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Search, Database } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
-const HomePage = () => {
+const Homepage = () => {
   const [searchQuery, setSearchQuery] = useState('');
 
   const handleSearch = (e) => {
@@ -11,59 +12,99 @@ const HomePage = () => {
     }
   };
 
-  // Organizations with their dataset counts
+  // Updated organizations with Thai data providers and datasets
   const organizations = [
     {
-      name: "ACT Government",
-      nameEn: "ACT Government",
+      name: "สำนักงานสถิติแห่งชาติ",
+      nameEn: "National Statistical Office",
+      datasets: 8,
+      logoSrc: "/images/logos/nso-logo.png",
+      dataFiles: [
+        { name: "ข้อมูลประชากรรายจังหวัด (CSV)", file: "population-by-province-2023.csv" },
+        { name: "ข้อมูลครัวเรือนรายจังหวัด (CSV)", file: "households-by-province-2023.csv" },
+        { name: "การสำรวจที่อยู่อาศัย (CSV)", file: "housing-survey-2023.csv" }
+      ]
+    },
+    {
+      name: "การเคหะแห่งชาติ",
+      nameEn: "National Housing Authority",
+      datasets: 6,
+      logoSrc: "/images/logos/nha-logo.png",
+      dataFiles: [
+        { name: "โครงการที่อยู่อาศัยรายจังหวัด (CSV)", file: "housing-projects-by-province-2023.csv" },
+        { name: "ราคาที่อยู่อาศัยเฉลี่ย (CSV)", file: "average-housing-prices-2023.csv" }
+      ]
+    },
+    {
+      name: "กรมที่ดิน",
+      nameEn: "Land Department",
+      datasets: 5,
+      logoSrc: "/images/logos/dol-logo.png",
+      dataFiles: [
+        { name: "การจดทะเบียนที่ดินรายเดือน (CSV)", file: "land-registration-monthly-2023.csv" },
+        { name: "การโอนกรรมสิทธิ์ (CSV)", file: "property-transfers-2023.csv" }
+      ]
+    },
+    {
+      name: "กรมธนารักษ์",
+      nameEn: "Treasury Department",
       datasets: 4,
-      description: "Australian Capital Territory Government datasets"
+      logoSrc: "/images/logos/treasury-logo.png",
+      dataFiles: [
+        { name: "ราคาประเมินที่ดินรายจังหวัด (CSV)", file: "land-appraisal-by-province-2023.csv" },
+        { name: "ข้อมูลการเช่าที่ดินราชพัสดุ (CSV)", file: "state-property-rental-2023.csv" }
+      ]
     },
     {
-      name: "AHDAP",
-      nameEn: "Australian Housing Data Analytics Platform",
+      name: "ธนาคารแห่งประเทศไทย",
+      nameEn: "Bank of Thailand",
       datasets: 5,
-      description: "Australian Housing Data Analytics Platform datasets"
+      logoSrc: "/images/logos/bot-logo.png",
+      dataFiles: [
+        { name: "สินเชื่อที่อยู่อาศัย (CSV)", file: "housing-loans-2023.csv" },
+        { name: "ดัชนีราคาที่อยู่อาศัย (CSV)", file: "housing-price-index-2023.csv" }
+      ]
     },
     {
-      name: "Australian Bureau of Statistics",
-      nameEn: "Australian Bureau of Statistics",
-      datasets: 11,
-      description: "National statistics and data"
-    },
-    {
-      name: "AAMGroup",
-      nameEn: "AAM Group",
-      datasets: 1,
-      description: "AAM is a geospatial service company offering geospatial services and data"
-    },
-    {
-      name: "City of Melbourne",
-      nameEn: "City of Melbourne",
-      datasets: 5,
-      description: "Local government for the City of Melbourne"
+      name: "สำนักงานพัฒนารัฐบาลดิจิทัล",
+      nameEn: "Digital Government Development Agency",
+      datasets: 3,
+      logoSrc: "/images/logos/dga-logo.png",
+      dataFiles: [
+        { name: "งบประมาณด้านที่อยู่อาศัย (CSV)", file: "housing-budget-allocation-2023.csv" },
+        { name: "โครงการภาครัฐด้านที่อยู่อาศัย (CSV)", file: "government-housing-projects-2023.csv" }
+      ]
     }
   ];
 
-  // Function to generate organization URL
-  const getOrgUrl = (org) => {
-    const urlName = org.nameEn || org.name;
-    return `/organisations/${urlName.toLowerCase().replace(/\s+/g, '-')}`;
-  };
+  // Featured provinces
+  const featuredProvinces = [
+    { id: 10, name: "กรุงเทพมหานคร", population: "5.52 ล้านคน", housing: "2.34 ล้านหน่วย" },
+    { id: 50, name: "เชียงใหม่", population: "1.78 ล้านคน", housing: "682,000 หน่วย" },
+    { id: 40, name: "ขอนแก่น", population: "1.8 ล้านคน", housing: "634,000 หน่วย" },
+    { id: 90, name: "สงขลา", population: "1.43 ล้านคน", housing: "512,000 หน่วย" }
+  ];
 
-  const handleOrgClick = (org) => {
-    window.location.href = getOrgUrl(org);
+  const handleProvinceClick = (provinceId) => {
+    window.location.href = `/housing-profile?province=${provinceId}`;
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
-      <div className="bg-gradient-to-r from-blue-800 to-blue-600 text-white">
+      <div 
+        className="relative text-white"
+        style={{
+          backgroundImage: 'linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.75)), url("/images/home-header.jpg")',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center'
+        }}
+      >
         <div className="container mx-auto px-4 py-16">
           <h1 className="text-4xl font-bold mb-4">
-            Thailand Housing Data Portal
+            Thai Housing Data Portal
           </h1>
-          <p className="text-xl mb-8 text-blue-100">
+          <p className="text-xl mb-8 text-gray-200">
             แพลตฟอร์มข้อมูลและการวิเคราะห์ที่อยู่อาศัยเชิงพื้นที่
           </p>
           
@@ -74,12 +115,12 @@ const HomePage = () => {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="ค้นหาข้อมูล หรือ องค์กร..."
+                placeholder="ค้นหาข้อมูล จังหวัด หรือ นโยบาย..."
                 className="w-full px-4 py-3 rounded-lg text-gray-900 placeholder-gray-500"
               />
               <button 
                 type="submit"
-                className="absolute right-2 top-2 p-1 rounded-md bg-blue-600 text-white"
+                className="absolute right-2 top-2 p-1 rounded-md bg-gray-700 text-white"
               >
                 <Search size={24} />
               </button>
@@ -88,28 +129,35 @@ const HomePage = () => {
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="container mx-auto px-4 py-12">
-        {/* Organizations Section */}
+      <div className="container mx-auto px-4 py-8">
+
+        {/* Data Providers */}
         <div className="mb-12">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold">องค์กรที่ร่วมให้ข้อมูล</h2>
-            <span className="text-gray-600">{organizations.length} องค์กร</span>
+            <h2 className="text-2xl font-bold">หน่วยงานที่ให้ข้อมูล</h2>
+            <span className="text-gray-600">{organizations.length} หน่วยงาน</span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {organizations.map((org, index) => (
               <div 
                 key={index} 
-                className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow cursor-pointer"
-                onClick={() => handleOrgClick(org.name)}
+                className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow cursor-pointer border border-gray-200"
+                onClick={() => window.location.href = `/organization/${org.nameEn.toLowerCase().replace(/\s+/g, '-')}`}
               >
-                <div className="flex items-start justify-between">
+                <div className="flex items-start space-x-4">
+                  <div className="flex-shrink-0">
+                    <img 
+                      src={org.logoSrc} 
+                      alt={`${org.name} logo`}
+                      className="w-12 h-12 object-contain"
+                    />
+                  </div>
                   <div>
                     <h3 className="font-semibold text-lg mb-1">{org.name}</h3>
-                    <p className="text-sm text-gray-600 mb-3 line-clamp-2">{org.description}</p>
+                    <p className="text-xs text-gray-500 mb-1">{org.nameEn}</p>
                     <div className="flex items-center text-sm text-blue-600">
                       <Database size={16} className="mr-2" />
-                      <span>{org.datasets} {org.datasets === 1 ? 'Dataset' : 'Datasets'}</span>
+                      <span>{org.datasets} ชุดข้อมูล</span>
                     </div>
                   </div>
                 </div>
@@ -120,27 +168,27 @@ const HomePage = () => {
 
         {/* Statistics */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          <div className="bg-blue-50 p-6 rounded-lg">
-            <h3 className="text-xl font-bold text-blue-800">24</h3>
-            <p className="text-gray-600">องค์กรที่ร่วมให้ข้อมูล</p>
+          <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
+            <h3 className="text-2xl font-bold text-blue-600">6</h3>
+            <p className="text-gray-700 font-medium">หน่วยงานที่ร่วมให้ข้อมูล</p>
           </div>
-          <div className="bg-green-50 p-6 rounded-lg">
-            <h3 className="text-xl font-bold text-green-800">103</h3>
-            <p className="text-gray-600">ชุดข้อมูล</p>
+          <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
+            <h3 className="text-2xl font-bold text-blue-600">28</h3>
+            <p className="text-gray-700 font-medium">ชุดข้อมูล</p>
           </div>
-          <div className="bg-purple-50 p-6 rounded-lg">
-            <h3 className="text-xl font-bold text-purple-800">4</h3>
-            <p className="text-gray-600">จังหวัดหลัก</p>
+          <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
+            <h3 className="text-2xl font-bold text-blue-600">4</h3>
+            <p className="text-gray-700 font-medium">จังหวัดหลัก</p>
           </div>
         </div>
 
         {/* Footer Info */}
         <div className="mt-16 text-center text-gray-600">
           <p className="mb-2">
-            แพลตฟอร์มนี้ได้รับการสนับสนุนทุนวิจัยจากหน่วยบริหารและจัดการทุนด้านการพัฒนาระดับพื้นที่ (บพท.)
+            
           </p>
           <p className="text-sm">
-            กระทรวงการอุดมศึกษา วิทยาศาสตร์ วิจัยและนวัตกรรม (อว.)
+            
           </p>
         </div>
       </div>
@@ -148,4 +196,4 @@ const HomePage = () => {
   );
 };
 
-export default HomePage;
+export default Homepage;

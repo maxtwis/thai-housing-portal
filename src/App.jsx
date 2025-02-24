@@ -7,6 +7,7 @@ import About from './pages/About';
 import Report from './pages/Report';
 import HousingStock from './pages/HousingStock';
 import Homepage from './pages/Homepage';
+import OrganizationPage from './pages/OrganizationPage';
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
           <Route path="/about" element={<About />} />
           <Route path="/report/:provinceId" element={<Report />} />
           <Route path="/housing-stock" element={<HousingStock />} />
+          <Route path="/organization/:orgId" element={<OrganizationPage />} />
         </Routes>
       </main>
       <Footer />

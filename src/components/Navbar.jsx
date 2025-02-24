@@ -4,8 +4,8 @@ const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   
   return (
-    <nav className="bg-gradient-to-r from-blue-800 to-blue-600">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <nav className="bg-gray-900 shadow-md">
+      <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center">
             <div className="flex-shrink-0">
@@ -13,29 +13,29 @@ const Navbar = () => {
                 Thailand Housing Data Portal
               </a>
             </div>
-            <div className="hidden md:block">
+            <div className="hidden md:block ml-auto">
               <div className="ml-10 flex items-baseline space-x-4">
                 <a
                   href="/"
-                  className="text-white hover:bg-blue-700 rounded-md px-3 py-2 text-sm font-medium"
+                  className="text-white hover:bg-gray-700 rounded-md px-3 py-2 text-sm font-medium"
                 >
-                  Homepage
+                  Home
                 </a>
                 <a
                   href="/housing-profile"
-                  className="text-white hover:bg-blue-700 rounded-md px-3 py-2 text-sm font-medium"
+                  className="text-white hover:bg-gray-700 rounded-md px-3 py-2 text-sm font-medium"
                 >
                   Housing Profile
                 </a>
                 <a
                   href="/housing-stock"
-                  className="text-white hover:bg-blue-700 rounded-md px-3 py-2 text-sm font-medium"
+                  className="text-white hover:bg-gray-700 rounded-md px-3 py-2 text-sm font-medium"
                 >
                   Housing Stock
                 </a>
                 <a
                   href="/about"
-                  className="text-white hover:bg-blue-700 rounded-md px-3 py-2 text-sm font-medium"
+                  className="text-white hover:bg-gray-700 rounded-md px-3 py-2 text-sm font-medium"
                 >
                   About
                 </a>
@@ -46,7 +46,7 @@ const Navbar = () => {
           <div className="md:hidden">
             <button
               onClick={() => setIsOpen(!isOpen)}
-              className="inline-flex items-center justify-center p-2 rounded-md text-white hover:bg-blue-700 focus:outline-none"
+              className="inline-flex items-center justify-center p-2 rounded-md text-white hover:bg-gray-700 focus:outline-none"
             >
               <span className="sr-only">Open main menu</span>
               <svg
@@ -73,28 +73,28 @@ const Navbar = () => {
         <div className="space-y-1 px-2 pb-3 pt-2">
           <a
             href="/"
-            className="text-white hover:bg-blue-700 block rounded-md px-3 py-2 text-base font-medium"
+            className="text-white hover:bg-gray-700 block rounded-md px-3 py-2 text-base font-medium"
             onClick={() => setIsOpen(false)}
           >
-            Homepage
+            Home
           </a>
           <a
             href="/housing-profile"
-            className="text-white hover:bg-blue-700 block rounded-md px-3 py-2 text-base font-medium"
+            className="text-white hover:bg-gray-700 block rounded-md px-3 py-2 text-base font-medium"
             onClick={() => setIsOpen(false)}
           >
             Housing Profile
           </a>
           <a
             href="/housing-stock"
-            className="text-white hover:bg-blue-700 block rounded-md px-3 py-2 text-base font-medium"
+            className="text-white hover:bg-gray-700 block rounded-md px-3 py-2 text-base font-medium"
             onClick={() => setIsOpen(false)}
           >
             Housing Stock
           </a>
           <a
             href="/about"
-            className="text-white hover:bg-blue-700 block rounded-md px-3 py-2 text-base font-medium"
+            className="text-white hover:bg-gray-700 block rounded-md px-3 py-2 text-base font-medium"
             onClick={() => setIsOpen(false)}
           >
             About

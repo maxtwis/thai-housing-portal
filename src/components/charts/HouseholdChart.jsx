@@ -42,7 +42,7 @@ const HouseholdChart = ({ data, provinceName }) => {
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
             data={data}
-            margin={{ top: 15, right: 15, left: 15, bottom: 5 }}
+            margin={{ top: 15, right: 15, left: 30, bottom: 5 }}
           >
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
             <XAxis 
