@@ -10,7 +10,7 @@ const Navbar = () => {
           <div className="flex items-center">
             <div className="flex-shrink-0">
               <a href="/" className="text-white font-bold text-xl">
-                Housing Data Analytics Platform
+                Thailand Housing Data Portal
               </a>
             </div>
             <div className="hidden md:block">
