@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search } from 'lucide-react';
+import { Search, FileBarChart, Users, Home, MapPin } from 'lucide-react';
+import { provinces } from '../utils/dataUtils';
 
 const HomePage = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -8,35 +9,46 @@ const HomePage = () => {
 
   const handleSearch = (e) => {
     e.preventDefault();
-    // Navigate to datasets page with search query
-    navigate(`/datasets?search=${encodeURIComponent(searchQuery)}`);
+    if (searchQuery.trim()) {
+      navigate(`/housing-profile?search=${encodeURIComponent(searchQuery)}`);
+    }
   };
 
-  // Mock featured datasets
-  const featuredDatasets = [
-    { id: 1, title: "Population by Age Group", org: "National Statistics Office" },
-    { id: 2, title: "Housing Supply by Type", org: "Department of Lands" },
-    { id: 3, title: "Income Distribution", org: "Economic Planning Unit" }
-  ];
-
-  // Mock participating organizations
-  const organizations = [
-    { id: 1, name: "National Statistics Office", datasets: 45 },
-    { id: 2, name: "Department of Lands", datasets: 28 },
-    { id: 3, name: "National Housing Authority", datasets: 15 },
-    { id: 4, name: "Urban Studies Lab", datasets: 15 }
+  // Feature cards with real data
+  const featureCards = [
+    {
+      title: "ข้อมูลประชากรและที่อยู่อาศัย",
+      description: "ข้อมูลแนวโน้มประชากร ครัวเรือน และรายได้ในระดับจังหวัด",
+      icon: Users,
+      stats: "4 จังหวัดหลัก",
+      color: "bg-blue-50 text-blue-700"
+    },
+    {
+      title: "วิเคราะห์นโยบายที่อยู่อาศัย",
+      description: "การวิเคราะห์นโยบายตามกรอบแนวคิดโมเดล 3S",
+      icon: FileBarChart,
+      stats: "103 นโยบาย",
+      color: "bg-green-50 text-green-700"
+    },
+    {
+      title: "สถานการณ์อาคารและสิ่งปลูกสร้าง",
+      description: "ข้อมูลอาคารและสิ่งปลูกสร้างรายแปลง",
+      icon: Home,
+      stats: "30,009 อาคาร",
+      color: "bg-purple-50 text-purple-700"
+    }
   ];
 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
-      <div className="bg-blue-800 text-white">
+      <div className="bg-gradient-to-r from-blue-800 to-blue-600 text-white">
         <div className="container mx-auto px-4 py-16">
-          <h1 className="text-4xl font-bold mb-6">
+          <h1 className="text-4xl font-bold mb-4">
             Thailand Housing Data Portal
           </h1>
           <p className="text-xl mb-8 text-blue-100">
-            Access and analyze comprehensive housing data across Thailand
+            แพลตฟอร์มข้อมูลและการวิเคราะห์ที่อยู่อาศัยเชิงพื้นที่
           </p>
           
           {/* Search Bar */}
@@ -46,7 +58,7 @@ const HomePage = () => {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search for datasets (e.g. population, housing supply)"
+                placeholder="ค้นหาข้อมูล (เช่น ประชากร, ที่อยู่อาศัย)"
                 className="w-full px-4 py-3 rounded-lg text-gray-900 placeholder-gray-500"
               />
               <button 
@@ -60,61 +72,83 @@ const HomePage = () => {
         </div>
       </div>
 
-      {/* Statistics Section */}
+      {/* Main Content */}
       <div className="container mx-auto px-4 py-12">
+        {/* Feature Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <div className="text-3xl font-bold text-blue-600 mb-2">103</div>
-            <div className="text-gray-600">Available Datasets</div>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <div className="text-3xl font-bold text-blue-600 mb-2">24</div>
-            <div className="text-gray-600">Contributing Organizations</div>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <div className="text-3xl font-bold text-blue-600 mb-2">4</div>
-            <div className="text-gray-600">Major Cities Covered</div>
-          </div>
+          {featureCards.map((card, index) => (
+            <div key={index} className="bg-white p-6 rounded-lg shadow-md">
+              <div className={`inline-block p-3 rounded-lg ${card.color} mb-4`}>
+                <card.icon size={24} />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">{card.title}</h3>
+              <p className="text-gray-600 mb-4">{card.description}</p>
+              <div className="text-2xl font-bold text-blue-600">{card.stats}</div>
+            </div>
+          ))}
         </div>
 
-        {/* Featured Datasets */}
+        {/* Provinces Section */}
         <div className="mb-12">
-          <h2 className="text-2xl font-bold mb-6">Featured Datasets</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {featuredDatasets.map(dataset => (
-              <div key={dataset.id} className="bg-white p-6 rounded-lg shadow-md">
-                <h3 className="font-semibold text-lg mb-2">{dataset.title}</h3>
-                <p className="text-gray-600 text-sm">{dataset.org}</p>
-                <button className="mt-4 text-blue-600 text-sm font-medium">
-                  View Dataset →
-                </button>
+          <h2 className="text-2xl font-bold mb-6">พื้นที่ศึกษา</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {provinces.map(province => (
+              <div 
+                key={province.id} 
+                className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow cursor-pointer"
+                onClick={() => navigate(`/housing-profile?province=${province.id}`)}
+              >
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h3 className="font-semibold text-lg mb-2">{province.name}</h3>
+                    <div className="flex items-center text-gray-600 text-sm">
+                      <MapPin size={16} className="mr-1" />
+                      <span>Lat: {province.lat.toFixed(4)}, Lon: {province.lon.toFixed(4)}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Organizations */}
-        <div>
-          <h2 className="text-2xl font-bold mb-6">Participating Organizations</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {organizations.map(org => (
-              <div key={org.id} className="bg-white p-6 rounded-lg shadow-md flex justify-between items-center">
-                <div>
-                  <h3 className="font-semibold">{org.name}</h3>
-                  <p className="text-gray-600 text-sm">{org.datasets} datasets</p>
-                </div>
-                <button className="text-blue-600 text-sm font-medium">
-                  View Profile →
-                </button>
-              </div>
-            ))}
+        {/* Quick Access Section */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+          <div className="bg-white p-6 rounded-lg shadow-md">
+            <h3 className="text-xl font-bold mb-4">การวิเคราะห์เชิงพื้นที่</h3>
+            <p className="text-gray-600 mb-4">
+              สำรวจและวิเคราะห์ข้อมูลอาคารและสิ่งปลูกสร้างในระดับพื้นที่ ทั้งด้านการใช้ประโยชน์ 
+              การเข้าถึงสาธารณูปการ และความหนาแน่น
+            </p>
+            <button 
+              onClick={() => navigate('/housing-stock')}
+              className="text-blue-600 font-medium hover:text-blue-800"
+            >
+              เริ่มต้นวิเคราะห์ →
+            </button>
+          </div>
+          <div className="bg-white p-6 rounded-lg shadow-md">
+            <h3 className="text-xl font-bold mb-4">สถานการณ์ที่อยู่อาศัย</h3>
+            <p className="text-gray-600 mb-4">
+              ติดตามสถานการณ์ที่อยู่อาศัยผ่านตัวชี้วัดสำคัญ ทั้งด้านประชากร ครัวเรือน 
+              รายได้ และอุปทานที่อยู่อาศัย
+            </p>
+            <button 
+              onClick={() => navigate('/housing-profile')}
+              className="text-blue-600 font-medium hover:text-blue-800"
+            >
+              ดูรายละเอียด →
+            </button>
           </div>
         </div>
 
         {/* Footer Info */}
         <div className="mt-16 text-center text-gray-600">
           <p className="mb-2">
-            แพลตฟอร์มนี้ ได้รับการสนับสนุนทุนวิจัยจากหน่วยบริหารและจัดการทุนด้านการพัฒนาระดับพื้นที่ (บพท.) กระทรวงการอุดมศึกษา วิทยาศาสตร์ วิจัยและนวัตกรรม (อว.)
+            แพลตฟอร์มนี้ได้รับการสนับสนุนทุนวิจัยจากหน่วยบริหารและจัดการทุนด้านการพัฒนาระดับพื้นที่ (บพท.)
+          </p>
+          <p className="text-sm">
+            กระทรวงการอุดมศึกษา วิทยาศาสตร์ วิจัยและนวัตกรรม (อว.)
           </p>
         </div>
       </div>
