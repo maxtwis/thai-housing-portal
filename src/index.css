@@ -1,0 +1,88 @@
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+:root {
+  --primary-color: #1e40af;
+  --secondary-color: #3b82f6;
+  --accent-color: #60a5fa;
+  --background-color: #f8fafc;
+  --text-color: #1e293b;
+}
+
+body {
+  font-family: 'Sarabun', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  background-color: var(--background-color);
+  color: var(--text-color);
+}
+
+.chart-container {
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  background-color: white;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Mapbox specific styles */
+.map-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.mapboxgl-map {
+  width: 100%;
+  height: 100%;
+}
+
+.province-marker {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: #3b82f6;
+  border: 2px solid white;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.province-marker:hover {
+  background-color: #1e40af !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+}
+
+/* Fix for mapbox canvas width/height */
+.mapboxgl-canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.building-popup .mapboxgl-popup-content {
+  padding: 0 !important;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.building-popup .mapboxgl-popup-tip {
+  border-top-color: rgb(249, 250, 251) !important;
+}
+
+.mapboxgl-ctrl-group {
+  border-radius: 8px !important;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+}
+
+.mapboxgl-ctrl-group button {
+  width: 32px !important;
+  height: 32px !important;
+}
+
+.mapboxgl-ctrl-group button:focus {
+  box-shadow: 0 0 2px 2px rgba(0,0,0,0.1) !important;
+}
+
+/* Space between control groups */
+.mapboxgl-ctrl-group + .mapboxgl-ctrl-group {
+  margin-top: 8px;
+}
