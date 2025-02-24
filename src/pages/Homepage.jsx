@@ -114,10 +114,7 @@ const HomePage = () => {
         {/* Footer Info */}
         <div className="mt-16 text-center text-gray-600">
           <p className="mb-2">
-            The Thailand Housing Data Analytics Platform is a collaborative effort to provide comprehensive housing data.
-          </p>
-          <p>
-            For more information, please contact our support team or visit the documentation.
+            แพลตฟอร์มนี้ ได้รับการสนับสนุนทุนวิจัยจากหน่วยบริหารและจัดการทุนด้านการพัฒนาระดับพื้นที่ (บพท.) กระทรวงการอุดมศึกษา วิทยาศาสตร์ วิจัยและนวัตกรรม (อว.)
           </p>
         </div>
       </div>
