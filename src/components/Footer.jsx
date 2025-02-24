@@ -9,13 +9,13 @@ const Footer = () => {
           <div className="mb-4 md:mb-0">
             <p>© 2025 Thailand Housing Data Portal</p>
             <p className="text-xs text-gray-400 mt-1">
-                แพลตฟอร์มนี้ได้รับการสนับสนุนทุนวิจัยจากหน่วยบริหารและจัดการทุนด้านการพัฒนาระดับพื้นที่ (บพท.) กระทรวงการอุดมศึกษา วิทยาศาสตร์ วิจัยและนวัตกรรม (อว.)
+              แพลตฟอร์มนี้ได้รับการสนับสนุนทุนวิจัยจากหน่วยบริหารและจัดการทุนด้านการพัฒนาระดับพื้นที่ (บพท.) กระทรวงการอุดมศึกษา วิทยาศาสตร์ วิจัยและนวัตกรรม (อว.)
             </p>
           </div>
           
           {/* Organizations logo */}
           <div className="flex justify-center">
-            <div className="bg-white p-2 rounded">
+            <div className="bg-transparent">
               <img 
                 src="/images/organizations-logo.png" 
                 alt="Participating Organizations" 
