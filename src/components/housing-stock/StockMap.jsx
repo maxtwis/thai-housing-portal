@@ -1,14 +1,24 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
 mapboxgl.accessToken = 'pk.eyJ1IjoibmFwYXR0cnMiLCJhIjoiY203YnFwdmp1MDU0dTJrb3Fvbmhld2Z1cCJ9.rr4TE2vg3iIcpNqv9I2n5Q';
 
-const StockMap = ({ filters, colorScheme = 'buildingType' }) => {
+const StockMap = ({ filters, colorScheme = 'buildingType', isMobile }) => {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const popupRef = useRef(null);
   const legendRef = useRef(null);
+
+  // Dynamic height calculation based on viewport
+  const getMapHeight = () => {
+    if (isMobile) {
+      return "60vh"; // Mobile height
+    } else {
+      // Desktop: Much taller map
+      return "calc(100vh - 150px)"; // Adjust this value as needed
+    }
+  };
 
   const generatePopupContent = (feature, colorScheme) => {
     return `
@@ -236,27 +246,44 @@ const StockMap = ({ filters, colorScheme = 'buildingType' }) => {
       minZoom: 10
     });
 
-    map.addControl(
-      new mapboxgl.NavigationControl({
-        showCompass: true,
-        visualizePitch: true
-      }), 
-      'top-right'
-    );
-
-    // Add fullscreen control
-    map.addControl(
-      new mapboxgl.FullscreenControl(), 
-      'top-right'
-    );
+    const navigationControl = new mapboxgl.NavigationControl({
+      showCompass: true,
+      visualizePitch: true
+    });
+    
+    // Only add controls if we are not on mobile
+    if (!isMobile) {
+      map.addControl(navigationControl, 'top-right');
+      
+      // Add fullscreen control
+      map.addControl(
+        new mapboxgl.FullscreenControl(), 
+        'top-right'
+      );
+    } else {
+      // Add minimal controls for mobile
+      map.addControl(
+        new mapboxgl.NavigationControl({
+          showCompass: false,
+          visualizePitch: false
+        }),
+        'top-right'
+      );
+    }
 
     mapRef.current = map;
     
-
-    // Create legend container
+    // Create legend container with responsive styling
     const legend = document.createElement('div');
     legend.className = 'map-legend';
-    legend.style.cssText = 'position: absolute; bottom: 30px; right: 10px; background: white; padding: 10px; border-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,0.2); font-size: 12px; max-height: 400px; overflow-y: auto;';
+    
+    // Mobile-specific styling for legend
+    if (isMobile) {
+      legend.style.cssText = 'position: absolute; bottom: 40px; left: 10px; right: 10px; background: white; padding: 8px; border-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,0.2); font-size: 10px; max-height: 100px; overflow-y: auto; z-index: 1;';
+    } else {
+      legend.style.cssText = 'position: absolute; bottom: 30px; right: 10px; background: white; padding: 10px; border-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,0.2); font-size: 12px; max-height: 400px; overflow-y: auto;';
+    }
+    
     legendRef.current = legend;
     mapContainerRef.current.appendChild(legend);
 
@@ -304,8 +331,8 @@ const StockMap = ({ filters, colorScheme = 'buildingType' }) => {
         });
         
         map.fitBounds(bounds, {
-          padding: 50,
-          maxZoom: 16
+          padding: isMobile ? 20 : 50,
+          maxZoom: isMobile ? 14 : 16
         });
 
         // Add hover effect
@@ -333,7 +360,9 @@ const StockMap = ({ filters, colorScheme = 'buildingType' }) => {
             const popup = new mapboxgl.Popup({
               closeButton: false,
               closeOnClick: false,
-              className: 'building-popup'
+              className: 'building-popup',
+              maxWidth: isMobile ? '300px' : '400px',
+              offset: isMobile ? 5 : 15
             })
               .setLngLat(e.lngLat)
               .setHTML(generatePopupContent(e.features[0].properties, colorScheme))
@@ -342,6 +371,28 @@ const StockMap = ({ filters, colorScheme = 'buildingType' }) => {
             popupRef.current = popup;
           }
         });
+
+        // For mobile, add touch support
+        if (isMobile) {
+          map.on('click', 'building-fills', (e) => {
+            if (e.features.length > 0) {
+              if (popupRef.current) {
+                popupRef.current.remove();
+              }
+              
+              const popup = new mapboxgl.Popup({
+                closeButton: true,
+                className: 'building-popup',
+                maxWidth: '300px'
+              })
+                .setLngLat(e.lngLat)
+                .setHTML(generatePopupContent(e.features[0].properties, colorScheme))
+                .addTo(map);
+              
+              popupRef.current = popup;
+            }
+          });
+        }
 
         map.on('mouseleave', 'building-fills', () => {
           if (hoveredStateId !== null) {
@@ -352,7 +403,7 @@ const StockMap = ({ filters, colorScheme = 'buildingType' }) => {
           }
           hoveredStateId = null;
 
-          if (popupRef.current) {
+          if (popupRef.current && !isMobile) {
             popupRef.current.remove();
             popupRef.current = null;
           }
@@ -377,7 +428,7 @@ const StockMap = ({ filters, colorScheme = 'buildingType' }) => {
         legendRef.current.remove();
       }
     };
-  }, []);
+  }, [isMobile]);
 
   // Update filters when they change
   useEffect(() => {
@@ -435,12 +486,17 @@ const StockMap = ({ filters, colorScheme = 'buildingType' }) => {
       rentCost: 'ค่าเช่า'
     }[colorScheme] || 'คำอธิบายสัญลักษณ์';
     
+    // Different styling for mobile vs desktop
+    const fontSize = isMobile ? '10px' : '12px';
+    const marginBottom = isMobile ? '2px' : '4px';
+    const colorBoxSize = isMobile ? '12px' : '16px';
+    
     legendRef.current.innerHTML = `
-      <h4 style="margin: 0 0 8px 0; font-weight: 600;">${title}</h4>
+      <h4 style="margin: 0 0 8px 0; font-weight: 600; font-size: ${fontSize};">${title}</h4>
       ${items.map(item => `
-        <div style="display: flex; align-items: center; margin-bottom: 4px;">
-          <span style="display: inline-block; width: 16px; height: 16px; margin-right: 8px; background: ${item.color}; border: 1px solid rgba(0,0,0,0.2);"></span>
-          <span style="font-size: 12px;">${item.label}</span>
+        <div style="display: flex; align-items: center; margin-bottom: ${marginBottom};">
+          <span style="display: inline-block; width: ${colorBoxSize}; height: ${colorBoxSize}; margin-right: 8px; background: ${item.color}; border: 1px solid rgba(0,0,0,0.2);"></span>
+          <span style="font-size: ${fontSize};">${item.label}</span>
         </div>
       `).join('')}
     `;
@@ -451,6 +507,10 @@ const StockMap = ({ filters, colorScheme = 'buildingType' }) => {
       <div 
         ref={mapContainerRef}
         className="w-full h-full"
+        style={{ 
+          minHeight: "400px", 
+          height: getMapHeight() 
+        }}
       />
       <div className="absolute bottom-0 right-0 bg-white bg-opacity-75 px-2 py-1 text-xs text-gray-600">
         © Mapbox © OpenStreetMap
