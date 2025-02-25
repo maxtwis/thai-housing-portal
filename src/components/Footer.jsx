@@ -11,6 +11,9 @@ const Footer = () => {
             <p className="text-xs text-gray-700 mt-1">
               แพลตฟอร์มนี้ได้รับการสนับสนุนทุนวิจัยจากหน่วยบริหารและจัดการทุนด้านการพัฒนาระดับพื้นที่ (บพท.) กระทรวงการอุดมศึกษา วิทยาศาสตร์ วิจัยและนวัตกรรม (อว.)
             </p>
+            <p className="text-xs text-gray-700 mt-1">
+              *แพลตฟอร์มนี้อยู่ในขั้นตอนพัฒนาและทดสอบ
+            </p>
           </div>
           {/* Organizations logo */}
           <div className="flex justify-center">
