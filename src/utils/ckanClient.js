@@ -1,7 +1,7 @@
 // ckanClient.js
 // Replace Supabase client with CKAN client
 
-const CKAN_BASE_URL = 'http://147.50.228.205';
+const CKAN_BASE_URL = 'https://147.50.228.205';
 const API_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3NDY3ODQ1NTksImp0aSI6IlVFUFNxN0RzcXlYVXVPWlZxMjhlN3BfVEpYMFdmamxBNXF2WEZXNDVTMjdmNnJNRWR5UUF0SEZWVGxiWXdOaExYUDdGd0I3djhyTktIR2otIn0.D24QF1AccN3zup54CSi6T8_KwYrmsDNxH-Pd1IiccsE'; // Add your CKAN API token if required
 
 /**
