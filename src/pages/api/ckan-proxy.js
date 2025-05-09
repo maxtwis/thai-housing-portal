@@ -1,6 +1,4 @@
 // pages/api/ckan-proxy.js
-import { json } from 'body-parser';
-
 export default async function handler(req, res) {
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -11,13 +9,6 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') {
     res.status(200).end();
     return;
-  }
-
-  // Make sure body is parsed for POST requests
-  if (req.method === 'POST' && !req.body) {
-    await new Promise((resolve) => {
-      json()(req, res, resolve);
-    });
   }
 
   try {
@@ -38,11 +29,11 @@ export default async function handler(req, res) {
     let params = {};
     
     // For POST requests, use the body
-    if (req.method === 'POST' && req.body) {
-      params = req.body;
+    if (req.method === 'POST') {
+      params = req.body || {};
     } 
-    // For GET requests or if body is empty, use query params (except 'action')
-    else if (Object.keys(req.query).length > 1) {
+    // For GET requests, use query params (except 'action')
+    else if (req.method === 'GET') {
       // Copy query params to request body (except 'action')
       const { action, ...queryParams } = req.query;
       params = queryParams;
