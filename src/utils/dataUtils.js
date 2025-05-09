@@ -1,5 +1,16 @@
+// dataUtils.js - Updated for CKAN
 import _ from 'lodash';
-import { supabase } from '../utils/supabaseClient';
+import { ckan, getCkanData, ckanSqlQuery } from './ckanClient';
+
+// Resource IDs for CKAN datasets
+const RESOURCE_IDS = {
+  population_data: 'YOUR_HOUSEHOLD_RESOURCE_ID', // Replace with actual CKAN resource IDs
+  household_data: 'YOUR_HOUSEHOLD_RESOURCE_ID',
+  income_data: 'YOUR_INCOME_RESOURCE_ID',
+  expenditure_data: 'YOUR_EXPENDITURE_RESOURCE_ID',
+  population_agegroup_data: 'YOUR_POPULATION_AGE_RESOURCE_ID',
+  housing_supply_data: '15132377-edb0-40b0-9aad-8fd9f6769b92', // The one you provided
+};
 
 // Cache for fetched data
 const dataCache = {};
@@ -54,15 +65,15 @@ export const getPopulationData = async (geoId = null) => {
   }
   
   try {
-    let query = supabase.from('population_data').select('*');
-    
+    let data;
     if (geoId) {
-      query = query.eq('geo_id', geoId);
+      // Use SQL query for more complex filtering
+      const sql = `SELECT * FROM "${RESOURCE_IDS.population_data}" WHERE geo_id = ${geoId}`;
+      data = await ckanSqlQuery(sql);
+    } else {
+      // Get all records
+      data = await getCkanData(RESOURCE_IDS.population_data);
     }
-    
-    const { data, error } = await query;
-    
-    if (error) throw error;
     
     dataCache[cacheKey] = data;
     return data;
@@ -81,15 +92,15 @@ export const getHouseholdData = async (geoId = null) => {
   }
   
   try {
-    let query = supabase.from('household_data').select('*');
-    
+    let data;
     if (geoId) {
-      query = query.eq('geo_id', geoId);
+      // Use SQL query for more complex filtering
+      const sql = `SELECT * FROM "${RESOURCE_IDS.household_data}" WHERE geo_id = ${geoId}`;
+      data = await ckanSqlQuery(sql);
+    } else {
+      // Get all records
+      data = await getCkanData(RESOURCE_IDS.household_data);
     }
-    
-    const { data, error } = await query;
-    
-    if (error) throw error;
     
     dataCache[cacheKey] = data;
     return data;
@@ -108,15 +119,15 @@ export const getIncomeData = async (geoId = null) => {
   }
   
   try {
-    let query = supabase.from('income_data').select('*');
-    
+    let data;
     if (geoId) {
-      query = query.eq('geo_id', geoId);
+      // Use SQL query for more complex filtering
+      const sql = `SELECT * FROM "${RESOURCE_IDS.income_data}" WHERE geo_id = ${geoId}`;
+      data = await ckanSqlQuery(sql);
+    } else {
+      // Get all records
+      data = await getCkanData(RESOURCE_IDS.income_data);
     }
-    
-    const { data, error } = await query;
-    
-    if (error) throw error;
     
     dataCache[cacheKey] = data;
     return data;
@@ -135,19 +146,22 @@ export const getExpenditureData = async (geoId = null, quintile = null) => {
   }
   
   try {
-    let query = supabase.from('expenditure_data').select('*');
+    let sql = `SELECT * FROM "${RESOURCE_IDS.expenditure_data}"`;
+    const whereConditions = [];
     
     if (geoId) {
-      query = query.eq('geo_id', geoId);
+      whereConditions.push(`geo_id = ${geoId}`);
     }
     
     if (quintile) {
-      query = query.eq('quintile', quintile);
+      whereConditions.push(`quintile = ${quintile}`);
     }
     
-    const { data, error } = await query;
+    if (whereConditions.length > 0) {
+      sql += ` WHERE ${whereConditions.join(' AND ')}`;
+    }
     
-    if (error) throw error;
+    const data = await ckanSqlQuery(sql);
     
     dataCache[cacheKey] = data;
     return data;
@@ -172,15 +186,13 @@ export const getPopulationAgeData = async (geoId = null) => {
   }
   
   try {
-    let query = supabase.from('population_agegroup_data').select('*');
+    let sql = `SELECT * FROM "${RESOURCE_IDS.population_agegroup_data}"`;
     
     if (geoId) {
-      query = query.eq('geo_id', geoId);
+      sql += ` WHERE geo_id = ${geoId}`;
     }
     
-    const { data, error } = await query;
-    
-    if (error) throw error;
+    const data = await ckanSqlQuery(sql);
     
     dataCache[cacheKey] = data;
     return data;
@@ -199,19 +211,22 @@ export const getHousingSupplyData = async (geoId = null, year = null) => {
   }
   
   try {
-    let query = supabase.from('housing_supply_data').select('*');
+    let sql = `SELECT * FROM "${RESOURCE_IDS.housing_supply_data}"`;
+    const whereConditions = [];
     
     if (geoId) {
-      query = query.eq('geo_id', geoId);
+      whereConditions.push(`geo_id = ${geoId}`);
     }
     
     if (year) {
-      query = query.eq('year', year);
+      whereConditions.push(`year = ${year}`);
     }
     
-    const { data, error } = await query;
+    if (whereConditions.length > 0) {
+      sql += ` WHERE ${whereConditions.join(' AND ')}`;
+    }
     
-    if (error) throw error;
+    const data = await ckanSqlQuery(sql);
     
     dataCache[cacheKey] = data;
     return data;

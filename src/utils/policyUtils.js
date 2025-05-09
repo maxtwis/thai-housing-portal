@@ -1,4 +1,8 @@
-import { supabase } from './supabaseClient';
+// policyUtils.js - Updated for CKAN
+import { ckanSqlQuery } from './ckanClient';
+
+// Resource ID for policy data
+const POLICY_RESOURCE_ID = 'YOUR_POLICY_RESOURCE_ID';
 
 // Cache for fetched policy data
 const policyCache = {};
@@ -11,18 +15,16 @@ export const getPolicyData = async (geoId = null) => {
   }
   
   try {
-    // Fetch from Supabase
-    let query = supabase.from('policy_data').select('*');
+    let sql = `SELECT * FROM "${POLICY_RESOURCE_ID}"`;
     
     if (geoId) {
       // Include both province-specific policies and nationwide policies (geo_id = 99)
-      query = query.or(`geo_id.eq.${geoId},geo_id.eq.99`);
+      sql += ` WHERE geo_id = ${geoId} OR geo_id = 99`;
     }
     
-    const { data, error } = await query;
+    const data = await ckanSqlQuery(sql);
     
-    if (error) {
-      console.error('Error fetching policy data:', error);
+    if (!data || data.length === 0) {
       return [];
     }
     
