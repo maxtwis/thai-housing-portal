@@ -2,7 +2,7 @@
 
 /**
  * CKAN API Proxy Handler
- * Forwards requests to CKAN API and avoids CORS issues
+ * Forwards requests to CKAN API and handles CORS issues
  */
 export default async function handler(req, res) {
   // Set CORS headers
@@ -27,49 +27,63 @@ export default async function handler(req, res) {
       });
     }
     
-    // Construct the CKAN URL - replace with your CKAN server
-    const ckanUrl = `http://147.50.228.205/api/3/action/${action}`;
+    // Actions that work with GET requests
+    const getActions = ['datastore_search', 'package_list', 'package_show', 'resource_show', 'site_read'];
     
-    // Get parameters from either body or query
-    let params = {};
+    // Construct the CKAN URL
+    let ckanUrl = `http://147.50.228.205/api/3/action/${action}`;
     
-    // For POST requests, use the body
-    if (req.method === 'POST') {
-      params = req.body || {};
-    } 
-    // For GET requests, use query params (except 'action')
-    else if (req.method === 'GET') {
-      // Copy query params to request body (except 'action')
-      const { action, ...queryParams } = req.query;
-      params = queryParams;
+    // Determine whether to use GET or POST based on the action and client request
+    let method = 'POST';
+    let fetchOptions = {};
+    
+    if (getActions.includes(action) && req.method === 'GET') {
+      // Use GET for these actions when client used GET
+      method = 'GET';
       
-      // If there's a 'sql' parameter, make sure it's properly decoded
-      if (params.sql && typeof params.sql === 'string') {
-        params.sql = decodeURIComponent(params.sql);
+      // Add query parameters from req.query (except 'action')
+      const { action: _, ...queryParams } = req.query;
+      
+      if (Object.keys(queryParams).length > 0) {
+        const searchParams = new URLSearchParams();
+        for (const [key, value] of Object.entries(queryParams)) {
+          searchParams.append(key, value);
+        }
+        ckanUrl += `?${searchParams.toString()}`;
       }
+      
+      fetchOptions = { method };
+    } else {
+      // Use POST with JSON body for other actions or when client explicitly used POST
+      let params = {};
+      
+      if (req.method === 'POST' && req.body) {
+        params = req.body;
+      } else if (req.method === 'GET') {
+        const { action, ...queryParams } = req.query;
+        params = queryParams;
+      }
+      
+      fetchOptions = {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(params),
+      };
     }
     
-    console.log(`CKAN Proxy: ${action}`, { 
-      method: req.method, 
-      params: JSON.stringify(params).substring(0, 200) // Truncate for logging
-    });
+    console.log(`CKAN Proxy Request: ${method} ${ckanUrl}`);
     
-    // Always make POST requests to CKAN API, regardless of the original method
-    const response = await fetch(ckanUrl, {
-      method: 'POST', // CKAN API requires POST requests
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(params),
-    });
+    // Make the request to CKAN
+    const response = await fetch(ckanUrl, fetchOptions);
     
-    // Log response status for debugging
-    console.log(`CKAN response status: ${response.status}`);
+    console.log(`CKAN Response Status: ${response.status}`);
     
     // Get response data
     const data = await response.json();
     
-    // Return the data with the same format CKAN uses
+    // Return the data with the same format
     res.status(200).json(data);
   } catch (error) {
     console.error('CKAN proxy error:', error);
