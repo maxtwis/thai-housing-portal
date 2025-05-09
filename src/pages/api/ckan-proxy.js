@@ -13,7 +13,7 @@ export default async function handler(req, res) {
     return;
   }
 
-  // Parse body if it's a POST request and not already parsed
+  // Make sure body is parsed for POST requests
   if (req.method === 'POST' && !req.body) {
     await new Promise((resolve) => {
       json()(req, res, resolve);
@@ -21,7 +21,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Get the API action from the path parameter
+    // Get the API action from the query parameter
     const { action } = req.query;
     
     if (!action) {
@@ -34,31 +34,40 @@ export default async function handler(req, res) {
     // Construct the CKAN URL
     const ckanUrl = `http://147.50.228.205/api/3/action/${action}`;
     
-    // Get the request body from the client or query params
-    let requestBody = {};
+    // Get parameters from either body or query
+    let params = {};
     
+    // For POST requests, use the body
     if (req.method === 'POST' && req.body) {
-      requestBody = req.body;
-    } else if (Object.keys(req.query).length > 1) {
+      params = req.body;
+    } 
+    // For GET requests or if body is empty, use query params (except 'action')
+    else if (Object.keys(req.query).length > 1) {
       // Copy query params to request body (except 'action')
-      const { action, ...params } = req.query;
-      requestBody = params;
+      const { action, ...queryParams } = req.query;
+      params = queryParams;
+      
+      // If there's a 'sql' parameter, make sure it's properly decoded
+      if (params.sql && typeof params.sql === 'string') {
+        params.sql = decodeURIComponent(params.sql);
+      }
     }
     
-    console.log(`CKAN Proxy: ${action}`, requestBody);
+    console.log(`CKAN Proxy: ${action}`, { method: req.method, params });
     
-    // Make the POST request to the CKAN server
+    // Always make POST requests to CKAN API, regardless of the original method
     const response = await fetch(ckanUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(requestBody),
+      body: JSON.stringify(params),
     });
     
+    // Get response data
     const data = await response.json();
     
-    // Return the data with the same status code
+    // Return the data
     res.status(200).json(data);
   } catch (error) {
     console.error('CKAN proxy error:', error);
