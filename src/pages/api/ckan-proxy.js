@@ -1,4 +1,9 @@
 // pages/api/ckan-proxy.js
+
+/**
+ * CKAN API Proxy Handler
+ * Forwards requests to CKAN API and avoids CORS issues
+ */
 export default async function handler(req, res) {
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -22,7 +27,7 @@ export default async function handler(req, res) {
       });
     }
     
-    // Construct the CKAN URL
+    // Construct the CKAN URL - replace with your CKAN server
     const ckanUrl = `http://147.50.228.205/api/3/action/${action}`;
     
     // Get parameters from either body or query
@@ -44,21 +49,27 @@ export default async function handler(req, res) {
       }
     }
     
-    console.log(`CKAN Proxy: ${action}`, { method: req.method, params });
+    console.log(`CKAN Proxy: ${action}`, { 
+      method: req.method, 
+      params: JSON.stringify(params).substring(0, 200) // Truncate for logging
+    });
     
     // Always make POST requests to CKAN API, regardless of the original method
     const response = await fetch(ckanUrl, {
-      method: 'POST',
+      method: 'POST', // CKAN API requires POST requests
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(params),
     });
     
+    // Log response status for debugging
+    console.log(`CKAN response status: ${response.status}`);
+    
     // Get response data
     const data = await response.json();
     
-    // Return the data
+    // Return the data with the same format CKAN uses
     res.status(200).json(data);
   } catch (error) {
     console.error('CKAN proxy error:', error);
