@@ -42,8 +42,23 @@ const getCkanData = async (resource_id, options = {}) => {
       let errorDetails = '';
       try {
         const errorData = await response.json();
+        console.error('Proxy error details:', errorData);
         errorDetails = errorData.error || errorData.details || '';
+        
+        // If the proxy returned HTML, it means something is wrong with the endpoint
+        if (errorData.preview && errorData.preview.includes('<!DOCTYPE')) {
+          throw new Error(`CKAN API returned HTML instead of JSON. This could indicate:
+1. The CKAN server is returning an error page
+2. The resource ID is invalid
+3. The CKAN server is down or misconfigured
+4. Authentication is required
+
+Preview of response: ${errorData.preview}`);
+        }
       } catch (e) {
+        if (e.message.includes('<!DOCTYPE')) {
+          throw e; // Re-throw our custom error
+        }
         errorDetails = `HTTP ${response.status} ${response.statusText}`;
       }
       throw new Error(`Proxy error: ${errorDetails}`);
@@ -53,7 +68,7 @@ const getCkanData = async (resource_id, options = {}) => {
     
     // Check if the CKAN API returned an error
     if (data.error) {
-      throw new Error(`CKAN API error: ${data.error}`);
+      throw new Error(`CKAN API error: ${JSON.stringify(data.error)}`);
     }
     
     if (!data.success) {
@@ -91,6 +106,7 @@ const ckanSqlQuery = async (sql) => {
       let errorDetails = '';
       try {
         const errorData = await response.json();
+        console.error('Proxy error details:', errorData);
         errorDetails = errorData.error || errorData.details || '';
       } catch (e) {
         errorDetails = `HTTP ${response.status} ${response.statusText}`;
