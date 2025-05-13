@@ -1,8 +1,8 @@
-// pages/api/cors-proxy.js
+// api/cors-proxy.js (for Vercel)
 export default async function handler(req, res) {
-  // Set CORS headers to allow all origins
+  // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   // Handle preflight requests
@@ -11,8 +11,12 @@ export default async function handler(req, res) {
     return;
   }
 
+  if (req.method !== 'GET') {
+    res.status(405).json({ error: 'Method not allowed' });
+    return;
+  }
+
   try {
-    // Get the target URL from query parameter
     const { url } = req.query;
     
     if (!url) {
@@ -21,13 +25,13 @@ export default async function handler(req, res) {
 
     console.log('Proxying request to:', url);
 
-    // Make the request to the target URL with proper headers
+    // Make the request to the CKAN API
     const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
-        'User-Agent': 'Mozilla/5.0 (compatible; CORS-Proxy/1.0)',
+        'User-Agent': 'Mozilla/5.0 (compatible; Vercel-CORS-Proxy/1.0)',
       },
     });
     
@@ -35,7 +39,6 @@ export default async function handler(req, res) {
     console.log('Response headers:', Object.fromEntries(response.headers));
     
     if (!response.ok) {
-      // Get the response text to see what error message was returned
       const errorText = await response.text();
       console.error('API Error Response:', errorText);
       
@@ -69,7 +72,7 @@ export default async function handler(req, res) {
     res.status(500).json({ 
       error: 'Proxy request failed',
       details: error.message,
-      stack: error.stack
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 }
