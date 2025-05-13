@@ -8,8 +8,6 @@ import Report from './pages/Report';
 import HousingStock from './pages/HousingStock';
 import Homepage from './pages/Homepage';
 import OrganizationPage from './pages/OrganizationPage';
-import CKANTest from './pages/CKANTest';
-import CKANDebugger from './pages/CKANDebugger';
 
 function App() {
   return (
@@ -23,8 +21,6 @@ function App() {
           <Route path="/report/:provinceId" element={<Report />} />
           <Route path="/housing-stock" element={<HousingStock />} />
           <Route path="/organization/:orgId" element={<OrganizationPage />} />
-          <Route path="/test" element={<CKANTest />} />
-          <Route path="/debug" element={<CKANDebugger />} />
         </Routes>
       </main>
       <Footer />
