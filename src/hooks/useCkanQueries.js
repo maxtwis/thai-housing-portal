@@ -1,4 +1,4 @@
-import { useQuery, useQueries } from '@tanstack/react-query';
+import { useQuery, useQueries, useQueryClient } from '@tanstack/react-query';
 import { 
   getCkanData,
   getPopulationData,
@@ -130,27 +130,27 @@ export const useAllProvinceData = (provinceId) => {
 
 // Prefetch hook for preloading data
 export const usePrefetchProvinceData = () => {
-  const { prefetchQuery } = useQueryClient();
+  const queryClient = useQueryClient();
   
   const prefetchProvince = async (provinceId) => {
     // Prefetch all data types for a province
     await Promise.all([
-      prefetchQuery({
+      queryClient.prefetchQuery({
         queryKey: ['population', provinceId],
         queryFn: () => getPopulationData(provinceId),
         staleTime: 5 * 60 * 1000,
       }),
-      prefetchQuery({
+      queryClient.prefetchQuery({
         queryKey: ['household', provinceId],
         queryFn: () => getHouseholdData(provinceId),
         staleTime: 5 * 60 * 1000,
       }),
-      prefetchQuery({
+      queryClient.prefetchQuery({
         queryKey: ['income', provinceId],
         queryFn: () => getIncomeData(provinceId),
         staleTime: 5 * 60 * 1000,
       }),
-      prefetchQuery({
+      queryClient.prefetchQuery({
         queryKey: ['housing-supply', provinceId],
         queryFn: async () => {
           const result = await getCkanData('15132377-edb0-40b0-9aad-8fd9f6769b92', {
@@ -162,7 +162,7 @@ export const usePrefetchProvinceData = () => {
         },
         staleTime: 5 * 60 * 1000,
       }),
-      prefetchQuery({
+      queryClient.prefetchQuery({
         queryKey: ['policy', provinceId],
         queryFn: () => getPolicyData(provinceId),
         staleTime: 5 * 60 * 1000,
