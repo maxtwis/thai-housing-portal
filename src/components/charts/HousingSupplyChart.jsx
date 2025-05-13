@@ -32,26 +32,46 @@ const HousingSupplyChart = ({ provinceName, provinceId }) => {
         
         console.log('CKAN result:', result);
         
-        // Process data for chart
-        if (result && result.records) {
+        // Process data for chart - FIXED: Check if result has records property
+        if (result && result.records && result.records.length > 0) {
           console.log('Processing housing data, records found:', result.records.length);
           const processedData = processHousingSupplyData(result.records, housingCategories);
           console.log('Processed housing data:', processedData);
           setData(processedData);
         } else {
-          console.log('No records found in CKAN result');
+          console.log('No records found in CKAN result or invalid result structure');
+          console.log('Result structure:', result);
           setData([]);
         }
         
         setLoading(false);
       } catch (err) {
         console.error('Error fetching housing supply data:', err);
-        setError('Failed to load housing data: ' + err.message);
+        console.error('Error details:', {
+          message: err.message,
+          stack: err.stack,
+          name: err.name
+        });
+        
+        // More specific error message
+        let errorMessage = 'Failed to load housing data';
+        if (err.message.includes('<!DOCTYPE')) {
+          errorMessage += ': Server returned HTML instead of JSON. This usually indicates a server error or authentication issue.';
+        } else if (err.message.includes('JSON')) {
+          errorMessage += ': Invalid JSON response received';
+        } else {
+          errorMessage += ': ' + err.message;
+        }
+        
+        setError(errorMessage);
         setLoading(false);
       }
     };
     
-    fetchData();
+    // Only fetch if provinceId is available
+    if (provinceId) {
+      fetchData();
+    }
   }, [provinceId, provinceName]);
 
   if (loading) {
@@ -83,6 +103,16 @@ const HousingSupplyChart = ({ provinceName, provinceId }) => {
           <div className="text-center">
             <p className="text-gray-500">{error || "No data available"}</p>
             <p className="text-xs text-gray-400 mt-1">Province: {provinceName} (ID: {provinceId})</p>
+            {error && error.includes('HTML') && (
+              <div className="mt-3 text-xs text-red-600">
+                <p>Troubleshooting tips:</p>
+                <ul className="text-left mt-1">
+                  <li>• Check if the CKAN server is accessible</li>
+                  <li>• Verify the resource ID exists</li>
+                  <li>• Check if authentication is required</li>
+                </ul>
+              </div>
+            )}
           </div>
         </div>
         <div className="px-3 py-1 text-xs text-gray-500 border-t border-gray-200">
