@@ -1,80 +1,34 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, 
   Tooltip, Legend, ResponsiveContainer 
 } from 'recharts';
 import ExportButton from '../ExportButton';
-import { getCkanData, processHousingSupplyData } from '../../utils/ckanClient';
+import { processHousingSupplyData } from '../../utils/ckanClient';
 import { housingCategories } from '../../utils/dataUtils';
+import { useHousingSupplyData } from '../../hooks/useCkanQueries';
 
 const HousingSupplyChart = ({ provinceName, provinceId }) => {
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        console.log(`Fetching housing supply data for province ${provinceId} (${provinceName})`);
-        
-        // Resource ID for housing supply data
-        const resourceId = '15132377-edb0-40b0-9aad-8fd9f6769b92';
-        
-        // Get data with filters for the specific province
-        const result = await getCkanData(resourceId, {
-          filters: JSON.stringify({ geo_id: provinceId }),
-          limit: 1000,
-          sort: 'year asc'
-        });
-        
-        console.log('CKAN result:', result);
-        
-        // Process data for chart - FIXED: Check if result has records property
-        if (result && result.records && result.records.length > 0) {
-          console.log('Processing housing data, records found:', result.records.length);
-          const processedData = processHousingSupplyData(result.records, housingCategories);
-          console.log('Processed housing data:', processedData);
-          setData(processedData);
-        } else {
-          console.log('No records found in CKAN result or invalid result structure');
-          console.log('Result structure:', result);
-          setData([]);
-        }
-        
-        setLoading(false);
-      } catch (err) {
-        console.error('Error fetching housing supply data:', err);
-        console.error('Error details:', {
-          message: err.message,
-          stack: err.stack,
-          name: err.name
-        });
-        
-        // More specific error message
-        let errorMessage = 'Failed to load housing data';
-        if (err.message.includes('<!DOCTYPE')) {
-          errorMessage += ': Server returned HTML instead of JSON. This usually indicates a server error or authentication issue.';
-        } else if (err.message.includes('JSON')) {
-          errorMessage += ': Invalid JSON response received';
-        } else {
-          errorMessage += ': ' + err.message;
-        }
-        
-        setError(errorMessage);
-        setLoading(false);
-      }
-    };
-    
-    // Only fetch if provinceId is available
-    if (provinceId) {
-      fetchData();
+  // Use React Query for data fetching
+  const { 
+    data: rawData, 
+    isLoading, 
+    error,
+    isFetching,
+    isStale,
+    dataUpdatedAt
+  } = useHousingSupplyData(provinceId);
+  
+  // Process data for chart
+  const data = React.useMemo(() => {
+    if (rawData && rawData.records) {
+      return processHousingSupplyData(rawData.records, housingCategories);
     }
-  }, [provinceId, provinceName]);
-
-  if (loading) {
+    return [];
+  }, [rawData]);
+  
+  // Show loading only for initial load
+  if (isLoading) {
     return (
       <div className="bg-white p-0 rounded-lg shadow">
         <div className="px-3 py-2 border-b border-gray-200">
@@ -83,14 +37,17 @@ const HousingSupplyChart = ({ provinceName, provinceId }) => {
           </div>
         </div>
         <div className="px-2 py-1 h-52 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"></div>
-          <p className="ml-2 text-gray-500">Loading housing data...</p>
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+            <p className="mt-3 text-gray-600">Loading housing data...</p>
+            <p className="text-xs text-gray-500 mt-1">Initial load may take a moment</p>
+          </div>
         </div>
       </div>
     );
   }
-
-  if (error || !data || data.length === 0) {
+  
+  if (error) {
     return (
       <div className="bg-white p-0 rounded-lg shadow">
         <div className="px-3 py-2 border-b border-gray-200">
@@ -101,18 +58,8 @@ const HousingSupplyChart = ({ provinceName, provinceId }) => {
         </div>
         <div className="px-2 py-1 h-52 flex items-center justify-center">
           <div className="text-center">
-            <p className="text-gray-500">{error || "No data available"}</p>
+            <p className="text-red-500">{error.message}</p>
             <p className="text-xs text-gray-400 mt-1">Province: {provinceName} (ID: {provinceId})</p>
-            {error && error.includes('HTML') && (
-              <div className="mt-3 text-xs text-red-600">
-                <p>Troubleshooting tips:</p>
-                <ul className="text-left mt-1">
-                  <li>• Check if the CKAN server is accessible</li>
-                  <li>• Verify the resource ID exists</li>
-                  <li>• Check if authentication is required</li>
-                </ul>
-              </div>
-            )}
           </div>
         </div>
         <div className="px-3 py-1 text-xs text-gray-500 border-t border-gray-200">
@@ -121,7 +68,29 @@ const HousingSupplyChart = ({ provinceName, provinceId }) => {
       </div>
     );
   }
-
+  
+  if (!data || data.length === 0) {
+    return (
+      <div className="bg-white p-0 rounded-lg shadow">
+        <div className="px-3 py-2 border-b border-gray-200">
+          <div className="flex justify-between items-center">
+            <h2 className="text-sm font-semibold text-gray-800">Housing Supply by Type</h2>
+            <ExportButton data={[]} filename={`housing_supply_${provinceName}`} />
+          </div>
+        </div>
+        <div className="px-2 py-1 h-52 flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-gray-500">No data available</p>
+            <p className="text-xs text-gray-400 mt-1">Province: {provinceName} (ID: {provinceId})</p>
+          </div>
+        </div>
+        <div className="px-3 py-1 text-xs text-gray-500 border-t border-gray-200">
+          <p>Source: Thailand National Statistics Office</p>
+        </div>
+      </div>
+    );
+  }
+  
   // Shorter housing category names for better display
   const shortNames = {
     "บ้านเดี่ยว": "บ้านเดี่ยว",
@@ -161,7 +130,25 @@ const HousingSupplyChart = ({ provinceName, provinceId }) => {
       <div className="px-3 py-2 border-b border-gray-200">
         <div className="flex justify-between items-center">
           <h2 className="text-sm font-semibold text-gray-800">Housing Supply by Type</h2>
-          <ExportButton data={data} filename={`housing_supply_${provinceName}`} />
+          <div className="flex items-center space-x-2">
+            {/* Show cache status */}
+            {!isStale && !isLoading && (
+              <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded">
+                ⚡ Cached
+              </span>
+            )}
+            {isFetching && !isLoading && (
+              <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded">
+                🔄 Updating...
+              </span>
+            )}
+            {dataUpdatedAt && (
+              <span className="text-xs text-gray-500">
+                Updated: {new Date(dataUpdatedAt).toLocaleTimeString()}
+              </span>
+            )}
+            <ExportButton data={data} filename={`housing_supply_${provinceName}`} />
+          </div>
         </div>
       </div>
       <div className="px-2 py-1" style={{ height: 210 }}>
@@ -209,22 +196,20 @@ const HousingSupplyChart = ({ provinceName, provinceId }) => {
         <p className="w-full overflow-hidden text-ellipsis whitespace-nowrap">Source: Thailand National Statistics Office</p>
       </div>
       
-      {/* Debug info (remove in production) */}
+      {/* Debug info (show in development) */}
       {process.env.NODE_ENV === 'development' && (
         <details className="mt-2 text-xs border-t border-gray-200 pt-2">
-          <summary className="font-medium text-blue-600 cursor-pointer">Debug Info</summary>
+          <summary className="font-medium text-blue-600 cursor-pointer">Debug Info (React Query)</summary>
           <div className="p-2 bg-gray-50 mt-1 rounded">
-            <p>Resource ID: {resourceId}</p>
+            <p>Query Key: ['housing-supply', {provinceId}]</p>
             <p>Province ID: {provinceId}</p>
             <p>Records: {data.length}</p>
             <p>Categories with data: {housingCategoryNames.length}</p>
-            <p>Error: {error || 'None'}</p>
-            <details className="mt-2">
-              <summary className="font-medium cursor-pointer">Data sample</summary>
-              <pre className="mt-1 text-xs overflow-auto max-h-40 bg-white p-2 rounded">
-                {JSON.stringify(data.slice(0, 2), null, 2)}
-              </pre>
-            </details>
+            <p>Is Loading: {isLoading.toString()}</p>
+            <p>Is Fetching: {isFetching.toString()}</p>
+            <p>Is Stale: {isStale.toString()}</p>
+            <p>Has Error: {!!error}</p>
+            <p>Last Updated: {dataUpdatedAt ? new Date(dataUpdatedAt).toLocaleString() : 'Never'}</p>
           </div>
         </details>
       )}
