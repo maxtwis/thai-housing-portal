@@ -4,22 +4,8 @@ import {
   Tooltip, Legend, ResponsiveContainer 
 } from 'recharts';
 import ExportButton from '../ExportButton';
-import { getCkanData, ckanSqlQuery } from '../../utils/ckanClient';
-
-// Housing Supply Resource ID from CKAN
-const HOUSING_SUPPLY_RESOURCE_ID = '15132377-edb0-40b0-9aad-8fd9f6769b92';
-
-// Categories for housing types
-const housingCategories = [
-  { id: 1, name: 'บ้านเดี่ยว' },
-  { id: 2, name: 'บ้านแฝด' },
-  { id: 3, name: 'ทาวน์เฮ้าส์' },
-  { id: 4, name: 'อาคารชุด' },
-  { id: 5, name: 'ตึกแถวและห้องแถว' },
-  { id: 6, name: 'พาณิชยกรรม' },
-  { id: 7, name: 'ตึก' },
-  { id: 8, name: 'โฮมออฟฟิศ' }
-];
+import { getCkanData, processHousingSupplyData } from '../../utils/ckanClient';
+import { housingCategories } from '../../utils/dataUtils';
 
 const HousingSupplyChart = ({ provinceName, provinceId }) => {
   const [data, setData] = useState([]);
@@ -30,75 +16,43 @@ const HousingSupplyChart = ({ provinceName, provinceId }) => {
     const fetchData = async () => {
       try {
         setLoading(true);
+        setError(null);
         
-        // Option 1: Using the datastore_search action with filters
-        const result = await getCkanData(HOUSING_SUPPLY_RESOURCE_ID, {
+        console.log(`Fetching housing supply data for province ${provinceId} (${provinceName})`);
+        
+        // Resource ID for housing supply data
+        const resourceId = '15132377-edb0-40b0-9aad-8fd9f6769b92';
+        
+        // Get data with filters for the specific province
+        const result = await getCkanData(resourceId, {
           filters: JSON.stringify({ geo_id: provinceId }),
-          limit: 1000
+          limit: 1000,
+          sort: 'year asc'
         });
         
-        // Option 2: Using SQL query
-        // const sql = `
-        //   SELECT * FROM "${HOUSING_SUPPLY_RESOURCE_ID}" 
-        //   WHERE geo_id = ${provinceId}
-        // `;
-        // const result = await ckanSqlQuery(sql);
+        console.log('CKAN result:', result);
         
         // Process data for chart
-        const processedData = processHousingData(result.records || []);
-        setData(processedData);
+        if (result && result.records) {
+          console.log('Processing housing data, records found:', result.records.length);
+          const processedData = processHousingSupplyData(result.records, housingCategories);
+          console.log('Processed housing data:', processedData);
+          setData(processedData);
+        } else {
+          console.log('No records found in CKAN result');
+          setData([]);
+        }
+        
         setLoading(false);
       } catch (err) {
         console.error('Error fetching housing supply data:', err);
-        setError('Failed to load housing data');
+        setError('Failed to load housing data: ' + err.message);
         setLoading(false);
       }
     };
     
     fetchData();
-  }, [provinceId]);
-  
-  // Process raw CKAN data into chart-friendly format
-  const processHousingData = (rawData) => {
-    // Group by year
-    const groupedByYear = {};
-    
-    rawData.forEach(item => {
-      const year = item.year;
-      if (!groupedByYear[year]) {
-        groupedByYear[year] = {};
-      }
-      
-      // Find housing category name
-      const housingCategory = housingCategories.find(
-        cat => cat.id === parseInt(item.housing_id)
-      );
-      
-      if (housingCategory) {
-        groupedByYear[year][housingCategory.name] = parseInt(item.housing_unit);
-      }
-    });
-    
-    // Convert to array format for Recharts
-    return Object.keys(groupedByYear).map(year => {
-      return {
-        year: parseInt(year),
-        ...groupedByYear[year]
-      };
-    }).sort((a, b) => a.year - b.year); // Sort by year
-  };
-  
-  // Shorter housing category names
-  const shortNames = {
-    "บ้านเดี่ยว": "บ้านเดี่ยว",
-    "บ้านแฝด": "บ้านแฝด",
-    "ทาวน์เฮ้าส์": "ทาวน์เฮ้าส์",
-    "อาคารชุด": "คอนโด",
-    "ตึกแถวและห้องแถว": "ตึกแถว",
-    "พาณิชยกรรม": "พาณิชย์",
-    "ตึก": "ตึก",
-    "โฮมออฟฟิศ": "ออฟฟิศ"
-  };
+  }, [provinceId, provinceName]);
 
   if (loading) {
     return (
@@ -110,7 +64,7 @@ const HousingSupplyChart = ({ provinceName, provinceId }) => {
         </div>
         <div className="px-2 py-1 h-52 flex items-center justify-center">
           <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"></div>
-          <p className="ml-2 text-gray-500">Loading data...</p>
+          <p className="ml-2 text-gray-500">Loading housing data...</p>
         </div>
       </div>
     );
@@ -126,7 +80,10 @@ const HousingSupplyChart = ({ provinceName, provinceId }) => {
           </div>
         </div>
         <div className="px-2 py-1 h-52 flex items-center justify-center">
-          <p className="text-gray-500">{error || "No data available"}</p>
+          <div className="text-center">
+            <p className="text-gray-500">{error || "No data available"}</p>
+            <p className="text-xs text-gray-400 mt-1">Province: {provinceName} (ID: {provinceId})</p>
+          </div>
         </div>
         <div className="px-3 py-1 text-xs text-gray-500 border-t border-gray-200">
           <p>Source: Thailand National Statistics Office</p>
@@ -134,6 +91,18 @@ const HousingSupplyChart = ({ provinceName, provinceId }) => {
       </div>
     );
   }
+
+  // Shorter housing category names for better display
+  const shortNames = {
+    "บ้านเดี่ยว": "บ้านเดี่ยว",
+    "บ้านแฝด": "บ้านแฝด",
+    "ทาวน์เฮ้าส์": "ทาวน์เฮ้าส์",
+    "อาคารชุด": "คอนโด",
+    "ตึกแถวและห้องแถว": "ตึกแถว",
+    "พาณิชยกรรม": "พาณิชย์",
+    "ตึก": "ตึก",
+    "โฮมออฟฟิศ": "ออฟฟิศ"
+  };
 
   // Get colors for each housing type
   const getColorForIndex = (index) => {
@@ -154,7 +123,7 @@ const HousingSupplyChart = ({ provinceName, provinceId }) => {
     .map(category => category.name)
     .filter(name => {
       // Check if this category exists in any data point
-      return data.some(dataPoint => dataPoint[name] !== undefined);
+      return data.some(dataPoint => dataPoint[name] !== undefined && dataPoint[name] > 0);
     });
 
   return (
@@ -209,6 +178,26 @@ const HousingSupplyChart = ({ provinceName, provinceId }) => {
       <div className="px-3 py-1 text-xs text-gray-500 border-t border-gray-200">
         <p className="w-full overflow-hidden text-ellipsis whitespace-nowrap">Source: Thailand National Statistics Office</p>
       </div>
+      
+      {/* Debug info (remove in production) */}
+      {process.env.NODE_ENV === 'development' && (
+        <details className="mt-2 text-xs border-t border-gray-200 pt-2">
+          <summary className="font-medium text-blue-600 cursor-pointer">Debug Info</summary>
+          <div className="p-2 bg-gray-50 mt-1 rounded">
+            <p>Resource ID: {resourceId}</p>
+            <p>Province ID: {provinceId}</p>
+            <p>Records: {data.length}</p>
+            <p>Categories with data: {housingCategoryNames.length}</p>
+            <p>Error: {error || 'None'}</p>
+            <details className="mt-2">
+              <summary className="font-medium cursor-pointer">Data sample</summary>
+              <pre className="mt-1 text-xs overflow-auto max-h-40 bg-white p-2 rounded">
+                {JSON.stringify(data.slice(0, 2), null, 2)}
+              </pre>
+            </details>
+          </div>
+        </details>
+      )}
     </div>
   );
 };

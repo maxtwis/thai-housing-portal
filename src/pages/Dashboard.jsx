@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  getCkanData, 
-  ckanSqlQuery, 
-  getDatasetInfo 
-} from '../utils/ckanClient';
+  provinces, getPopulationData, getHouseholdData, getIncomeData,
+  getExpenditureData, getHousingSupplyByYear, expenditureCategories,
+  housingCategories, quintiles, getPopulationAgeData
+} from '../utils/dataUtils';
+import { getPolicyData } from '../utils/policyUtils';
 
 // Import chart components
 import MapView from '../components/MapView';
@@ -18,60 +19,6 @@ import TotalHousingChart from '../components/charts/TotalHousingChart';
 import PolicyTable from '../components/charts/PolicyTable';
 import PolicyChart from '../components/charts/PolicyChart';
 import PopulationAgeChart from '../components/charts/PopulationAgeChart';
-
-// Constants for data categories
-export const expenditureCategories = [
-  { id: 1, name: 'ภาระค่าใช้จ่ายด้านที่อยู่อาศัย' },
-  { id: 2, name: 'ภาระค่าใช้จ่ายด้านที่อยู่อาศัย (เช่า)' },
-  { id: 3, name: 'ภาระค่าใช้จ่ายด้านที่อยู่อาศัย (ผ่อน)' },
-  { id: 4, name: 'ภาระค่าใช้จ่ายด้านอุปโภคบริโภค' },
-  { id: 5, name: 'ค่าใช้จ่ายด้านไฟฟ้า' },
-  { id: 6, name: 'ค่าใช้จ่ายด้านน้ำประปา' },
-  { id: 7, name: 'ค่าใช้จ่ายด้านค่าส่วนกลาง' },
-  { id: 8, name: 'ค่าใช้จ่ายด้านการเดินทาง' },
-  { id: 9, name: 'ค่าใช้จ่ายด้านพลังงาน (เชื้อเพลิง)' },
-  { id: 10, name: 'ค่าใช้จ่ายด้านพลังงาน (แก๊ส)' },
-  { id: 11, name: 'ค่าใช้จ่ายด้านการรักษาพยาบาล' },
-  { id: 12, name: 'ค่าใช้จ่ายด้านอาหาร' }
-];
-
-export const housingCategories = [
-  { id: 1, name: 'บ้านเดี่ยว' },
-  { id: 2, name: 'บ้านแฝด' },
-  { id: 3, name: 'ทาวน์เฮ้าส์' },
-  { id: 4, name: 'อาคารชุด' },
-  { id: 5, name: 'ตึกแถวและห้องแถว' },
-  { id: 6, name: 'พาณิชยกรรม' },
-  { id: 7, name: 'ตึก' },
-  { id: 8, name: 'โฮมออฟฟิศ' }
-];
-
-export const quintiles = [
-  { id: 1, name: 'Quintile 1 (Lowest 20%)' },
-  { id: 2, name: 'Quintile 2' },
-  { id: 3, name: 'Quintile 3' },
-  { id: 4, name: 'Quintile 4' },
-  { id: 5, name: 'Quintile 5 (Highest 20%)' }
-];
-
-// Resource IDs for CKAN
-const RESOURCE_IDS = {
-  population_data: 'e8f46829-8255-4b9a-8dc9-d540d035a842',
-  household_data: '32386aff-314a-4f04-9957-0477882961e6',
-  income_data: '983049c5-5bdd-4e91-a541-0b223c0f890a',
-  expenditure_data: '8a83d0a4-1bf5-46bb-90a2-5b2cdf30f4cd',
-  population_age_data: '76f03bb8-6e6e-41ab-b171-aa1391b1cfa4',
-  housing_supply_data: '15132377-edb0-40b0-9aad-8fd9f6769b92',
-  policy_data: '1d48b7c8-c95f-4576-8d52-5e68dc02ee68'
-};
-
-// Provinces data
-export const provinces = [
-  { id: 10, name: 'กรุงเทพมหานคร', lat: 13.7563, lon: 100.5018 },
-  { id: 40, name: 'ขอนแก่น', lat: 16.4419, lon: 102.8359 },
-  { id: 50, name: 'เชียงใหม่', lat: 18.7883, lon: 98.9817 },
-  { id: 90, name: 'สงขลา', lat: 7.1891, lon: 100.5951 }
-];
 
 const Dashboard = () => {
   const [activeProvince, setActiveProvince] = useState(10); // Default to Bangkok
@@ -94,144 +41,6 @@ const Dashboard = () => {
     setActiveProvince(parseInt(geoId));
   };
   
-  // Fetch population data with SQL query
-  const fetchPopulationData = async (provinceId) => {
-    try {
-      const sql = `SELECT * FROM "${RESOURCE_IDS.population_data}" WHERE geo_id = ${provinceId} ORDER BY year`;
-      const result = await ckanSqlQuery(sql);
-      return result.records || [];
-    } catch (error) {
-      console.error('Error fetching population data:', error);
-      return [];
-    }
-  };
-  
-  // Fetch household data with SQL query
-  const fetchHouseholdData = async (provinceId) => {
-    try {
-      const sql = `SELECT * FROM "${RESOURCE_IDS.household_data}" WHERE geo_id = ${provinceId} ORDER BY year`;
-      const result = await ckanSqlQuery(sql);
-      return result.records || [];
-    } catch (error) {
-      console.error('Error fetching household data:', error);
-      return [];
-    }
-  };
-  
-  // Fetch income data with SQL query
-  const fetchIncomeData = async (provinceId) => {
-    try {
-      const sql = `SELECT * FROM "${RESOURCE_IDS.income_data}" WHERE geo_id = ${provinceId} ORDER BY year`;
-      const result = await ckanSqlQuery(sql);
-      return result.records || [];
-    } catch (error) {
-      console.error('Error fetching income data:', error);
-      return [];
-    }
-  };
-  
-  // Fetch expenditure data with filters
-  const fetchExpenditureData = async (provinceId, quintileId) => {
-    try {
-      const filters = {
-        geo_id: provinceId
-      };
-      
-      if (quintileId) {
-        filters.quintile = quintileId;
-      }
-      
-      const result = await getCkanData(RESOURCE_IDS.expenditure_data, {
-        filters: JSON.stringify(filters)
-      });
-      
-      return result.records || [];
-    } catch (error) {
-      console.error('Error fetching expenditure data:', error);
-      return [];
-    }
-  };
-  
-  // Fetch housing supply data with SQL query
-  const fetchHousingSupplyData = async (provinceId) => {
-    try {
-      const sql = `SELECT * FROM "${RESOURCE_IDS.housing_supply_data}" WHERE geo_id = ${provinceId}`;
-      const result = await ckanSqlQuery(sql);
-      return result.records || [];
-    } catch (error) {
-      console.error('Error fetching housing supply data:', error);
-      return [];
-    }
-  };
-  
-  // Fetch population age data with SQL query
-  const fetchPopulationAgeData = async (provinceId) => {
-    try {
-      const sql = `SELECT * FROM "${RESOURCE_IDS.population_age_data}" WHERE geo_id = ${provinceId} ORDER BY year, age_group`;
-      const result = await ckanSqlQuery(sql);
-      return result.records || [];
-    } catch (error) {
-      console.error('Error fetching population age data:', error);
-      return [];
-    }
-  };
-  
-  // Fetch policy data with SQL query
-  const fetchPolicyData = async (provinceId) => {
-    try {
-      // Include both province-specific policies and nationwide policies (geo_id = 99)
-      const sql = `SELECT * FROM "${RESOURCE_IDS.policy_data}" WHERE geo_id = ${provinceId} OR geo_id = 99`;
-      const result = await ckanSqlQuery(sql);
-      
-      // Format data to match the expected structure
-      return (result.records || []).map(item => ({
-        geo_id: item.geo_id,
-        'Ministry (if applicable)': item.ministry,
-        'Department(s)': item.department,
-        'Joint Org. (If applicable)': item.joint_org,
-        'Plan': item.plan,
-        'Strategy / Initiative': item.strategy,
-        'Initiative Period (B.E)': item.initiative_period,
-        'Project': item.project,
-        'BKK Specific': item.bkk_specific,
-        'Year': item.year,
-        '3S Model': item.policy_type,
-        'Status': item.status,
-        'Annual Budget': item.annual_budget,
-        'Synopsis': item.synopsis,
-        'KPI': item.kpi
-      }));
-    } catch (error) {
-      console.error('Error fetching policy data:', error);
-      return [];
-    }
-  };
-  
-  // Process housing supply data for charts
-  const processHousingSupplyData = (rawData) => {
-    // Group by year
-    const groupedByYear = {};
-    
-    rawData.forEach(item => {
-      const year = item.year;
-      if (!groupedByYear[year]) {
-        groupedByYear[year] = { year };
-      }
-      
-      // Find housing category name
-      const housingCategory = housingCategories.find(
-        cat => cat.id === parseInt(item.housing_id)
-      );
-      
-      if (housingCategory) {
-        groupedByYear[year][housingCategory.name] = parseInt(item.housing_unit);
-      }
-    });
-    
-    // Convert to array format for charts
-    return Object.values(groupedByYear).sort((a, b) => a.year - b.year);
-  };
-  
   // Fetch data when active province changes
   useEffect(() => {
     const fetchAllData = async () => {
@@ -239,6 +48,8 @@ const Dashboard = () => {
       setError(null);
       
       try {
+        console.log(`Fetching data for province ${activeProvince} (${provinceName})`);
+        
         // Fetch all data in parallel
         const [
           populationResult,
@@ -248,32 +59,43 @@ const Dashboard = () => {
           populationAgeResult,
           policyResult
         ] = await Promise.all([
-          fetchPopulationData(activeProvince),
-          fetchHouseholdData(activeProvince),
-          fetchIncomeData(activeProvince),
-          fetchHousingSupplyData(activeProvince),
-          fetchPopulationAgeData(activeProvince),
-          fetchPolicyData(activeProvince)
+          getPopulationData(activeProvince),
+          getHouseholdData(activeProvince),
+          getIncomeData(activeProvince),
+          getHousingSupplyByYear(activeProvince),
+          getPopulationAgeData(activeProvince),
+          getPolicyData(activeProvince)
         ]);
         
+        console.log('Fetched data summary:', {
+          population: populationResult.length,
+          household: householdResult.length,
+          income: incomeResult.length,
+          housing: housingSupplyResult.length,
+          policy: policyResult.length
+        });
+        
         // Fetch expenditure data for each quintile
+        console.log('Fetching expenditure data for each quintile...');
         const expenditureResults = {};
         for (let i = 1; i <= 5; i++) {
-          expenditureResults[i] = await fetchExpenditureData(activeProvince, i);
+          expenditureResults[i] = await getExpenditureData(activeProvince, i);
         }
         
         // Update state with all fetched data
         setPopulationData(populationResult);
         setHouseholdData(householdResult);
         setIncomeData(incomeResult);
-        setHousingSupplyData(processHousingSupplyData(housingSupplyResult));
+        setHousingSupplyData(housingSupplyResult);
         setExpenditureData(expenditureResults);
         setPolicyData(policyResult);
         setPopulationAgeData(populationAgeResult);
         setLoading(false);
+        
+        console.log('All data fetched successfully!');
       } catch (err) {
         console.error('Error fetching data:', err);
-        setError('Failed to load data. Please try again later.');
+        setError('Failed to load data. Please check your internet connection and try again.');
         setLoading(false);
       }
     };
@@ -395,6 +217,25 @@ const Dashboard = () => {
             </button>
           </div>
           
+          {/* Debug info (remove in production) */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-xs">
+              <details>
+                <summary className="font-medium cursor-pointer">Debug Information</summary>
+                <div className="mt-2 space-y-1">
+                  <p>Province: {activeProvince} ({provinceName})</p>
+                  <p>Population Data: {populationData.length} records</p>
+                  <p>Household Data: {householdData.length} records</p>
+                  <p>Income Data: {incomeData.length} records</p>
+                  <p>Housing Data: {housingSupplyData.length} records</p>
+                  <p>Policy Data: {policyData.length} records</p>
+                  <p>Loading: {loading ? 'Yes' : 'No'}</p>
+                  {error && <p className="text-red-600">Error: {error}</p>}
+                </div>
+              </details>
+            </div>
+          )}
+          
           {/* Loading state */}
           {loading && (
             <div className="flex items-center justify-center h-64">
@@ -409,7 +250,10 @@ const Dashboard = () => {
           {error && (
             <div className="flex items-center justify-center h-64">
               <div className="text-center text-red-600">
-                <p>{error}</p>
+                <svg className="mx-auto h-12 w-12 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <p className="mt-2 font-medium">{error}</p>
                 <button 
                   onClick={() => window.location.reload()}
                   className="mt-3 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
@@ -554,13 +398,13 @@ const Dashboard = () => {
           {!loading && !error && (
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div className="bg-blue-50 p-3 rounded-lg shadow">
-                <p className="text-xs text-gray-500">Population (2023)</p>
+                <p className="text-xs text-gray-500">Population (Latest)</p>
                 <p className="text-lg font-bold text-blue-800">
                   {new Intl.NumberFormat('th-TH').format(metrics.population)} คน
                 </p>
               </div>
               <div className="bg-green-50 p-3 rounded-lg shadow">
-                <p className="text-xs text-gray-500">Households (2023)</p>
+                <p className="text-xs text-gray-500">Households (Latest)</p>
                 <p className="text-lg font-bold text-green-800">
                   {new Intl.NumberFormat('th-TH').format(metrics.households)} ครัวเรือน
                 </p>
