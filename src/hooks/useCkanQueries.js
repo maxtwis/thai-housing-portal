@@ -10,12 +10,16 @@ import {
 import { getCkanData } from '../utils/ckanClient';
 import { getPolicyData } from '../utils/policyUtils';
 
+// Updated Population API resource ID
+const HOUSING_SUPPLY = '15132377-edb0-40b0-9aad-8fd9f6769b92'
+const POPULATION_DATA = '4ef48676-1a0d-44b7-a450-517c61190344';
+
 // Individual query hooks
 export const useHousingSupplyData = (provinceId) => {
   return useQuery({
     queryKey: ['housing-supply', provinceId],
     queryFn: async () => {
-      const result = await getCkanData('15132377-edb0-40b0-9aad-8fd9f6769b92', {
+      const result = await getCkanData(HOUSING_SUPPLY, {
         filters: JSON.stringify({ geo_id: provinceId }),
         limit: 1000,
         sort: 'year asc'
@@ -31,7 +35,21 @@ export const useHousingSupplyData = (provinceId) => {
 export const usePopulationData = (provinceId) => {
   return useQuery({
     queryKey: ['population', provinceId],
-    queryFn: () => getPopulationData(provinceId),
+    queryFn: async () => {
+      const result = await getCkanData(POPULATION_DATA, {
+        filters: JSON.stringify({ geo_id: provinceId }),
+        limit: 1000,
+        sort: 'year asc'
+      });
+      
+      // Transform the data to match the expected format in the chart component
+      const transformedData = result.records.map(record => ({
+        year: record.year,
+        population: record.population
+      }));
+      
+      return transformedData;
+    },
     enabled: !!provinceId,
     staleTime: 5 * 60 * 1000,
     cacheTime: 10 * 60 * 1000,
@@ -137,7 +155,19 @@ export const usePrefetchProvinceData = () => {
     await Promise.all([
       queryClient.prefetchQuery({
         queryKey: ['population', provinceId],
-        queryFn: () => getPopulationData(provinceId),
+        queryFn: async () => {
+          const result = await getCkanData(POPULATION_DATA, {
+            filters: JSON.stringify({ geo_id: provinceId }),
+            limit: 1000,
+            sort: 'year asc'
+          });
+          
+          // Transform the data to match the expected format in the chart component
+          return result.records.map(record => ({
+            year: record.year,
+            population: record.population
+          }));
+        },
         staleTime: 5 * 60 * 1000,
       }),
       queryClient.prefetchQuery({
@@ -153,7 +183,7 @@ export const usePrefetchProvinceData = () => {
       queryClient.prefetchQuery({
         queryKey: ['housing-supply', provinceId],
         queryFn: async () => {
-          const result = await getCkanData('15132377-edb0-40b0-9aad-8fd9f6769b92', {
+          const result = await getCkanData(HOUSING_SUPPLY, {
             filters: JSON.stringify({ geo_id: provinceId }),
             limit: 1000,
             sort: 'year asc'
