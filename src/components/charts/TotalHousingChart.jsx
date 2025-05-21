@@ -3,27 +3,98 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, 
   Tooltip, Legend, ResponsiveContainer 
 } from 'recharts';
+import { processHousingSupplyData } from '../../utils/ckanClient';
+import { housingCategories } from '../../utils/dataUtils';
+import { useHousingSupplyData } from '../../hooks/useCkanQueries';
+import ExportButton from '../ExportButton';
 
-const TotalHousingChart = ({ data, housingCategories }) => {
-  // Process the data for the line chart
+const TotalHousingChart = ({ provinceName, provinceId }) => {
+  // Use React Query for data fetching
+  const { 
+    data: rawData, 
+    isLoading, 
+    error
+  } = useHousingSupplyData(provinceId);
+  
+  // Process data for chart
   const processedData = React.useMemo(() => {
-    if (!data || data.length === 0 || !housingCategories) {
+    if (!rawData || !rawData.records || !housingCategories) {
       return [];
     }
 
+    // Process the rawData
+    const processedSupplyData = processHousingSupplyData(rawData.records, housingCategories);
+    
+    if (processedSupplyData.length === 0) return [];
+    
+    // Calculate total units for each year
     const housingCategoryNames = housingCategories.map(category => category.name);
     
-    return data.map(yearData => {
-      const totalUnits = Object.entries(yearData)
-        .filter(([key]) => housingCategoryNames.includes(key))
-        .reduce((sum, [_, value]) => sum + (value || 0), 0);
+    return processedSupplyData.map(yearData => {
+      const totalUnits = housingCategoryNames.reduce((sum, catName) => {
+        return sum + (yearData[catName] || 0);
+      }, 0);
       
       return {
         year: yearData.year,
         total: totalUnits
       };
     });
-  }, [data, housingCategories]);
+  }, [rawData]);
+
+  // Calculate growth percentage
+  const getGrowthPercentage = () => {
+    if (!processedData || processedData.length < 2) return 'N/A';
+    
+    const firstYear = processedData[0].total;
+    const lastYear = processedData[processedData.length - 1].total;
+    
+    if (firstYear === 0) return 'N/A';
+    
+    const growth = ((lastYear / firstYear) - 1) * 100;
+    return growth.toFixed(1) + '%';
+  };
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="bg-white p-0 rounded-lg shadow">
+        <div className="px-3 py-2 border-b border-gray-200">
+          <div className="flex justify-between items-center">
+            <h2 className="text-sm font-semibold text-gray-800">Total Housing Units Over Time</h2>
+          </div>
+        </div>
+        <div className="px-2 py-1 h-52 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+            <p className="mt-3 text-gray-600">Loading housing data...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="bg-white p-0 rounded-lg shadow">
+        <div className="px-3 py-2 border-b border-gray-200">
+          <div className="flex justify-between items-center">
+            <h2 className="text-sm font-semibold text-gray-800">Total Housing Units Over Time</h2>
+          </div>
+        </div>
+        <div className="px-2 py-1 h-52 flex items-center justify-center">
+          <div className="text-center text-red-500">
+            <p>Failed to load data</p>
+            <p className="text-xs">{error.message}</p>
+          </div>
+        </div>
+        <div className="px-3 py-1 text-xs text-gray-500 border-t border-gray-200">
+          <p>Source: Thailand National Statistics Office</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!processedData || processedData.length === 0) {
     return (
@@ -31,6 +102,9 @@ const TotalHousingChart = ({ data, housingCategories }) => {
         <div className="px-3 py-2 border-b border-gray-200">
           <div className="flex justify-between items-center">
             <h2 className="text-sm font-semibold text-gray-800">Total Housing Units Over Time</h2>
+            <div className="text-xs font-medium text-green-600">
+              Growth: N/A
+            </div>
           </div>
         </div>
         <div className="px-2 py-1 h-52 flex items-center justify-center">
@@ -46,19 +120,6 @@ const TotalHousingChart = ({ data, housingCategories }) => {
   // Number formatter for tooltip
   const numberFormatter = (value) => {
     return new Intl.NumberFormat('th-TH').format(value) + ' หน่วย';
-  };
-
-  // Calculate growth percentage
-  const getGrowthPercentage = () => {
-    if (processedData.length < 2) return 'N/A';
-    
-    const firstYear = processedData[0].total;
-    const lastYear = processedData[processedData.length - 1].total;
-    
-    if (firstYear === 0) return 'N/A';
-    
-    const growth = ((lastYear / firstYear) - 1) * 100;
-    return growth.toFixed(1) + '%';
   };
 
   return (

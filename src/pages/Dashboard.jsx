@@ -278,58 +278,31 @@ const Dashboard = () => {
           )}
           
           {/* Housing Content */}
-          {activeTopic === 'housing' && (
-            <div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <HousingSupplyChart 
-                  provinceName={provinceName}
-                  provinceId={activeProvince}
-                />
-                <HousingDistributionChart 
-                  data={housingSupply.data ? [housingSupply.data] : []}
-                  housingCategories={[
-                    { id: 1, name: 'บ้านเดี่ยว' },
-                    { id: 2, name: 'บ้านแฝด' },
-                    { id: 3, name: 'ทาวน์เฮ้าส์' },
-                    { id: 4, name: 'อาคารชุด' },
-                    { id: 5, name: 'ตึกแถวและห้องแถว' },
-                    { id: 6, name: 'พาณิชยกรรม' },
-                    { id: 7, name: 'ตึก' },
-                    { id: 8, name: 'โฮมออฟฟิศ' }
-                  ]}
-                />
+            {activeTopic === 'housing' && (
+              <div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <HousingSupplyChart 
+                    provinceName={provinceName}
+                    provinceId={activeProvince}
+                  />
+                  <HousingDistributionChart 
+                    provinceName={provinceName}
+                    provinceId={activeProvince}
+                  />
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <HousingUnitsChart 
+                    provinceName={provinceName}
+                    provinceId={activeProvince}
+                  />
+                  <TotalHousingChart 
+                    provinceName={provinceName}
+                    provinceId={activeProvince}
+                  />
+                </div>
               </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <HousingUnitsChart 
-                  data={housingSupply.data ? [housingSupply.data] : []}
-                  housingCategories={[
-                    { id: 1, name: 'บ้านเดี่ยว' },
-                    { id: 2, name: 'บ้านแฝด' },
-                    { id: 3, name: 'ทาวน์เฮ้าส์' },
-                    { id: 4, name: 'อาคารชุด' },
-                    { id: 5, name: 'ตึกแถวและห้องแถว' },
-                    { id: 6, name: 'พาณิชยกรรม' },
-                    { id: 7, name: 'ตึก' },
-                    { id: 8, name: 'โฮมออฟฟิศ' }
-                  ]}
-                />
-                <TotalHousingChart 
-                  data={housingSupply.data ? [housingSupply.data] : []}
-                  housingCategories={[
-                    { id: 1, name: 'บ้านเดี่ยว' },
-                    { id: 2, name: 'บ้านแฝด' },
-                    { id: 3, name: 'ทาวน์เฮ้าส์' },
-                    { id: 4, name: 'อาคารชุด' },
-                    { id: 5, name: 'ตึกแถวและห้องแถว' },
-                    { id: 6, name: 'พาณิชยกรรม' },
-                    { id: 7, name: 'ตึก' },
-                    { id: 8, name: 'โฮมออฟฟิศ' }
-                  ]}
-                />
-              </div>
-            </div>
-          )}
+            )}
           
           {/* Policy Content */}
           {activeTopic === 'policy' && (
