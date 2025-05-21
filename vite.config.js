@@ -25,6 +25,18 @@ export default defineConfig({
     chunkSizeWarningLimit: 1000
   },
   server: {
-    port: 3000
+    port: 3000,
+    // Add proxy configuration for development only
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      }
+    }
+  },
+  // Ensure that API routes are handled correctly in development
+  define: {
+    // This helps with environment detection
+    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development')
   }
 });

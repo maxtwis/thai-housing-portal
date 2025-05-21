@@ -1,4 +1,8 @@
-import { supabase } from './supabaseClient';
+// utils/policyUtils.js
+import { getCkanData } from './ckanClient';
+
+// Policy data resource ID
+const POLICY_RESOURCE_ID = '1d48b7c8-c95f-4576-8d52-5e68dc02ee68';
 
 // Cache for fetched policy data
 const policyCache = {};
@@ -11,23 +15,20 @@ export const getPolicyData = async (geoId = null) => {
   }
   
   try {
-    // Fetch from Supabase
-    let query = supabase.from('policy_data').select('*');
+    let filters = {};
     
     if (geoId) {
       // Include both province-specific policies and nationwide policies (geo_id = 99)
-      query = query.or(`geo_id.eq.${geoId},geo_id.eq.99`);
+      // Note: CKAN might not support OR operations in filters directly, so we might need to fetch each separately
+      filters.geo_id = geoId;
     }
     
-    const { data, error } = await query;
+    const result = await getCkanData(POLICY_RESOURCE_ID, {
+      filters: JSON.stringify(filters),
+      limit: 1000
+    });
     
-    if (error) {
-      console.error('Error fetching policy data:', error);
-      return [];
-    }
-    
-    // Format data to match expected structure
-    const formattedData = data.map(item => ({
+    let formattedData = (result.records || []).map(item => ({
       geo_id: item.geo_id,
       'Ministry (if applicable)': item.ministry,
       'Department(s)': item.department,
@@ -44,6 +45,39 @@ export const getPolicyData = async (geoId = null) => {
       'Synopsis': item.synopsis,
       'KPI': item.kpi
     }));
+    
+    // If we filtered for a specific province, also get nationwide policies
+    if (geoId) {
+      try {
+        const nationalResult = await getCkanData(POLICY_RESOURCE_ID, {
+          filters: JSON.stringify({ geo_id: 99 }),
+          limit: 1000
+        });
+        
+        const nationalPolicies = (nationalResult.records || []).map(item => ({
+          geo_id: item.geo_id,
+          'Ministry (if applicable)': item.ministry,
+          'Department(s)': item.department,
+          'Joint Org. (If applicable)': item.joint_org,
+          'Plan': item.plan,
+          'Strategy / Initiative': item.strategy,
+          'Initiative Period (B.E)': item.initiative_period,
+          'Project': item.project,
+          'BKK Specific': item.bkk_specific,
+          'Year': item.year,
+          '3S Model': item.policy_type,
+          'Status': item.status,
+          'Annual Budget': item.annual_budget,
+          'Synopsis': item.synopsis,
+          'KPI': item.kpi
+        }));
+        
+        // Combine province and national policies
+        formattedData = [...formattedData, ...nationalPolicies];
+      } catch (error) {
+        console.error('Error fetching national policies:', error);
+      }
+    }
     
     policyCache[cacheKey] = formattedData;
     return formattedData;
