@@ -132,21 +132,6 @@ const HousingSupplyChart = ({ provinceName, provinceId }) => {
           <h2 className="text-sm font-semibold text-gray-800">Housing Supply by Type</h2>
           <div className="flex items-center space-x-2">
             {/* Show cache status */}
-            {!isStale && !isLoading && (
-              <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded">
-                ⚡ Cached
-              </span>
-            )}
-            {isFetching && !isLoading && (
-              <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded">
-                🔄 Updating...
-              </span>
-            )}
-            {dataUpdatedAt && (
-              <span className="text-xs text-gray-500">
-                Updated: {new Date(dataUpdatedAt).toLocaleTimeString()}
-              </span>
-            )}
             <ExportButton data={data} filename={`housing_supply_${provinceName}`} />
           </div>
         </div>
