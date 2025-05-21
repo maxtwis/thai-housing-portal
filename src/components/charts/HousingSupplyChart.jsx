@@ -180,24 +180,6 @@ const HousingSupplyChart = ({ provinceName, provinceId }) => {
       <div className="px-3 py-1 text-xs text-gray-500 border-t border-gray-200">
         <p className="w-full overflow-hidden text-ellipsis whitespace-nowrap">Source: Thailand National Statistics Office</p>
       </div>
-      
-      {/* Debug info (show in development) */}
-      {process.env.NODE_ENV === 'development' && (
-        <details className="mt-2 text-xs border-t border-gray-200 pt-2">
-          <summary className="font-medium text-blue-600 cursor-pointer">Debug Info (React Query)</summary>
-          <div className="p-2 bg-gray-50 mt-1 rounded">
-            <p>Query Key: ['housing-supply', {provinceId}]</p>
-            <p>Province ID: {provinceId}</p>
-            <p>Records: {data.length}</p>
-            <p>Categories with data: {housingCategoryNames.length}</p>
-            <p>Is Loading: {isLoading.toString()}</p>
-            <p>Is Fetching: {isFetching.toString()}</p>
-            <p>Is Stale: {isStale.toString()}</p>
-            <p>Has Error: {!!error}</p>
-            <p>Last Updated: {dataUpdatedAt ? new Date(dataUpdatedAt).toLocaleString() : 'Never'}</p>
-          </div>
-        </details>
-      )}
     </div>
   );
 };
