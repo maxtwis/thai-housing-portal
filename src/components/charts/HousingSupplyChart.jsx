@@ -4,7 +4,6 @@ import {
   Tooltip, Legend, ResponsiveContainer 
 } from 'recharts';
 import ExportButton from '../ExportButton';
-import { processHousingSupplyData } from '../../utils/ckanClient';
 import { housingCategories } from '../../utils/dataUtils';
 import { useHousingSupplyData } from '../../hooks/useCkanQueries';
 
@@ -18,14 +17,6 @@ const HousingSupplyChart = ({ provinceName, provinceId }) => {
     isStale,
     dataUpdatedAt
   } = useHousingSupplyData(provinceId);
-  
-  // Process data for chart
-  const data = React.useMemo(() => {
-    if (rawData && rawData.records) {
-      return processHousingSupplyData(rawData.records, housingCategories);
-    }
-    return [];
-  }, [rawData]);
   
   // Show loading only for initial load
   if (isLoading) {
