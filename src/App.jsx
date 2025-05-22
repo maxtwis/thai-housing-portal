@@ -10,8 +10,6 @@ import Report from './pages/Report';
 import HousingStock from './pages/HousingStock';
 import Homepage from './pages/Homepage';
 import OrganizationPage from './pages/OrganizationPage';
-import CKANTest from './pages/CKANTest';
-import CKANDebugger from './pages/CKANDebugger';
 
 // Create a QueryClient instance
 const queryClient = new QueryClient({
