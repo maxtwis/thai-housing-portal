@@ -239,8 +239,8 @@ const Dashboard = () => {
                     provinceId={activeProvince}
                   />
                   <PopulationAgeChart 
-                    data={populationAge.data}
                     provinceName={provinceName}
+                    provinceId={activeProvince}
                   />
                 </div>
                 
@@ -276,7 +276,7 @@ const Dashboard = () => {
                 </div>
               </div>
             )}
-          
+                      
           {/* Housing Content */}
             {activeTopic === 'housing' && (
               <div>
