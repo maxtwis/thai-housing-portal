@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard';
 import About from './pages/About';
 import Report from './pages/Report';
 import HousingStock from './pages/HousingStock';
+import HousingDeliverySystem from './pages/HousingDeliverySystem';
 import Homepage from './pages/Homepage';
 import OrganizationPage from './pages/OrganizationPage';
 
@@ -41,6 +42,7 @@ function App() {
             <Route path="/about" element={<About />} />
             <Route path="/report/:provinceId" element={<Report />} />
             <Route path="/housing-stock" element={<HousingStock />} />
+            <Route path="/housing-delivery-system" element={<HousingDeliverySystem />} />
             <Route path="/organization/:orgId" element={<OrganizationPage />} />
           </Routes>
         </main>
