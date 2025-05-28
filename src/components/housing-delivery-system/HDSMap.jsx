@@ -58,7 +58,7 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
         <div class="space-y-2">
           <div class="flex justify-between items-baseline text-sm">
             <span class="text-gray-600">ประชากรรวม</span>
-            <span class="font-medium text-gray-800">${props.Grid_POP ? props.Grid_POP.toLocaleString() : 'ไม่มีข้อมูล'} คน</span>
+            <span class="font-medium text-gray-800">${props.Grid_POP ? Math.round(props.Grid_POP).toLocaleString() : 'ไม่มีข้อมูล'} คน</span>
           </div>
           
           <div class="flex justify-between items-baseline text-sm">
@@ -427,23 +427,6 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
             popupRef.current = popup;
           }
         });
-
-        // For mobile, use click for both selection and popup
-        if (isMobile) {
-          // Mobile click handling is already above
-        } else {
-          // For desktop, add separate click handler that doesn't interfere with hover
-          map.on('click', 'hds-grid-fills', (e) => {
-            if (e.features.length > 0) {
-              const clickedFeature = e.features[0];
-              
-              // Call the parent component's callback to update statistics
-              if (onGridSelect) {
-                onGridSelect(clickedFeature.properties);
-              }
-            }
-          });
-        }
 
         map.on('mouseleave', 'hds-grid-fills', () => {
           if (hoveredStateId !== null) {
