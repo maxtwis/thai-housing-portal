@@ -45,7 +45,7 @@ const HDSStatistics = ({ stats, selectedGrid, onClearSelection }) => {
               <div>
                 <span className="text-sm text-gray-500">ประชากร:</span>
                 <span className="block text-lg font-medium">
-                  {gridStats.population.toLocaleString()} คน
+                  {Math.round(gridStats.population).toLocaleString()} คน
                 </span>
               </div>
               <div>
@@ -157,7 +157,7 @@ const HDSStatistics = ({ stats, selectedGrid, onClearSelection }) => {
             <div>
               <span className="text-sm text-gray-500">ประชากรรวม:</span>
               <span className="block text-lg font-medium">
-                {stats.totalPopulation.toLocaleString()} คน
+                {Math.round(stats.totalPopulation).toLocaleString()} คน
               </span>
             </div>
             <div>
@@ -169,7 +169,7 @@ const HDSStatistics = ({ stats, selectedGrid, onClearSelection }) => {
             <div>
               <span className="text-sm text-gray-500">ความหนาแน่นเฉลี่ย:</span>
               <span className="block text-lg font-medium">
-                {stats.averageDensity.toFixed(1)} คน/กริด
+                {Math.round(stats.averageDensity).toLocaleString()} คน/กริด
               </span>
             </div>
           </div>
