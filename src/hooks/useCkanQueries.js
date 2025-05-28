@@ -10,16 +10,16 @@ import {
 import { getCkanData } from '../utils/ckanClient';
 import { getPolicyData } from '../utils/policyUtils';
 
-// Updated Population API resource ID
-const HOUSING_SUPPLY = '15132377-edb0-40b0-9aad-8fd9f6769b92'
-const POPULATION_DATA = '4ef48676-1a0d-44b7-a450-517c61190344';
+// Updated API resource IDs
+const POPULATION_RESOURCE_ID = '4ef48676-1a0d-44b7-a450-517c61190344';
+const POPULATION_AGE_RESOURCE_ID = 'b22dd69b-790f-475b-9c6a-c346fbb40daa';
 
 // Individual query hooks
 export const useHousingSupplyData = (provinceId) => {
   return useQuery({
     queryKey: ['housing-supply', provinceId],
     queryFn: async () => {
-      const result = await getCkanData(HOUSING_SUPPLY, {
+      const result = await getCkanData('15132377-edb0-40b0-9aad-8fd9f6769b92', {
         filters: JSON.stringify({ geo_id: provinceId }),
         limit: 1000,
         sort: 'year asc'
@@ -32,11 +32,12 @@ export const useHousingSupplyData = (provinceId) => {
   });
 };
 
+// Updated to use direct CKAN API call with new resource ID
 export const usePopulationData = (provinceId) => {
   return useQuery({
     queryKey: ['population', provinceId],
     queryFn: async () => {
-      const result = await getCkanData(POPULATION_DATA, {
+      const result = await getCkanData(POPULATION_RESOURCE_ID, {
         filters: JSON.stringify({ geo_id: provinceId }),
         limit: 1000,
         sort: 'year asc'
@@ -89,7 +90,22 @@ export const useExpenditureData = (provinceId, quintileId) => {
 export const usePopulationAgeData = (provinceId) => {
   return useQuery({
     queryKey: ['population-age', provinceId],
-    queryFn: () => getPopulationAgeData(provinceId),
+    queryFn: async () => {
+      const result = await getCkanData(POPULATION_AGE_RESOURCE_ID, {
+        filters: JSON.stringify({ geo_id: provinceId }),
+        limit: 1000,
+        sort: 'year asc, age_group asc'
+      });
+      
+      // Transform the data to match the expected format in the chart component
+      const transformedData = result.records.map(record => ({
+        year: record.year,
+        age_group: record.age_group,
+        age_population: record.age_population
+      }));
+      
+      return transformedData;
+    },
     enabled: !!provinceId,
     staleTime: 5 * 60 * 1000,
     cacheTime: 10 * 60 * 1000,
@@ -156,7 +172,7 @@ export const usePrefetchProvinceData = () => {
       queryClient.prefetchQuery({
         queryKey: ['population', provinceId],
         queryFn: async () => {
-          const result = await getCkanData(POPULATION_DATA, {
+          const result = await getCkanData(POPULATION_RESOURCE_ID, {
             filters: JSON.stringify({ geo_id: provinceId }),
             limit: 1000,
             sort: 'year asc'
@@ -176,6 +192,24 @@ export const usePrefetchProvinceData = () => {
         staleTime: 5 * 60 * 1000,
       }),
       queryClient.prefetchQuery({
+        queryKey: ['population-age', provinceId],
+        queryFn: async () => {
+          const result = await getCkanData(POPULATION_AGE_RESOURCE_ID, {
+            filters: JSON.stringify({ geo_id: provinceId }),
+            limit: 1000,
+            sort: 'year asc, age_group asc'
+          });
+          
+          // Transform the data to match the expected format in the chart component
+          return result.records.map(record => ({
+            year: record.year,
+            age_group: record.age_group,
+            age_population: record.age_population
+          }));
+        },
+        staleTime: 5 * 60 * 1000,
+      }),
+      queryClient.prefetchQuery({
         queryKey: ['income', provinceId],
         queryFn: () => getIncomeData(provinceId),
         staleTime: 5 * 60 * 1000,
@@ -183,7 +217,7 @@ export const usePrefetchProvinceData = () => {
       queryClient.prefetchQuery({
         queryKey: ['housing-supply', provinceId],
         queryFn: async () => {
-          const result = await getCkanData(HOUSING_SUPPLY, {
+          const result = await getCkanData('15132377-edb0-40b0-9aad-8fd9f6769b92', {
             filters: JSON.stringify({ geo_id: provinceId }),
             limit: 1000,
             sort: 'year asc'

@@ -1,11 +1,3 @@
-// utils/ckanClient.js
-
-/**
- * CKAN API Client with CORS proxy support
- * Uses a server-side proxy to avoid CORS issues when accessing CKAN API
- */
-
-// Base URL for the CKAN API
 const CKAN_BASE_URL = 'http://147.50.228.205/api/3/action';
 
 /**
