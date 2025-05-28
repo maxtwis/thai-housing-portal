@@ -4,7 +4,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 
 mapboxgl.accessToken = 'pk.eyJ1IjoibmFwYXR0cnMiLCJhIjoiY203YnFwdmp1MDU0dTJrb3Fvbmhld2Z1cCJ9.rr4TE2vg3iIcpNqv9I2n5Q';
 
-const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile }) => {
+const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect, selectedGrid }) => {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const popupRef = useRef(null);
@@ -324,14 +324,24 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile }) => {
           }
         });
 
-        // Add grid outline layer
+        // Add grid outline layer with click highlighting
         map.addLayer({
           id: 'hds-grid-outlines',
           type: 'line',
           source: 'hds-grids',
           paint: {
-            'line-color': '#666666',
-            'line-width': 0.5,
+            'line-color': [
+              'case',
+              ['==', ['get', 'FID'], selectedGrid?.FID || -1],
+              '#ff0000', // Red for selected grid
+              '#666666'  // Default color
+            ],
+            'line-width': [
+              'case',
+              ['==', ['get', 'FID'], selectedGrid?.FID || -1],
+              3, // Thicker for selected grid
+              0.5 // Default width
+            ],
             'line-opacity': 0.8
           }
         });
@@ -389,24 +399,48 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile }) => {
           }
         });
 
-        // For mobile, add touch support
+        // Add click functionality for grid selection
+        map.on('click', 'hds-grid-fills', (e) => {
+          if (e.features.length > 0) {
+            const clickedFeature = e.features[0];
+            
+            // Call the parent component's callback to update statistics
+            if (onGridSelect) {
+              onGridSelect(clickedFeature.properties);
+            }
+            
+            // Remove existing popup if any
+            if (popupRef.current) {
+              popupRef.current.remove();
+            }
+            
+            // Show popup for clicked grid
+            const popup = new mapboxgl.Popup({
+              closeButton: true,
+              className: 'hds-popup',
+              maxWidth: isMobile ? '300px' : '400px'
+            })
+              .setLngLat(e.lngLat)
+              .setHTML(generatePopupContent(clickedFeature, colorScheme))
+              .addTo(map);
+            
+            popupRef.current = popup;
+          }
+        });
+
+        // For mobile, use click for both selection and popup
         if (isMobile) {
+          // Mobile click handling is already above
+        } else {
+          // For desktop, add separate click handler that doesn't interfere with hover
           map.on('click', 'hds-grid-fills', (e) => {
             if (e.features.length > 0) {
-              if (popupRef.current) {
-                popupRef.current.remove();
+              const clickedFeature = e.features[0];
+              
+              // Call the parent component's callback to update statistics
+              if (onGridSelect) {
+                onGridSelect(clickedFeature.properties);
               }
-              
-              const popup = new mapboxgl.Popup({
-                closeButton: true,
-                className: 'hds-popup',
-                maxWidth: '300px'
-              })
-                .setLngLat(e.lngLat)
-                .setHTML(generatePopupContent(e.features[0], colorScheme))
-                .addTo(map);
-              
-              popupRef.current = popup;
             }
           });
         }
@@ -490,6 +524,34 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile }) => {
 
     updateLegend();
   }, [colorScheme]);
+
+  // Update selected grid outline when selectedGrid changes
+  useEffect(() => {
+    if (!mapRef.current || !mapRef.current.getLayer('hds-grid-outlines')) return;
+
+    // Update the outline paint properties to highlight selected grid
+    mapRef.current.setPaintProperty(
+      'hds-grid-outlines',
+      'line-color',
+      [
+        'case',
+        ['==', ['get', 'FID'], selectedGrid?.FID || -1],
+        '#ff0000', // Red for selected grid
+        '#666666'  // Default color
+      ]
+    );
+
+    mapRef.current.setPaintProperty(
+      'hds-grid-outlines',
+      'line-width',
+      [
+        'case',
+        ['==', ['get', 'FID'], selectedGrid?.FID || -1],
+        3, // Thicker for selected grid
+        0.5 // Default width
+      ]
+    );
+  }, [selectedGrid]);
 
   // Update legend content
   const updateLegend = () => {

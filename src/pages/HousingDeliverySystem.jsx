@@ -10,6 +10,7 @@ const HousingDeliverySystem = () => {
   const [colorScheme, setColorScheme] = useState('housingSystem');
   const [isMobile, setIsMobile] = useState(false);
   const [showFilters, setShowFilters] = useState(true);
+  const [selectedGrid, setSelectedGrid] = useState(null);
   const [filters, setFilters] = useState({
     housingSystem: 'all',
     densityLevel: 'all',
@@ -135,6 +136,16 @@ const HousingDeliverySystem = () => {
     loadHDSData();
   }, []);
 
+  // Handle grid selection
+  const handleGridSelect = (gridProperties) => {
+    setSelectedGrid(gridProperties);
+  };
+
+  // Clear grid selection
+  const handleClearSelection = () => {
+    setSelectedGrid(null);
+  };
+
   // Toggle filters visibility on mobile
   const toggleFilters = () => {
     setShowFilters(!showFilters);
@@ -176,7 +187,11 @@ const HousingDeliverySystem = () => {
                 colorScheme={colorScheme}
                 setColorScheme={setColorScheme}
               />
-              <HDSStatistics stats={stats} />
+              <HDSStatistics 
+                stats={stats} 
+                selectedGrid={selectedGrid}
+                onClearSelection={handleClearSelection}
+              />
             </div>
             
             {/* Right side - Map - INCREASED HEIGHT */}
@@ -208,6 +223,8 @@ const HousingDeliverySystem = () => {
                 filters={filters}
                 colorScheme={colorScheme}
                 isMobile={isMobile}
+                onGridSelect={handleGridSelect}
+                selectedGrid={selectedGrid}
               />
             </div>
           </div>
@@ -257,12 +274,18 @@ const HousingDeliverySystem = () => {
                 filters={filters}
                 colorScheme={colorScheme}
                 isMobile={isMobile}
+                onGridSelect={handleGridSelect}
+                selectedGrid={selectedGrid}
               />
             </div>
             
             {/* Statistics - always shown on mobile */}
             <div className="w-full">
-              <HDSStatistics stats={stats} />
+              <HDSStatistics 
+                stats={stats} 
+                selectedGrid={selectedGrid}
+                onClearSelection={handleClearSelection}
+              />
             </div>
           </div>
         )}
