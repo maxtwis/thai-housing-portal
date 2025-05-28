@@ -304,22 +304,20 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile }) => {
           }
         });
 
-        // Fit map to data bounds
-        const bounds = new mapboxgl.LngLatBounds();
-        geojsonData.features.forEach(feature => {
-          if (feature.geometry && feature.geometry.coordinates) {
-            feature.geometry.coordinates[0].forEach(coord => {
-              // Convert from projected coordinates to lat/lng if needed
-              // Note: You may need to adjust this based on your coordinate system
-              bounds.extend(coord);
-            });
-          }
-        });
+        // Convert Web Mercator bounds to WGS84 for map fitting
+        // Your extent in Web Mercator: [11444289.3066, 1851022.1878000014, 11452289.3066, 1861022.1878000014]
+        // These roughly correspond to the Khon Kaen area
         
-        // Fit bounds with padding
-        map.fitBounds(bounds, {
+        // Set bounds based on your data extent
+        const webMercatorBounds = [
+          [102.8058000000438, 16.39939999957163],   // SW corner (converted from your lat/lon extent)
+          [102.8776652227337, 16.48555780275095]    // NE corner (converted from your lat/lon extent)
+        ];
+        
+        // Fit map to the data bounds
+        map.fitBounds(webMercatorBounds, {
           padding: isMobile ? 20 : 50,
-          maxZoom: isMobile ? 12 : 14
+          maxZoom: isMobile ? 14 : 16
         });
 
         // Add hover effect
