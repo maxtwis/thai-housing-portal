@@ -34,6 +34,12 @@ const Navbar = () => {
                   Housing Stock
                 </a>
                 <a
+                  href="/housing-delivery-system"
+                  className="text-white hover:bg-gray-700 rounded-md px-3 py-2 text-sm font-medium"
+                >
+                  Housing Delivery System
+                </a>
+                <a
                   href="/about"
                   className="text-white hover:bg-gray-700 rounded-md px-3 py-2 text-sm font-medium"
                 >
@@ -91,6 +97,13 @@ const Navbar = () => {
             onClick={() => setIsOpen(false)}
           >
             Housing Stock
+          </a>
+          <a
+            href="/housing-delivery-system"
+            className="text-white hover:bg-gray-700 block rounded-md px-3 py-2 text-base font-medium"
+            onClick={() => setIsOpen(false)}
+          >
+            Housing Delivery System
           </a>
           <a
             href="/about"
