@@ -276,9 +276,41 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile }) => {
         if (!response.ok) throw new Error('Failed to load GeoJSON data');
         const geojsonData = await response.json();
 
+        console.log('Original GeoJSON data:', geojsonData.features.length, 'features');
+        
+        // Transform coordinates from Web Mercator (EPSG:3857) to WGS84 (EPSG:4326)
+        const transformedGeoJSON = {
+          ...geojsonData,
+          features: geojsonData.features.map(feature => {
+            if (feature.geometry && feature.geometry.coordinates) {
+              const transformedCoordinates = feature.geometry.coordinates.map(ring => 
+                ring.map(coord => {
+                  // Convert from Web Mercator to WGS84
+                  const [x, y] = coord;
+                  const lng = (x / 20037508.34) * 180;
+                  const lat = (Math.atan(Math.exp((y / 20037508.34) * Math.PI)) * 360 / Math.PI) - 90;
+                  return [lng, lat];
+                })
+              );
+              
+              return {
+                ...feature,
+                geometry: {
+                  ...feature.geometry,
+                  coordinates: transformedCoordinates
+                }
+              };
+            }
+            return feature;
+          })
+        };
+
+        console.log('Transformed GeoJSON:', transformedGeoJSON.features.length, 'features');
+        console.log('Sample coordinates:', transformedGeoJSON.features[0]?.geometry?.coordinates[0]?.slice(0, 2));
+
         map.addSource('hds-grids', {
           type: 'geojson',
-          data: geojsonData
+          data: transformedGeoJSON
         });
 
         // Add grid fill layer
@@ -304,18 +336,18 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile }) => {
           }
         });
 
-        // Convert Web Mercator bounds to WGS84 for map fitting
-        // Your extent in Web Mercator: [11444289.3066, 1851022.1878000014, 11452289.3066, 1861022.1878000014]
-        // These roughly correspond to the Khon Kaen area
-        
-        // Set bounds based on your data extent
-        const webMercatorBounds = [
-          [102.8058000000438, 16.39939999957163],   // SW corner (converted from your lat/lon extent)
-          [102.8776652227337, 16.48555780275095]    // NE corner (converted from your lat/lon extent)
-        ];
+        // Calculate bounds from transformed coordinates
+        const bounds = new mapboxgl.LngLatBounds();
+        transformedGeoJSON.features.forEach(feature => {
+          if (feature.geometry && feature.geometry.coordinates) {
+            feature.geometry.coordinates[0].forEach(coord => {
+              bounds.extend(coord);
+            });
+          }
+        });
         
         // Fit map to the data bounds
-        map.fitBounds(webMercatorBounds, {
+        map.fitBounds(bounds, {
           padding: isMobile ? 20 : 50,
           maxZoom: isMobile ? 14 : 16
         });
