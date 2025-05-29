@@ -179,7 +179,7 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
   const getLegendItems = () => {
     const items = {
       housingSystem: [
-        { color: '#d62728', label: 'รระบบของชุมชนแออัดบนที่ดินรัฐ/เอกชน' },
+        { color: '#d62728', label: 'ระบบของชุมชนแออัดบนที่ดินรัฐ/เอกชน' },
         { color: '#ff7f0e', label: 'ระบบถือครองชั่วคราว' },
         { color: '#bcbd22', label: 'ระบบกลุ่มประชากรแฝง' },
         { color: '#9467bd', label: 'ระบบที่อยู่อาศัยลูกจ้าง' },
