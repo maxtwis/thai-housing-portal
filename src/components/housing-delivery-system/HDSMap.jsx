@@ -12,7 +12,7 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
 
   // Housing Delivery System categories
   const hdsCategories = {
-    1: 'ระบบของชุมชนบุกรุก',
+    1: 'ระบบของชุมชนแออัดบนที่ดินรัฐ/เอกชน',
     2: 'ระบบการถือครองที่ดินชั่วคราว',
     3: 'ระบบของกลุ่มประชากรแฝง',
     4: 'ระบบที่อยู่อาศัยของลูกจ้าง',
@@ -179,7 +179,7 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
   const getLegendItems = () => {
     const items = {
       housingSystem: [
-        { color: '#d62728', label: 'ระบบชุมชนบุกรุก' },
+        { color: '#d62728', label: 'รระบบของชุมชนแออัดบนที่ดินรัฐ/เอกชน' },
         { color: '#ff7f0e', label: 'ระบบถือครองชั่วคราว' },
         { color: '#bcbd22', label: 'ระบบกลุ่มประชากรแฝง' },
         { color: '#9467bd', label: 'ระบบที่อยู่อาศัยลูกจ้าง' },

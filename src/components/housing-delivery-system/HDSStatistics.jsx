@@ -73,7 +73,7 @@ const HDSStatistics = ({ stats, selectedGrid, onClearSelection }) => {
                   .sort(([,a], [,b]) => b - a)
                   .map(([system, count]) => {
                     const systemNames = {
-                      'HDS_C1': 'ระบบชุมชนบุกรุก',
+                      'HDS_C1': 'ระบบของชุมชนแออัดบนที่ดินรัฐ/เอกชน',
                       'HDS_C2': 'ระบบถือครองชั่วคราว',
                       'HDS_C3': 'ระบบกลุ่มประชากรแฝง',
                       'HDS_C4': 'ระบบที่อยู่อาศัยลูกจ้าง',
@@ -183,7 +183,7 @@ const HDSStatistics = ({ stats, selectedGrid, onClearSelection }) => {
               .sort(([,a], [,b]) => b - a) // Sort by count in descending order
               .map(([system, count]) => {
                 const systemNames = {
-                  'HDS_C1': 'ระบบชุมชนบุกรุก',
+                  'HDS_C1': 'ระบบของชุมชนแออัดบนที่ดินรัฐ/เอกชน',
                   'HDS_C2': 'ระบบถือครองชั่วคราว',
                   'HDS_C3': 'ระบบกลุ่มประชากรแฝง',
                   'HDS_C4': 'ระบบที่อยู่อาศัยลูกจ้าง',
