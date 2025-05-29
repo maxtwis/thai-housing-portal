@@ -73,7 +73,7 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
           
           ${totalHousing > 0 ? `
             <div class="border-t border-gray-200 mt-3 pt-3">
-              <p class="text-xs font-medium text-gray-600 mb-2">ระบบที่อยู่อาศัยเด่น:</p>
+              <p class="text-xs font-medium text-gray-600 mb-2">ระบบที่อยู่อาศัยหลัก:</p>
               <p class="text-sm font-medium text-blue-600">
                 ${hdsCategories[dominantSystem.code]} (${dominantSystem.count.toLocaleString()} หน่วย)
               </p>
@@ -542,7 +542,7 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
 
     const items = getLegendItems();
     const title = {
-      housingSystem: 'ระบบที่อยู่อาศัยเด่น',
+      housingSystem: 'ระบบที่อยู่อาศัยหลัก',
       populationDensity: 'ความหนาแน่นประชากร',
       housingDensity: 'ความหนาแน่นที่อยู่อาศัย',
       gridClass: 'ระดับความหนาแน่น'
