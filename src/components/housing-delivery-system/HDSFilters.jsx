@@ -14,7 +14,7 @@ const HDSFilters = ({ filters, setFilters, colorScheme, setColorScheme }) => {
             value={colorScheme}
             onChange={(e) => setColorScheme(e.target.value)}
           >
-            <option value="housingSystem">ระบบที่อยู่อาศัยเด่น</option>
+            <option value="housingSystem">ระบบที่อยู่อาศัยหลัก</option>
             <option value="populationDensity">ความหนาแน่นประชากร</option>
             <option value="housingDensity">ความหนาแน่นที่อยู่อาศัย</option>
             <option value="gridClass">ระดับความหนาแน่น</option>
