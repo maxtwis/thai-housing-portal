@@ -246,8 +246,9 @@ const Dashboard = () => {
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                   <IncomeChart 
-                    data={income.data} 
                     provinceName={provinceName} 
+                    provinceId={activeProvince}
+                    // Remove the data prop, component will fetch data using provinceId
                   />
                   <ExpenditureChart 
                     data={getExpenditureData()} 

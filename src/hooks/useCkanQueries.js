@@ -13,6 +13,7 @@ import { getPolicyData } from '../utils/policyUtils';
 // Updated API resource IDs
 const POPULATION_RESOURCE_ID = '4ef48676-1a0d-44b7-a450-517c61190344';
 const POPULATION_AGE_RESOURCE_ID = 'b22dd69b-790f-475b-9c6a-c346fbb40daa';
+const INCOME_RESOURCE_ID = '6a63d6c9-792c-450a-8f82-60e025bee415';
 
 // Individual query hooks
 export const useHousingSupplyData = (provinceId) => {
@@ -70,7 +71,21 @@ export const useHouseholdData = (provinceId) => {
 export const useIncomeData = (provinceId) => {
   return useQuery({
     queryKey: ['income', provinceId],
-    queryFn: () => getIncomeData(provinceId),
+    queryFn: async () => {
+      const result = await getCkanData(INCOME_RESOURCE_ID, {
+        filters: JSON.stringify({ geo_id: provinceId }),
+        limit: 1000,
+        sort: 'year asc'
+      });
+      
+      // Transform the data to match the expected format in the chart component
+      const transformedData = result.records.map(record => ({
+        year: record.year,
+        income: record.income
+      }));
+      
+      return transformedData;
+    },
     enabled: !!provinceId,
     staleTime: 5 * 60 * 1000,
     cacheTime: 10 * 60 * 1000,
@@ -211,7 +226,19 @@ export const usePrefetchProvinceData = () => {
       }),
       queryClient.prefetchQuery({
         queryKey: ['income', provinceId],
-        queryFn: () => getIncomeData(provinceId),
+        queryFn: async () => {
+          const result = await getCkanData(INCOME_RESOURCE_ID, {
+            filters: JSON.stringify({ geo_id: provinceId }),
+            limit: 1000,
+            sort: 'year asc'
+          });
+          
+          // Transform the data to match the expected format in the chart component
+          return result.records.map(record => ({
+            year: record.year,
+            income: record.income
+          }));
+        },
         staleTime: 5 * 60 * 1000,
       }),
       queryClient.prefetchQuery({
