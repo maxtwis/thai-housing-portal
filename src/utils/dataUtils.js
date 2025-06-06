@@ -1,3 +1,6 @@
+// utils/dataUtils.js
+
+// Constants for data categories - still needed for chart processing
 export const expenditureCategories = [
   { id: 1, name: 'ภาระค่าใช้จ่ายด้านที่อยู่อาศัย' },
   { id: 2, name: 'ภาระค่าใช้จ่ายด้านที่อยู่อาศัย (เช่า)' },

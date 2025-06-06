@@ -5,11 +5,17 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
 import { 
-  provinces, getPopulationData, getHouseholdData, getIncomeData,
-  getExpenditureData, getHousingSupplyByYear, expenditureCategories,
-  housingCategories, quintiles
+  provinces, expenditureCategories, housingCategories, quintiles
 } from '../utils/dataUtils';
+import { processHousingSupplyData } from '../utils/ckanClient';
 import { getPolicyData } from '../utils/policyUtils';
+import { 
+  usePopulationData, 
+  useHouseholdData, 
+  useIncomeData,
+  useAllExpenditureData,
+  useHousingSupplyData
+} from '../hooks/useCkanQueries';
 
 const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, index }) => {
   const RADIAN = Math.PI / 180;
@@ -33,6 +39,7 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
     </text>
   );
 };
+
 const shortNames = {
   "บ้านเดี่ยว": "บ้านเดี่ยว",
   "บ้านแฝด": "บ้านแฝด",
@@ -47,16 +54,64 @@ const shortNames = {
 const Report = () => {
   const { provinceId } = useParams();
   const [activeProvince, setActiveProvince] = useState(parseInt(provinceId) || 10);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  
-  // Data states
-  const [populationData, setPopulationData] = useState([]);
-  const [householdData, setHouseholdData] = useState([]);
-  const [incomeData, setIncomeData] = useState([]);
-  const [housingSupplyData, setHousingSupplyData] = useState([]);
-  const [expenditureData, setExpenditureData] = useState({});
   const [policyData, setPolicyData] = useState([]);
+  
+  // Use React Query hooks for data fetching
+  const { 
+    data: populationData = [], 
+    isLoading: populationLoading, 
+    error: populationError 
+  } = usePopulationData(activeProvince);
+  
+  const { 
+    data: householdData = [], 
+    isLoading: householdLoading, 
+    error: householdError 
+  } = useHouseholdData(activeProvince);
+  
+  const { 
+    data: incomeData = [], 
+    isLoading: incomeLoading, 
+    error: incomeError 
+  } = useIncomeData(activeProvince);
+  
+  const { 
+    data: rawHousingData, 
+    isLoading: housingLoading, 
+    error: housingError 
+  } = useHousingSupplyData(activeProvince);
+  
+  const expenditureQueries = useAllExpenditureData(activeProvince);
+  const expenditureLoading = expenditureQueries.some(q => q.isLoading);
+  const expenditureError = expenditureQueries.some(q => q.isError);
+  
+  // Process housing supply data
+  const housingSupplyData = React.useMemo(() => {
+    if (rawHousingData && rawHousingData.records) {
+      return processHousingSupplyData(rawHousingData.records, housingCategories);
+    }
+    return [];
+  }, [rawHousingData]);
+  
+  // Process expenditure data
+  const expenditureData = React.useMemo(() => {
+    const result = {};
+    expenditureQueries.forEach((query, index) => {
+      const quintileId = index + 1;
+      if (query.data) {
+        result[quintileId] = query.data;
+      }
+    });
+    return result;
+  }, [expenditureQueries]);
+  
+  // Check overall loading state
+  const loading = populationLoading || householdLoading || incomeLoading || 
+                  housingLoading || expenditureLoading;
+  
+  // Check overall error state
+  const error = populationError || householdError || incomeError || 
+                housingError || expenditureError;
   
   // Current province name
   const provinceName = provinces.find(p => p.id === activeProvince)?.name || '';
@@ -69,49 +124,19 @@ const Report = () => {
     day: 'numeric' 
   }).format(currentDate);
 
-  // Fetch all data
+  // Fetch policy data separately (still using old method)
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      
+    const fetchPolicyData = async () => {
       try {
-        // Fetch all data in parallel
-        const [
-          populationResult,
-          householdResult,
-          incomeResult,
-          housingSupplyResult,
-          policyResult
-        ] = await Promise.all([
-          getPopulationData(activeProvince),
-          getHouseholdData(activeProvince),
-          getIncomeData(activeProvince),
-          getHousingSupplyByYear(activeProvince),
-          getPolicyData(activeProvince)
-        ]);
-        
-        // Fetch expenditure data for each quintile
-        const expenditureResults = {};
-        for (let i = 1; i <= 5; i++) {
-          expenditureResults[i] = await getExpenditureData(activeProvince, i);
-        }
-        
-        // Update state with all fetched data
-        setPopulationData(populationResult);
-        setHouseholdData(householdResult);
-        setIncomeData(incomeResult);
-        setHousingSupplyData(housingSupplyResult);
-        setExpenditureData(expenditureResults);
-        setPolicyData(policyResult);
-        setLoading(false);
+        const result = await getPolicyData(activeProvince);
+        setPolicyData(result);
       } catch (err) {
-        console.error('Error fetching data:', err);
-        setError('ระบบไม่สามารถดึงข้อมูลได้ในขณะนี้');
-        setLoading(false);
+        console.error('Error fetching policy data:', err);
+        setPolicyData([]);
       }
     };
     
-    fetchData();
+    fetchPolicyData();
   }, [activeProvince]);
   
   // Generate population trend description
@@ -292,7 +317,7 @@ const Report = () => {
           <Link to="/" className="text-blue-600 hover:text-blue-800">กลับสู่หน้าหลัก</Link>
         </div>
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
-          <p>{error}</p>
+          <p>เกิดข้อผิดพลาดในการโหลดข้อมูล</p>
           <p className="mt-2">กรุณาลองใหม่อีกครั้งในภายหลัง หรือติดต่อผู้ดูแลระบบ</p>
         </div>
       </div>
@@ -338,36 +363,36 @@ const Report = () => {
                     <ResponsiveContainer width="100%" height="100%">
                     <LineChart
                         data={populationData}
-                        margin={{ top: 10, right: 10, left: 0, bottom: 0 }} // Reduced margins
+                        margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
                       >
                         <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                         <XAxis 
                           dataKey="year" 
-                          tick={{ fontSize: 12 }}  // Smaller font
+                          tick={{ fontSize: 12 }}
                           tickSize={5}
-                          height={30}  // Reduced height
+                          height={30}
                         />
                         <YAxis 
                           tickFormatter={(value) => new Intl.NumberFormat('th-TH', { notation: 'compact' }).format(value)}
-                          tick={{ fontSize: 12 }}  // Smaller font
+                          tick={{ fontSize: 12 }}
                           tickSize={5}
-                          width={35}  // Reduced width
+                          width={35}
                         />
                         <Tooltip 
-                          contentStyle={{ fontSize: 12 }}  // Smaller tooltip
+                          contentStyle={{ fontSize: 12 }}
                           formatter={(value) => new Intl.NumberFormat('th-TH').format(value)}
                           labelFormatter={(value) => `ปี พ.ศ. ${value + 543}`}
                         />
                         <Legend 
-                          wrapperStyle={{ fontSize: 12, paddingTop: 0 }}  // Smaller legend
+                          wrapperStyle={{ fontSize: 12, paddingTop: 0 }}
                           height={15}
                         />
                         <Line 
                           type="monotone" 
                           dataKey="population" 
                           stroke="#1e40af" 
-                          strokeWidth={1.5}  // Thinner line
-                          activeDot={{ r: 4 }}  // Smaller dots
+                          strokeWidth={1.5}
+                          activeDot={{ r: 4 }}
                           name="จำนวนประชากร"
                         />
                       </LineChart>
@@ -384,74 +409,6 @@ const Report = () => {
               </div>
             </div>
 
-            <div className="border-l-4 border-red-200 pl-4 bg-red-50 p-3 rounded-r-md">
-              <p className="text-sm text-red-800 font-medium">ข้อค้นพบสำคัญ:</p>
-              <p className="text-sm text-gray-700">
-                {populationData.length > 0 && 
-                  `${provinceName}มีประชากรในปัจจุบันจำนวน ${new Intl.NumberFormat('th-TH').format(populationData[populationData.length - 1].population)} คน 
-                  ซึ่งเป็นหนึ่งในศูนย์กลางความเจริญของประเทศไทย`}
-              </p>
-            </div>
-          </div>
-          
-          {/* Household Section */}
-          <div className="mb-8">
-            <h3 className="text-lg font-semibold text-blue-800 mb-3">สถานการณ์ด้านครัวเรือน</h3>
-            <p className="text-gray-700 mb-4">{getHouseholdTrend()}</p>
-            
-            {/* Household Chart */}
-            <div className="bg-white border border-gray-200 rounded-lg shadow-sm mb-4 overflow-hidden">
-              <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
-                <h4 className="text-sm font-medium text-gray-700">การเปลี่ยนแปลงจำนวนครัวเรือน</h4>
-              </div>
-              <div className="p-4" style={{ height: "250px" }}>
-                {householdData.length > 0 ? (
-                  <div className="w-full h-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart
-                        data={householdData}
-                        margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                        <XAxis 
-                          dataKey="year" 
-                          tick={{ fontSize: 12 }}  // Smaller font
-                          tickSize={5}
-                          height={30}  // Reduced height
-                        />
-                        <YAxis 
-                          tickFormatter={(value) => new Intl.NumberFormat('th-TH', { notation: 'compact' }).format(value)}
-                          tick={{ fontSize: 12 }}  // Smaller font
-                          tickSize={5}
-                          width={35}  // Reduced width
-                        />
-                        <Tooltip 
-                          contentStyle={{ fontSize: 12 }}  // Smaller tooltip
-                          formatter={(value) => new Intl.NumberFormat('th-TH').format(value)}
-                          labelFormatter={(value) => `ปี พ.ศ. ${value + 543}`}
-                        />
-                        <Line 
-                          type="monotone" 
-                          dataKey="household" 
-                          stroke="#15803d" 
-                          strokeWidth={2}
-                          activeDot={{ r: 8 }}
-                          name="จำนวนครัวเรือน"
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-center h-full">
-                    <p className="text-gray-500">ไม่พบข้อมูลครัวเรือน</p>
-                  </div>
-                )}
-              </div>
-              <div className="px-4 py-2 text-xs text-gray-500 border-t border-gray-200">
-                ที่มา: สำนักงานสถิติแห่งชาติ
-              </div>
-            </div>
-            
             <div className="border-l-4 border-red-200 pl-4 bg-red-50 p-3 rounded-r-md">
               <p className="text-sm text-red-800 font-medium">ข้อค้นพบสำคัญ:</p>
               <p className="text-sm text-gray-700">
@@ -487,18 +444,18 @@ const Report = () => {
                         <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                         <XAxis 
                           dataKey="year" 
-                          tick={{ fontSize: 12 }}  // Smaller font
+                          tick={{ fontSize: 12 }}
                           tickSize={5}
-                          height={30}  // Reduced height
+                          height={30}
                         />
                         <YAxis 
                           tickFormatter={(value) => new Intl.NumberFormat('th-TH', { notation: 'compact' }).format(value)}
-                          tick={{ fontSize: 12 }}  // Smaller font
+                          tick={{ fontSize: 12 }}
                           tickSize={5}
-                          width={35}  // Reduced width
+                          width={35}
                         /> 
                           <Tooltip 
-                          contentStyle={{ fontSize: 12 }}  // Smaller tooltip
+                          contentStyle={{ fontSize: 12 }}
                           formatter={(value) => new Intl.NumberFormat('th-TH').format(value)}
                           labelFormatter={(value) => `ปี พ.ศ. ${value + 543}`}
                         />
@@ -965,7 +922,7 @@ const Report = () => {
       {/* Report Footer */}
       <div className="text-center text-gray-500 text-sm mb-8">
         <p>© สงวนลิขสิทธิ์ Urban Studies Lab 2025 Housing Profile Platform </p>
-        <p className="mt-1">ที่มา: สำนักงานสถิติแห่งชาติ กรมที่ดิน และการเคหะแห่งชาติ</p>
+        <p className="mt-1">ที่มา: สำนักงานสธิติแห่งชาติ กรมที่ดิน และการเคหะแห่งชาติ</p>
         <div className="mt-4">
           <Link 
             to="/" 
@@ -990,5 +947,3 @@ const Report = () => {
     </div>
   );
 };
-
-export default Report;
