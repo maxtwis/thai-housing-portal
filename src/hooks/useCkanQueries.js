@@ -150,19 +150,6 @@ export const usePolicyData = (provinceId) => {
   });
 };
 
-// Compound hook for all expenditure quintiles
-export const useAllExpenditureData = (provinceId) => {
-  return useQueries({
-    queries: [1, 2, 3, 4, 5].map(quintileId => ({
-      queryKey: ['expenditure', provinceId, quintileId],
-      queryFn: () => getExpenditureData(provinceId, quintileId),
-      enabled: !!provinceId,
-      staleTime: 5 * 60 * 1000,
-      cacheTime: 10 * 60 * 1000,
-    })),
-  });
-};
-
 // Compound hook for all data at once
 export const useAllProvinceData = (provinceId) => {
   const population = usePopulationData(provinceId);
@@ -171,7 +158,7 @@ export const useAllProvinceData = (provinceId) => {
   const populationAge = usePopulationAgeData(provinceId);
   const policy = usePolicyData(provinceId);
   const housingSupply = useHousingSupplyData(provinceId);
-  const expenditureQueries = useAllExpenditureData(provinceId);
+  const expenditureQueries = useExpenditureData(provinceId);
   
   return {
     population,
