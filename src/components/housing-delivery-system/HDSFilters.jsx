@@ -14,7 +14,7 @@ const HDSFilters = ({ filters, setFilters, colorScheme, setColorScheme }) => {
             value={colorScheme}
             onChange={(e) => setColorScheme(e.target.value)}
           >
-            <option value="housingSystem">ระบบที่อยู่อาศัยเด่น</option>
+            <option value="housingSystem">ระบบที่อยู่อาศัยหลัก</option>
             <option value="populationDensity">ความหนาแน่นประชากร</option>
             <option value="housingDensity">ความหนาแน่นที่อยู่อาศัย</option>
             <option value="gridClass">ระดับความหนาแน่น</option>
@@ -29,7 +29,7 @@ const HDSFilters = ({ filters, setFilters, colorScheme, setColorScheme }) => {
             onChange={(e) => setFilters({...filters, housingSystem: e.target.value})}
           >
             <option value="all">ทุกระบบ</option>
-            <option value="1">ระบบของชุมชนบุกรุก</option>
+            <option value="1">ระบบของชุมชนแออัดบนที่ดินรัฐ/เอกชน</option>
             <option value="2">ระบบการถือครองที่ดินชั่วคราว</option>
             <option value="3">ระบบของกลุ่มประชากรแฝง</option>
             <option value="4">ระบบที่อยู่อาศัยของลูกจ้าง</option>
