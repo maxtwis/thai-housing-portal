@@ -15,6 +15,7 @@ const POPULATION_RESOURCE_ID = '4ef48676-1a0d-44b7-a450-517c61190344';
 const POPULATION_AGE_RESOURCE_ID = 'b22dd69b-790f-475b-9c6a-c346fbb40daa';
 const INCOME_RESOURCE_ID = '6a63d6c9-792c-450a-8f82-60e025bee415';
 const EXPENDITURE_RESOURCE_ID = '98eb6fce-d04e-44e6-b3af-408ad2957653';
+const HOUSEHOLD_RESOURCE_ID = '94b9e62e-7182-47b0-91b9-7c7400d990cc';
 
 // Individual query hooks
 export const useHousingSupplyData = (provinceId) => {
@@ -44,8 +45,6 @@ export const usePopulationData = (provinceId) => {
         limit: 1000,
         sort: 'year asc'
       });
-      
-      // Transform the data to match the expected format in the chart component
       const transformedData = result.records.map(record => ({
         year: record.year,
         population: record.population
@@ -62,7 +61,19 @@ export const usePopulationData = (provinceId) => {
 export const useHouseholdData = (provinceId) => {
   return useQuery({
     queryKey: ['household', provinceId],
-    queryFn: () => getHouseholdData(provinceId),
+    queryFn: async () => {
+      const result = await getCkanData(HOUSEHOLD_RESOURCE_ID, {
+        filters: JSON.stringify({ geo_id: provinceId }),
+        limit: 1000,
+        sort: 'year asc'
+      });
+      const transformedData = result.records.map(record => ({
+        year: record.year,
+        household: record.household
+      }));
+      
+      return transformedData;
+    },
     enabled: !!provinceId,
     staleTime: 5 * 60 * 1000,
     cacheTime: 10 * 60 * 1000,
@@ -78,8 +89,6 @@ export const useIncomeData = (provinceId) => {
         limit: 1000,
         sort: 'year asc'
       });
-      
-      // Transform the data to match the expected format in the chart component
       const transformedData = result.records.map(record => ({
         year: record.year,
         income: record.income
@@ -124,8 +133,6 @@ export const usePopulationAgeData = (provinceId) => {
         limit: 1000,
         sort: 'year asc, age_group asc'
       });
-      
-      // Transform the data to match the expected format in the chart component
       const transformedData = result.records.map(record => ({
         year: record.year,
         age_group: record.age_group,
@@ -228,7 +235,19 @@ export const usePrefetchProvinceData = () => {
       }),
       queryClient.prefetchQuery({
         queryKey: ['household', provinceId],
-        queryFn: () => getHouseholdData(provinceId),
+        queryFn: async () => {
+          const result = await getCkanData(HOUSEHOLD_RESOURCE_ID, {
+            filters: JSON.stringify({ geo_id: provinceId }),
+            limit: 1000,
+            sort: 'year asc'
+          });
+          
+          // Transform the data to match the expected format in the chart component
+          return result.records.map(record => ({
+            year: record.year,
+            household: record.household
+          }));
+        },
         staleTime: 5 * 60 * 1000,
       }),
       queryClient.prefetchQuery({

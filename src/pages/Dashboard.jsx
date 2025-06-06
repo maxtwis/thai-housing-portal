@@ -256,8 +256,8 @@ const Dashboard = () => {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <HouseholdChart 
-                  data={household.data} 
                   provinceName={provinceName} 
+                  provinceId={activeProvince}
                 />
               </div>
             </div>

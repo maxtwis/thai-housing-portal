@@ -4,8 +4,59 @@ import {
   Tooltip, Legend, ResponsiveContainer 
 } from 'recharts';
 import ExportButton from '../ExportButton';
+import { useHouseholdData } from '../../hooks/useCkanQueries';
 
-const HouseholdChart = ({ data, provinceName }) => {
+const HouseholdChart = ({ provinceName, provinceId }) => {
+  // Use React Query for data fetching via the custom hook
+  const { 
+    data, 
+    isLoading, 
+    error,
+    isFetching
+  } = useHouseholdData(provinceId);
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="bg-white p-0 rounded-lg shadow">
+        <div className="px-3 py-2 border-b border-gray-200">
+          <div className="flex justify-between items-center">
+            <h2 className="text-sm font-semibold text-gray-800">Total Households Over Time</h2>
+          </div>
+        </div>
+        <div className="px-2 py-1 h-52 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+            <p className="mt-3 text-gray-600">Loading household data...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="bg-white p-0 rounded-lg shadow">
+        <div className="px-3 py-2 border-b border-gray-200">
+          <div className="flex justify-between items-center">
+            <h2 className="text-sm font-semibold text-gray-800">Total Households Over Time</h2>
+            <ExportButton data={[]} filename={`households_${provinceName}`} />
+          </div>
+        </div>
+        <div className="px-2 py-1 h-52 flex items-center justify-center">
+          <div className="text-center text-red-500">
+            <p>Failed to load data</p>
+            <p className="text-xs">{error.message}</p>
+          </div>
+        </div>
+        <div className="px-3 py-1 text-xs text-gray-500 border-t border-gray-200">
+          <p>Source: Thailand National Statistics Office</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!data || data.length === 0) {
     return (
       <div className="bg-white p-0 rounded-lg shadow">
@@ -35,7 +86,14 @@ const HouseholdChart = ({ data, provinceName }) => {
       <div className="px-3 py-2 border-b border-gray-200">
         <div className="flex justify-between items-center">
           <h2 className="text-sm font-semibold text-gray-800">Total Households Over Time</h2>
-          <ExportButton data={data} filename={`households_${provinceName}`} />
+          <div className="flex items-center space-x-2">
+            {isFetching && (
+              <div className="text-xs text-blue-600">
+                <span className="inline-block animate-pulse">●</span>
+              </div>
+            )}
+            <ExportButton data={data} filename={`households_${provinceName}`} />
+          </div>
         </div>
       </div>
       <div className="px-2 py-1" style={{ height: 210 }}>
@@ -69,6 +127,7 @@ const HouseholdChart = ({ data, provinceName }) => {
               stroke="#ff7f0e"
               activeDot={{ r: 4 }}
               strokeWidth={1.5}
+              name="จำนวนครัวเรือน"
             />
           </LineChart>
         </ResponsiveContainer>
