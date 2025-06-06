@@ -12,7 +12,7 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
 
   // Housing Delivery System categories
   const hdsCategories = {
-    1: 'ระบบของชุมชนบุกรุก',
+    1: 'ระบบของชุมชนแออัดบนที่ดินรัฐ/เอกชน',
     2: 'ระบบการถือครองที่ดินชั่วคราว',
     3: 'ระบบของกลุ่มประชากรแฝง',
     4: 'ระบบที่อยู่อาศัยของลูกจ้าง',
@@ -73,7 +73,7 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
           
           ${totalHousing > 0 ? `
             <div class="border-t border-gray-200 mt-3 pt-3">
-              <p class="text-xs font-medium text-gray-600 mb-2">ระบบที่อยู่อาศัยเด่น:</p>
+              <p class="text-xs font-medium text-gray-600 mb-2">ระบบที่อยู่อาศัยหลัก:</p>
               <p class="text-sm font-medium text-blue-600">
                 ${hdsCategories[dominantSystem.code]} (${dominantSystem.count.toLocaleString()} หน่วย)
               </p>
@@ -179,7 +179,7 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
   const getLegendItems = () => {
     const items = {
       housingSystem: [
-        { color: '#d62728', label: 'ระบบชุมชนบุกรุก' },
+        { color: '#d62728', label: 'ระบบชุมชนแออัดบนที่ดินรัฐ/เอกชน' },
         { color: '#ff7f0e', label: 'ระบบถือครองชั่วคราว' },
         { color: '#bcbd22', label: 'ระบบกลุ่มประชากรแฝง' },
         { color: '#9467bd', label: 'ระบบที่อยู่อาศัยลูกจ้าง' },
@@ -262,7 +262,7 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
     
     // Mobile-specific styling for legend
     if (isMobile) {
-      legend.style.cssText = 'position: absolute; bottom: 40px; left: 10px; right: 10px; background: white; padding: 8px; border-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,0.2); font-size: 10px; max-height: 120px; overflow-y: auto; z-index: 1;';
+      legend.style.cssText = 'position: absolute; top: 10px; left: 10px; right: 10px; background: white; padding: 6px; border-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,0.2); font-size: 9px; max-height: 80px; overflow-y: auto; z-index: 1;';
     } else {
       legend.style.cssText = 'position: absolute; bottom: 30px; right: 10px; background: white; padding: 10px; border-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,0.2); font-size: 12px; max-height: 400px; overflow-y: auto;';
     }
@@ -366,7 +366,8 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
         let hoveredStateId = null;
 
         map.on('mousemove', 'hds-grid-fills', (e) => {
-          if (e.features.length > 0) {
+          // Only show hover popup on desktop
+          if (!isMobile && e.features.length > 0) {
             if (popupRef.current) {
               popupRef.current.remove();
             }
@@ -388,8 +389,8 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
               closeButton: false,
               closeOnClick: false,
               className: 'hds-popup',
-              maxWidth: isMobile ? '300px' : '400px',
-              offset: isMobile ? 5 : 15
+              maxWidth: '400px',
+              offset: 15
             })
               .setLngLat(e.lngLat)
               .setHTML(generatePopupContent(e.features[0], colorScheme))
@@ -414,17 +415,47 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
               popupRef.current.remove();
             }
             
-            // Show popup for clicked grid
-            const popup = new mapboxgl.Popup({
-              closeButton: true,
-              className: 'hds-popup',
-              maxWidth: isMobile ? '300px' : '400px'
-            })
-              .setLngLat(e.lngLat)
-              .setHTML(generatePopupContent(clickedFeature, colorScheme))
-              .addTo(map);
-            
-            popupRef.current = popup;
+            // For mobile, show a smaller popup that doesn't interfere with legend
+            if (isMobile) {
+              const popup = new mapboxgl.Popup({
+                closeButton: true,
+                className: 'hds-popup mobile-popup',
+                maxWidth: '280px',
+                anchor: 'bottom',
+                offset: [0, -10]
+              })
+                .setLngLat(e.lngLat)
+                .setHTML(`
+                  <div class="p-2 text-sm">
+                    <h3 class="font-bold text-gray-800 mb-1">กริด ID: ${clickedFeature.properties.FID}</h3>
+                    <p class="text-xs text-gray-600 mb-2">ประชากร: ${Math.round(clickedFeature.properties.Grid_POP || 0).toLocaleString()} คน</p>
+                    <p class="text-xs text-blue-600">ดูรายละเอียดในแผงสถิติด้านล่าง</p>
+                  </div>
+                `)
+                .addTo(map);
+              
+              popupRef.current = popup;
+              
+              // Auto-close popup after 3 seconds on mobile
+              setTimeout(() => {
+                if (popupRef.current) {
+                  popupRef.current.remove();
+                  popupRef.current = null;
+                }
+              }, 3000);
+            } else {
+              // Desktop: show full popup
+              const popup = new mapboxgl.Popup({
+                closeButton: true,
+                className: 'hds-popup',
+                maxWidth: '400px'
+              })
+                .setLngLat(e.lngLat)
+                .setHTML(generatePopupContent(clickedFeature, colorScheme))
+                .addTo(map);
+              
+              popupRef.current = popup;
+            }
           }
         });
 
@@ -542,23 +573,23 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
 
     const items = getLegendItems();
     const title = {
-      housingSystem: 'ระบบที่อยู่อาศัยเด่น',
+      housingSystem: 'ระบบที่อยู่อาศัยหลัก',
       populationDensity: 'ความหนาแน่นประชากร',
       housingDensity: 'ความหนาแน่นที่อยู่อาศัย',
       gridClass: 'ระดับความหนาแน่น'
     }[colorScheme] || 'คำอธิบายสัญลักษณ์';
     
     // Different styling for mobile vs desktop
-    const fontSize = isMobile ? '10px' : '12px';
-    const marginBottom = isMobile ? '2px' : '4px';
-    const colorBoxSize = isMobile ? '12px' : '16px';
+    const fontSize = isMobile ? '8px' : '12px';
+    const marginBottom = isMobile ? '1px' : '4px';
+    const colorBoxSize = isMobile ? '10px' : '16px';
     
     legendRef.current.innerHTML = `
-      <h4 style="margin: 0 0 8px 0; font-weight: 600; font-size: ${fontSize};">${title}</h4>
+      <h4 style="margin: 0 0 4px 0; font-weight: 600; font-size: ${isMobile ? '9px' : fontSize};">${title}</h4>
       ${items.map(item => `
         <div style="display: flex; align-items: center; margin-bottom: ${marginBottom};">
-          <span style="display: inline-block; width: ${colorBoxSize}; height: ${colorBoxSize}; margin-right: 8px; background: ${item.color}; border: 1px solid rgba(0,0,0,0.2);"></span>
-          <span style="font-size: ${fontSize};">${item.label}</span>
+          <span style="display: inline-block; width: ${colorBoxSize}; height: ${colorBoxSize}; margin-right: 6px; background: ${item.color}; border: 1px solid rgba(0,0,0,0.2);"></span>
+          <span style="font-size: ${fontSize}; line-height: 1.2;">${item.label}</span>
         </div>
       `).join('')}
     `;
