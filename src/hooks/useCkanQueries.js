@@ -150,6 +150,31 @@ export const usePolicyData = (provinceId) => {
   });
 };
 
+// Compound hook for all expenditure quintiles
+export const useAllExpenditureData = (provinceId) => {
+  return useQueries({
+    queries: [1, 2, 3, 4, 5].map(quintileId => ({
+      queryKey: ['expenditure', provinceId, quintileId],
+      queryFn: async () => {
+        let filters = {};
+        
+        if (provinceId) filters.geo_id = provinceId;
+        if (quintileId) filters.quintile = quintileId;
+        
+        const result = await getCkanData(EXPENDITURE_RESOURCE_ID, {
+          filters: JSON.stringify(filters),
+          limit: 500
+        });
+        
+        return result.records || [];
+      },
+      enabled: !!provinceId,
+      staleTime: 5 * 60 * 1000,
+      cacheTime: 10 * 60 * 1000,
+    })),
+  });
+};
+
 // Compound hook for all data at once
 export const useAllProvinceData = (provinceId) => {
   const population = usePopulationData(provinceId);
@@ -158,7 +183,7 @@ export const useAllProvinceData = (provinceId) => {
   const populationAge = usePopulationAgeData(provinceId);
   const policy = usePolicyData(provinceId);
   const housingSupply = useHousingSupplyData(provinceId);
-  const expenditureQueries = useExpenditureData(provinceId);
+  const expenditureQueries = useAllExpenditureData(provinceId);
   
   return {
     population,
