@@ -4,13 +4,39 @@ import {
   Tooltip, Legend, ResponsiveContainer 
 } from 'recharts';
 import ExportButton from '../ExportButton';
+import { useAllExpenditureData } from '../../hooks/useCkanQueries';
 
-const ExpenditureChart = ({ data, provinceName, expenditureCategories, quintiles, rawExpenditureData }) => {
+const ExpenditureChart = ({ provinceName, provinceId }) => {
+  // Use React Query for data fetching via the custom hook
+  const expenditureQueries = useAllExpenditureData(provinceId);
+  
+  // Check loading and error states
+  const isLoading = expenditureQueries.some(q => q.isLoading);
+  const isError = expenditureQueries.some(q => q.isError);
+  const isFetching = expenditureQueries.some(q => q.isFetching);
+  
   // Process data for chart display
   const processedData = React.useMemo(() => {
-    if (!data || !expenditureCategories || !quintiles || !rawExpenditureData) {
+    if (isLoading || isError || !expenditureQueries.length) {
       return [];
     }
+    
+    // Define expenditure categories
+    const expenditureCategories = [
+      { id: 1, name: 'ภาระค่าใช้จ่ายด้านที่อยู่อาศัย' },
+      { id: 2, name: 'ภาระค่าใช้จ่ายด้านที่อยู่อาศัย (เช่า)' },
+      { id: 3, name: 'ภาระค่าใช้จ่ายด้านที่อยู่อาศัย (ผ่อน)' },
+      { id: 5, name: 'ค่าใช้จ่ายด้านไฟฟ้า' }
+    ];
+    
+    // Define quintiles
+    const quintiles = [
+      { id: 1, name: 'Quintile 1 (Lowest 20%)' },
+      { id: 2, name: 'Quintile 2' },
+      { id: 3, name: 'Quintile 3' },
+      { id: 4, name: 'Quintile 4' },
+      { id: 5, name: 'Quintile 5 (Highest 20%)' }
+    ];
     
     // Shortened quintile names for better display
     const shortenedNames = {
@@ -21,13 +47,14 @@ const ExpenditureChart = ({ data, provinceName, expenditureCategories, quintiles
       "Quintile 5 (Highest 20%)": "Q5"
     };
     
-    // Preserve full category names
     const result = [];
     
-    for (const qId in rawExpenditureData) {
-      if (rawExpenditureData[qId] && rawExpenditureData[qId].length > 0) {
-        const quintileData = rawExpenditureData[qId];
-        const fullName = quintiles.find(q => q.id === parseInt(qId))?.name || `Quintile ${qId}`;
+    expenditureQueries.forEach((query, index) => {
+      const quintileId = index + 1;
+      const quintileData = query.data || [];
+      
+      if (quintileData.length > 0) {
+        const fullName = quintiles.find(q => q.id === quintileId)?.name || `Quintile ${quintileId}`;
         
         const chartData = {};
         chartData.name = shortenedNames[fullName] || fullName;
@@ -42,22 +69,69 @@ const ExpenditureChart = ({ data, provinceName, expenditureCategories, quintiles
         
         result.push(chartData);
       }
-    }
+    });
     
     return result;
-  }, [data, expenditureCategories, quintiles, rawExpenditureData]);
+  }, [expenditureQueries, isLoading, isError]);
 
   // Get the top 4 categories to display
   const topCategories = React.useMemo(() => {
-    if (!expenditureCategories) return [];
+    const expenditureCategories = [
+      { id: 1, name: 'ภาระค่าใช้จ่ายด้านที่อยู่อาศัย' },
+      { id: 2, name: 'ภาระค่าใช้จ่ายด้านที่อยู่อาศัย (เช่า)' },
+      { id: 3, name: 'ภาระค่าใช้จ่ายด้านที่อยู่อาศัย (ผ่อน)' },
+      { id: 5, name: 'ค่าใช้จ่ายด้านไฟฟ้า' }
+    ];
     
     return expenditureCategories
       .slice(0, 4)
       .map(category => category.name);
-  }, [expenditureCategories]);
+  }, []);
 
   // Define chart colors
   const barColors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728'];
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="bg-white p-0 rounded-lg shadow">
+        <div className="px-3 py-2 border-b border-gray-200">
+          <div className="flex justify-between items-center">
+            <h2 className="text-sm font-semibold text-gray-800">Expenditure by Income Quintile</h2>
+          </div>
+        </div>
+        <div className="px-2 py-1 h-52 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+            <p className="mt-3 text-gray-600">Loading expenditure data...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (isError) {
+    return (
+      <div className="bg-white p-0 rounded-lg shadow">
+        <div className="px-3 py-2 border-b border-gray-200">
+          <div className="flex justify-between items-center">
+            <h2 className="text-sm font-semibold text-gray-800">Expenditure by Income Quintile</h2>
+            <ExportButton data={[]} filename={`expenditure_${provinceName}`} />
+          </div>
+        </div>
+        <div className="px-2 py-1 h-52 flex items-center justify-center">
+          <div className="text-center text-red-500">
+            <p>Failed to load data</p>
+            <p className="text-xs">Please try again later</p>
+          </div>
+        </div>
+        <div className="px-3 py-1 text-xs text-gray-500 border-t border-gray-200">
+          <p>Source: Thailand National Statistics Office</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!processedData || processedData.length === 0) {
     return (
@@ -105,7 +179,14 @@ const ExpenditureChart = ({ data, provinceName, expenditureCategories, quintiles
       <div className="px-3 py-2 border-b border-gray-200">
         <div className="flex justify-between items-center">
           <h2 className="text-sm font-semibold text-gray-800">Expenditure by Income Quintile</h2>
-          <ExportButton data={processedData} filename={`expenditure_${provinceName}`} />
+          <div className="flex items-center space-x-2">
+            {isFetching && (
+              <div className="text-xs text-blue-600">
+                <span className="inline-block animate-pulse">●</span>
+              </div>
+            )}
+            <ExportButton data={processedData} filename={`expenditure_${provinceName}`} />
+          </div>
         </div>
       </div>
       <div className="px-2 py-1" style={{ height: 210 }}>

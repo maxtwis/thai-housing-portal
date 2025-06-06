@@ -14,6 +14,7 @@ import { getPolicyData } from '../utils/policyUtils';
 const POPULATION_RESOURCE_ID = '4ef48676-1a0d-44b7-a450-517c61190344';
 const POPULATION_AGE_RESOURCE_ID = 'b22dd69b-790f-475b-9c6a-c346fbb40daa';
 const INCOME_RESOURCE_ID = '6a63d6c9-792c-450a-8f82-60e025bee415';
+const EXPENDITURE_RESOURCE_ID = '98eb6fce-d04e-44e6-b3af-408ad2957653';
 
 // Individual query hooks
 export const useHousingSupplyData = (provinceId) => {
@@ -95,7 +96,19 @@ export const useIncomeData = (provinceId) => {
 export const useExpenditureData = (provinceId, quintileId) => {
   return useQuery({
     queryKey: ['expenditure', provinceId, quintileId],
-    queryFn: () => getExpenditureData(provinceId, quintileId),
+    queryFn: async () => {
+      let filters = {};
+      
+      if (provinceId) filters.geo_id = provinceId;
+      if (quintileId) filters.quintile = quintileId;
+      
+      const result = await getCkanData(EXPENDITURE_RESOURCE_ID, {
+        filters: JSON.stringify(filters),
+        limit: 500
+      });
+      
+      return result.records || [];
+    },
     enabled: !!provinceId && !!quintileId,
     staleTime: 5 * 60 * 1000,
     cacheTime: 10 * 60 * 1000,

@@ -231,52 +231,37 @@ const Dashboard = () => {
           )}
           
           {/* Demographics Content */}
-            {activeTopic === 'demographics' && (
-              <div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <PopulationChart 
-                    provinceName={provinceName} 
-                    provinceId={activeProvince}
-                  />
-                  <PopulationAgeChart 
-                    provinceName={provinceName}
-                    provinceId={activeProvince}
-                  />
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <IncomeChart 
-                    provinceName={provinceName} 
-                    provinceId={activeProvince}
-                    // Remove the data prop, component will fetch data using provinceId
-                  />
-                  <ExpenditureChart 
-                    data={getExpenditureData()} 
-                    provinceName={provinceName}
-                    expenditureCategories={[
-                      { id: 1, name: 'ภาระค่าใช้จ่ายด้านที่อยู่อาศัย' },
-                      { id: 2, name: 'ภาระค่าใช้จ่ายด้านที่อยู่อาศัย (เช่า)' },
-                      { id: 3, name: 'ภาระค่าใช้จ่ายด้านที่อยู่อาศัย (ผ่อน)' },
-                      { id: 5, name: 'ค่าใช้จ่ายด้านไฟฟ้า' }
-                    ]}
-                    quintiles={[
-                      { id: 1, name: 'Quintile 1 (Lowest 20%)' },
-                      { id: 2, name: 'Quintile 2' },
-                      { id: 3, name: 'Quintile 3' },
-                      { id: 4, name: 'Quintile 4' },
-                      { id: 5, name: 'Quintile 5 (Highest 20%)' }
-                    ]}
-                    rawExpenditureData={getExpenditureData()}
-                  />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <HouseholdChart 
-                    data={household.data} 
-                    provinceName={provinceName} 
-                  />
-                </div>
+          {activeTopic === 'demographics' && (
+            <div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <PopulationChart 
+                  provinceName={provinceName} 
+                  provinceId={activeProvince}
+                />
+                <PopulationAgeChart 
+                  provinceName={provinceName}
+                  provinceId={activeProvince}
+                />
               </div>
-            )}
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <IncomeChart 
+                  provinceName={provinceName} 
+                  provinceId={activeProvince}
+                />
+                <ExpenditureChart 
+                  provinceName={provinceName}
+                  provinceId={activeProvince}
+                />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <HouseholdChart 
+                  data={household.data} 
+                  provinceName={provinceName} 
+                />
+              </div>
+            </div>
+          )}
                       
           {/* Housing Content */}
             {activeTopic === 'housing' && (
