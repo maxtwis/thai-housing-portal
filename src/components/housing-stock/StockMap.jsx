@@ -1,22 +1,27 @@
 import React, { useEffect, useRef, useState } from 'react';
-import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 
-mapboxgl.accessToken = 'pk.eyJ1IjoibmFwYXR0cnMiLCJhIjoiY203YnFwdmp1MDU0dTJrb3Fvbmhld2Z1cCJ9.rr4TE2vg3iIcpNqv9I2n5Q';
+// Fix for default markers in Leaflet with webpack
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
 
 const StockMap = ({ filters, colorScheme = 'buildingType', isMobile }) => {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
-  const popupRef = useRef(null);
+  const buildingLayerRef = useRef(null);
   const legendRef = useRef(null);
 
   // Dynamic height calculation based on viewport
   const getMapHeight = () => {
     if (isMobile) {
-      return "60vh"; // Mobile height
+      return "60vh";
     } else {
-      // Desktop: Much taller map
-      return "calc(100vh - 150px)"; // Adjust this value as needed
+      return "calc(100vh - 150px)";
     }
   };
 
@@ -92,89 +97,75 @@ const StockMap = ({ filters, colorScheme = 'buildingType', isMobile }) => {
   };
 
   // Color schemes for different attributes
-  const getColorExpression = () => {
+  const getColor = (feature) => {
     const schemes = {
-      buildingType: [
-        'match',
-        ['coalesce', ['get', 'TP_build'], ''],
-        'ที่อยู่อาศัย', '#ff7f0e',
-        'พาณิชยกรรม', '#1f77b4',
-        'ที่อยู่อาศัยกึ่งพาณิชยกรรม', '#2ca02c',
-        'อุตสาหกรรม', '#d62728',
-        'สาธารณูปโภค สาธารณูปการ', '#9467bd',
-        'สถาบันการศึกษา', '#8c564b',
-        'สถาบันศาสนา', '#e377c2',
-        'สถาบันราชการและการสาธารณสุข', '#7f7f7f',
-        'นันทนาการ', '#bcbd22',
-        '#808080'  // default color for blank or other values
-      ],
-      transportAccess: [
-        'case',
-        ['==', ['get', 'TP_build'], 'ที่อยู่อาศัย'],
-        ['step',
-          ['min', 
-            ['coalesce', ['get', 'Facility_transportation'], 999],
-            ['coalesce', ['get', 'Facility_metro'], 999],
-            ['coalesce', ['get', 'Facility_busstop'], 999]
-          ],
-          '#67000d',  // >2km - very poor
-          0.5, '#ef6548',  // 1-2km - poor
-          1, '#fc8d59',  // 0.5-1km - moderate
-          1.5, '#fdbb84',  // 0.25-0.5km - good
-          2, '#fef0d9'  // <0.25km - excellent
-        ],
-        '#808080'  // Non-residential buildings
-      ],
-      healthAccess: [
-        'case',
-        ['==', ['get', 'TP_build'], 'ที่อยู่อาศัย'],
-        ['step',
-          ['min',
-            ['coalesce', ['get', 'Facility_hospital'], 999],
-            ['coalesce', ['get', 'Facility_healthcenter'], 999],
-            ['coalesce', ['get', 'Facility_pharmarcy'], 999]
-          ],
-          '#67000d',  // >2km
-          1, '#ef6548',
-          2, '#fc8d59',
-          3, '#fdbb84',
-          4, '#fef0d9'
-        ],
-        '#808080'  // Non-residential buildings
-      ],
-      householdSize: [
-        'case',
-        ['==', ['get', 'TP_build'], 'ที่อยู่อาศัย'],
-        ['step',
-          ['get', 'Household_member_total'],
-          '#f7fbff',  // 0-1 members
-          2, '#deebf7',
-          3, '#c6dbef',
-          4, '#9ecae1',
-          5, '#6baed6',
-          6, '#4292c6',
-          7, '#2171b5',
-          8, '#084594'  // 8+ members
-        ],
-        '#808080'  // Non-residential buildings
-      ],
-      rentCost: [
-        'case',
-        ['==', ['get', 'TP_build'], 'ที่อยู่อาศัย'],
-        ['step',
-          ['get', 'House_rentcost'],
-          '#ffffd4',  // <5000
-          5000, '#fee391',
-          10000, '#fec44f',
-          15000, '#fe9929',
-          20000, '#ec7014',
-          25000, '#cc4c02',
-          30000, '#8c2d04'  // >30000
-        ],
-        '#808080'  // Non-residential buildings
-      ]
+      buildingType: () => {
+        const buildingType = feature.TP_build || '';
+        const colorMap = {
+          'ที่อยู่อาศัย': '#ff7f0e',
+          'พาณิชยกรรม': '#1f77b4',
+          'ที่อยู่อาศัยกึ่งพาณิชยกรรม': '#2ca02c',
+          'อุตสาหกรรม': '#d62728',
+          'สาธารณูปโภค สาธารณูปการ': '#9467bd',
+          'สถาบันการศึกษา': '#8c564b',
+          'สถาบันศาสนา': '#e377c2',
+          'สถาบันราชการและการสาธารณสุข': '#7f7f7f',
+          'นันทนาการ': '#bcbd22'
+        };
+        return colorMap[buildingType] || '#808080';
+      },
+      transportAccess: () => {
+        if (feature.TP_build !== 'ที่อยู่อาศัย') return '#808080';
+        const distance = Math.min(
+          feature.Facility_transportation || 999,
+          feature.Facility_metro || 999,
+          feature.Facility_busstop || 999
+        );
+        if (distance <= 0.5) return '#fef0d9';
+        if (distance <= 1) return '#fdbb84';
+        if (distance <= 1.5) return '#fc8d59';
+        if (distance <= 2) return '#ef6548';
+        return '#67000d';
+      },
+      healthAccess: () => {
+        if (feature.TP_build !== 'ที่อยู่อาศัย') return '#808080';
+        const distance = Math.min(
+          feature.Facility_hospital || 999,
+          feature.Facility_healthcenter || 999,
+          feature.Facility_pharmarcy || 999
+        );
+        if (distance <= 1) return '#fef0d9';
+        if (distance <= 2) return '#fdbb84';
+        if (distance <= 3) return '#fc8d59';
+        if (distance <= 4) return '#ef6548';
+        return '#67000d';
+      },
+      householdSize: () => {
+        if (feature.TP_build !== 'ที่อยู่อาศัย') return '#808080';
+        const size = feature.Household_member_total || 0;
+        if (size <= 1) return '#f7fbff';
+        if (size <= 2) return '#deebf7';
+        if (size <= 3) return '#c6dbef';
+        if (size <= 4) return '#9ecae1';
+        if (size <= 5) return '#6baed6';
+        if (size <= 6) return '#4292c6';
+        if (size <= 7) return '#2171b5';
+        return '#084594';
+      },
+      rentCost: () => {
+        if (feature.TP_build !== 'ที่อยู่อาศัย') return '#808080';
+        const cost = feature.House_rentcost || 0;
+        if (cost < 5000) return '#ffffd4';
+        if (cost < 10000) return '#fee391';
+        if (cost < 15000) return '#fec44f';
+        if (cost < 20000) return '#fe9929';
+        if (cost < 25000) return '#ec7014';
+        if (cost < 30000) return '#cc4c02';
+        return '#8c2d04';
+      }
     };
-    return schemes[colorScheme] || schemes.buildingType;
+    
+    return schemes[colorScheme] ? schemes[colorScheme]() : schemes.buildingType();
   };
 
   // Legend items for each color scheme
@@ -237,245 +228,178 @@ const StockMap = ({ filters, colorScheme = 'buildingType', isMobile }) => {
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
-    const map = new mapboxgl.Map({
-      container: mapContainerRef.current,
-      style: 'mapbox://styles/mapbox/light-v11',
-      center: [100.6147, 13.6688], 
+    // Create Leaflet map
+    const map = L.map(mapContainerRef.current, {
+      center: [13.6688, 100.6147], 
       zoom: 12,
       maxZoom: 18,
-      minZoom: 10
+      minZoom: 10,
+      zoomControl: !isMobile,
+      attributionControl: true
     });
 
-    const navigationControl = new mapboxgl.NavigationControl({
-      showCompass: true,
-      visualizePitch: true
-    });
-    
-    // Only add controls if we are not on mobile
-    if (!isMobile) {
-      map.addControl(navigationControl, 'top-right');
-      
-      // Add fullscreen control
-      map.addControl(
-        new mapboxgl.FullscreenControl(), 
-        'top-right'
-      );
-    } else {
-      // Add minimal controls for mobile
-      map.addControl(
-        new mapboxgl.NavigationControl({
-          showCompass: false,
-          visualizePitch: false
-        }),
-        'top-right'
-      );
+    // Add tile layer (OpenStreetMap)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors',
+      maxZoom: 18
+    }).addTo(map);
+
+    // Add zoom control for mobile in a different position
+    if (isMobile) {
+      L.control.zoom({
+        position: 'topright'
+      }).addTo(map);
     }
 
     mapRef.current = map;
     
     // Create legend container with responsive styling
-    const legend = document.createElement('div');
-    legend.className = 'map-legend';
+    const legend = L.control({ position: isMobile ? 'bottomleft' : 'bottomright' });
     
-    // Mobile-specific styling for legend
-    if (isMobile) {
-      legend.style.cssText = 'position: absolute; bottom: 40px; left: 10px; right: 10px; background: white; padding: 8px; border-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,0.2); font-size: 10px; max-height: 100px; overflow-y: auto; z-index: 1;';
-    } else {
-      legend.style.cssText = 'position: absolute; bottom: 30px; right: 10px; background: white; padding: 10px; border-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,0.2); font-size: 12px; max-height: 400px; overflow-y: auto;';
-    }
+    legend.onAdd = function () {
+      const div = L.DomUtil.create('div', 'info legend');
+      
+      if (isMobile) {
+        div.style.cssText = 'background: white; padding: 8px; border-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,0.2); font-size: 10px; max-height: 100px; overflow-y: auto; max-width: 280px;';
+      } else {
+        div.style.cssText = 'background: white; padding: 10px; border-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,0.2); font-size: 12px; max-height: 400px; overflow-y: auto;';
+      }
+      
+      return div;
+    };
     
+    legend.addTo(map);
     legendRef.current = legend;
-    mapContainerRef.current.appendChild(legend);
 
-    map.on('load', async () => {
-      try {
-        const response = await fetch('/data/bldg_pkn.geojson');
+    // Load GeoJSON data
+    fetch('/data/bldg_pkn.geojson')
+      .then(response => {
         if (!response.ok) throw new Error('Failed to load GeoJSON data');
-        const geojsonData = await response.json();
-
-        map.addSource('buildings', {
-          type: 'geojson',
-          data: geojsonData
+        return response.json();
+      })
+      .then(geojsonData => {
+        // Style function for buildings
+        const style = (feature) => ({
+          fillColor: getColor(feature.properties),
+          weight: 0.3,
+          opacity: 0.4,
+          color: '#666666',
+          fillOpacity: 0.6
         });
 
-        // Add building fill layer
-        map.addLayer({
-          id: 'building-fills',
-          type: 'fill',
-          source: 'buildings',
-          paint: {
-            'fill-color': getColorExpression(),
-            'fill-opacity': 0.6
-          }
-        });
-
-        // Add building outline layer
-        map.addLayer({
-          id: 'building-outlines',
-          type: 'line',
-          source: 'buildings',
-          paint: {
-            'line-color': '#666666',
-            'line-width': 0.3,
-            'line-opacity': 0.4
-          }
-        });
-
-        const bounds = new mapboxgl.LngLatBounds();
-        geojsonData.features.forEach(feature => {
-          if (feature.geometry && feature.geometry.coordinates) {
-            feature.geometry.coordinates[0].forEach(coord => {
-              bounds.extend(coord);
-            });
-          }
-        });
-        
-        map.fitBounds(bounds, {
-          padding: isMobile ? 20 : 50,
-          maxZoom: isMobile ? 14 : 16
-        });
-
-        // Add hover effect
-        let hoveredStateId = null;
-
-        map.on('mousemove', 'building-fills', (e) => {
-          if (e.features.length > 0) {
-            if (popupRef.current) {
-              popupRef.current.remove();
-            }
-        
-            if (hoveredStateId !== null) {
-              map.setFeatureState(
-                { source: 'buildings', id: hoveredStateId },
-                { hover: false }
-              );
-            }
-        
-            hoveredStateId = e.features[0].id;
-            map.setFeatureState(
-              { source: 'buildings', id: hoveredStateId },
-              { hover: true }
-            );
-        
-            const popup = new mapboxgl.Popup({
-              closeButton: false,
-              closeOnClick: false,
-              className: 'building-popup',
-              maxWidth: isMobile ? '300px' : '400px',
-              offset: isMobile ? 5 : 15
-            })
-              .setLngLat(e.lngLat)
-              .setHTML(generatePopupContent(e.features[0].properties, colorScheme))
-              .addTo(map);
-        
-            popupRef.current = popup;
-          }
-        });
-
-        // For mobile, add touch support
-        if (isMobile) {
-          map.on('click', 'building-fills', (e) => {
-            if (e.features.length > 0) {
-              if (popupRef.current) {
-                popupRef.current.remove();
-              }
-              
-              const popup = new mapboxgl.Popup({
-                closeButton: true,
-                className: 'building-popup',
-                maxWidth: '300px'
+        // Add building layer
+        const buildingLayer = L.geoJSON(geojsonData, {
+          style: style,
+          onEachFeature: (feature, layer) => {
+            // Add popup on click (for all devices)
+            layer.on('click', (e) => {
+              const popup = L.popup({
+                maxWidth: isMobile ? 300 : 400,
+                className: 'building-popup'
               })
-                .setLngLat(e.lngLat)
-                .setHTML(generatePopupContent(e.features[0].properties, colorScheme))
-                .addTo(map);
-              
-              popupRef.current = popup;
+                .setLatLng(e.latlng)
+                .setContent(generatePopupContent(feature.properties, colorScheme))
+                .openOn(map);
+            });
+
+            // Add hover effect for desktop
+            if (!isMobile) {
+              layer.on('mouseover', (e) => {
+                layer.setStyle({
+                  weight: 2,
+                  color: '#666',
+                  fillOpacity: 0.8
+                });
+              });
+
+              layer.on('mouseout', (e) => {
+                buildingLayer.resetStyle(layer);
+              });
             }
-          });
-        }
-
-        map.on('mouseleave', 'building-fills', () => {
-          if (hoveredStateId !== null) {
-            map.setFeatureState(
-              { source: 'buildings', id: hoveredStateId },
-              { hover: false }
-            );
           }
-          hoveredStateId = null;
+        }).addTo(map);
 
-          if (popupRef.current && !isMobile) {
-            popupRef.current.remove();
-            popupRef.current = null;
-          }
+        buildingLayerRef.current = buildingLayer;
+
+        // Fit map to data bounds
+        map.fitBounds(buildingLayer.getBounds(), {
+          padding: isMobile ? [20, 20] : [50, 50],
+          maxZoom: isMobile ? 14 : 16
         });
 
         // Update legend initially
         updateLegend();
-
-      } catch (error) {
+      })
+      .catch(error => {
         console.error('Error loading GeoJSON:', error);
-      }
-    });
+      });
 
     return () => {
-      if (popupRef.current) {
-        popupRef.current.remove();
-      }
       if (mapRef.current) {
         mapRef.current.remove();
-      }
-      if (legendRef.current) {
-        legendRef.current.remove();
       }
     };
   }, [isMobile]);
 
   // Update filters when they change
   useEffect(() => {
-    if (!mapRef.current || !mapRef.current.getLayer('building-fills')) return;
+    if (!mapRef.current || !buildingLayerRef.current) return;
 
-    let filterArray = ['all'];
-    
-    if (filters.buildingType !== 'all') {
-      filterArray.push(['==', ['get', 'TP_build'], filters.buildingType]);
-    }
-    
-    if (filters.stories !== 'all') {
-      const [min, max] = filters.stories.split('-').map(Number);
-      filterArray.push(
-        ['>=', ['get', 'STOREY'], min],
-        ['<=', ['get', 'STOREY'], max]
-      );
-    }
-    
-    if (filters.rentRange !== 'all') {
-      const [min, max] = filters.rentRange.split('-').map(Number);
-      filterArray.push(
-        ['>=', ['get', 'House_rentcost'], min],
-        ['<=', ['get', 'House_rentcost'], max]
-      );
-    }
+    // Filter the layer based on current filters
+    buildingLayerRef.current.eachLayer((layer) => {
+      const feature = layer.feature.properties;
+      let shouldShow = true;
+      
+      if (filters.buildingType !== 'all') {
+        shouldShow = shouldShow && (feature.TP_build === filters.buildingType);
+      }
+      
+      if (filters.stories !== 'all') {
+        const [min, max] = filters.stories.split('-').map(Number);
+        const stories = feature.STOREY || 0;
+        shouldShow = shouldShow && (stories >= min && stories <= max);
+      }
+      
+      if (filters.rentRange !== 'all') {
+        const [min, max] = filters.rentRange.split('-').map(Number);
+        const rent = feature.House_rentcost || 0;
+        shouldShow = shouldShow && (rent >= min && rent <= max);
+      }
 
-    mapRef.current.setFilter('building-fills', filterArray);
-    mapRef.current.setFilter('building-outlines', filterArray);
+      // Show/hide layer based on filter
+      if (shouldShow) {
+        if (!mapRef.current.hasLayer(layer)) {
+          layer.addTo(mapRef.current);
+        }
+      } else {
+        if (mapRef.current.hasLayer(layer)) {
+          mapRef.current.removeLayer(layer);
+        }
+      }
+    });
   }, [filters]);
 
   // Update colors when color scheme changes
   useEffect(() => {
-    if (!mapRef.current || !mapRef.current.getLayer('building-fills')) return;
+    if (!mapRef.current || !buildingLayerRef.current) return;
 
-    mapRef.current.setPaintProperty(
-      'building-fills',
-      'fill-color',
-      getColorExpression()
-    );
+    // Re-style all layers
+    buildingLayerRef.current.eachLayer((layer) => {
+      layer.setStyle({
+        fillColor: getColor(layer.feature.properties),
+        weight: 0.3,
+        opacity: 0.4,
+        color: '#666666',
+        fillOpacity: 0.6
+      });
+    });
 
     updateLegend();
   }, [colorScheme]);
 
   // Update legend content
   const updateLegend = () => {
-    if (!legendRef.current) return;
+    if (!legendRef.current || !legendRef.current.getContainer()) return;
 
     const items = getLegendItems();
     const title = {
@@ -491,7 +415,7 @@ const StockMap = ({ filters, colorScheme = 'buildingType', isMobile }) => {
     const marginBottom = isMobile ? '2px' : '4px';
     const colorBoxSize = isMobile ? '12px' : '16px';
     
-    legendRef.current.innerHTML = `
+    legendRef.current.getContainer().innerHTML = `
       <h4 style="margin: 0 0 8px 0; font-weight: 600; font-size: ${fontSize};">${title}</h4>
       ${items.map(item => `
         <div style="display: flex; align-items: center; margin-bottom: ${marginBottom};">
@@ -513,7 +437,7 @@ const StockMap = ({ filters, colorScheme = 'buildingType', isMobile }) => {
         }}
       />
       <div className="absolute bottom-0 right-0 bg-white bg-opacity-75 px-2 py-1 text-xs text-gray-600">
-        © Mapbox © OpenStreetMap
+        © OpenStreetMap contributors
       </div>
     </div>
   );

@@ -24,26 +24,19 @@ body {
   margin-bottom: 1.5rem;
 }
 
-/* Mapbox specific styles */
-.map-container {
+/* Leaflet map styles */
+.leaflet-container {
   width: 100%;
   height: 100%;
-  position: relative;
-}
-
-.mapboxgl-map {
-  width: 100%;
-  height: 100%;
+  border-radius: 0.5rem;
 }
 
 .province-marker {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
   background-color: #3b82f6;
   border: 2px solid white;
   cursor: pointer;
   transition: background-color 0.3s ease;
+  box-shadow: 0 0 10px rgba(0,0,0,0.3);
 }
 
 .province-marker:hover {
@@ -51,38 +44,115 @@ body {
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
 }
 
-/* Fix for mapbox canvas width/height */
-.mapboxgl-canvas {
-  width: 100% !important;
-  height: 100% !important;
+/* Custom popup styles for Leaflet */
+.leaflet-popup-content-wrapper {
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
-.building-popup .mapboxgl-popup-content {
+.leaflet-popup-content {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.leaflet-popup-tip {
+  background: rgb(249, 250, 251) !important;
+}
+
+.building-popup .leaflet-popup-content-wrapper {
   padding: 0 !important;
   border-radius: 8px;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
-.building-popup .mapboxgl-popup-tip {
-  border-top-color: rgb(249, 250, 251) !important;
+.hds-popup .leaflet-popup-content-wrapper {
+  padding: 0 !important;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
-.mapboxgl-ctrl-group {
+.mobile-popup .leaflet-popup-content-wrapper {
+  padding: 0 !important;
+  border-radius: 6px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Leaflet control styling */
+.leaflet-control-container .leaflet-control {
   border-radius: 8px !important;
   overflow: hidden;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
 }
 
-.mapboxgl-ctrl-group button {
+.leaflet-control-zoom a {
   width: 32px !important;
   height: 32px !important;
+  line-height: 32px !important;
+  border-radius: 0 !important;
 }
 
-.mapboxgl-ctrl-group button:focus {
+.leaflet-control-zoom a:hover {
+  background-color: #f1f5f9 !important;
+}
+
+.leaflet-control-zoom a:focus {
   box-shadow: 0 0 2px 2px rgba(0,0,0,0.1) !important;
 }
 
-/* Space between control groups */
-.mapboxgl-ctrl-group + .mapboxgl-ctrl-group {
-  margin-top: 8px;
+/* Legend styles for Leaflet */
+.leaflet-control.legend {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  padding: 10px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.leaflet-control.legend h4 {
+  margin: 0 0 8px 0;
+  font-weight: 600;
+  color: #374151;
+}
+
+.leaflet-control.legend .legend-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.leaflet-control.legend .legend-color {
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
+  border: 1px solid rgba(0,0,0,0.2);
+  flex-shrink: 0;
+}
+
+/* Remove Mapbox attribution since we're using OSM */
+.leaflet-control-attribution {
+  background: rgba(255, 255, 255, 0.8) !important;
+  font-size: 11px !important;
+  padding: 2px 5px !important;
+  border-radius: 4px !important;
+}
+
+/* Mobile responsive adjustments for Leaflet */
+@media (max-width: 768px) {
+  .leaflet-control-zoom {
+    position: absolute !important;
+    top: 10px !important;
+    right: 10px !important;
+  }
+  
+  .leaflet-control.legend {
+    max-width: calc(100vw - 40px);
+    max-height: 120px;
+    overflow-y: auto;
+    font-size: 10px;
+  }
+  
+  .leaflet-popup-content-wrapper {
+    max-width: 90vw !important;
+  }
 }
