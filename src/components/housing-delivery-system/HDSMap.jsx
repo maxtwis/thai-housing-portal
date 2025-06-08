@@ -286,7 +286,7 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
                   const [x, y] = coord;
                   const lng = (x / 20037508.34) * 180;
                   const lat = (Math.atan(Math.exp((y / 20037508.34) * Math.PI)) * 360 / Math.PI) - 90;
-                  return [lat, lng]; // Note: Leaflet uses [lat, lng] order
+                  return [lng, lat]; // Note: Leaflet uses [lat, lng] order
                 })
               );
               
