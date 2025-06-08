@@ -18,7 +18,6 @@ export default defineConfig({
           vendor: ['react', 'react-dom', 'lucide-react'],
           router: ['react-router-dom'],
           charts: ['recharts'],
-          maps: ['mapbox-gl']
         }
       }
     },
