@@ -400,15 +400,11 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
           }
         });
         
-        // Fit map to the data bounds with some padding for movement
+        // Fit map to the data bounds
         map.fitBounds(bounds, {
           padding: isMobile ? [20, 20] : [50, 50],
           maxZoom: isMobile ? 14 : 16
         });
-
-        // Set max bounds with extra padding to allow some movement
-        const paddedBounds = bounds.pad(0.5); // Add 50% padding around the bounds
-        map.setMaxBounds(paddedBounds);
 
         // Update legend initially
         updateLegend();
