@@ -375,22 +375,27 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
               }
             });
 
-            // Add hover effect for desktop
+            // Add hover effect for desktop only (no popup repositioning)
             if (!isMobile) {
               layer.on('mouseover', (e) => {
-                const popup = L.popup({
-                  closeButton: false,
-                  className: 'hds-popup',
-                  maxWidth: 400,
-                  offset: [15, 0]
-                })
-                  .setLatLng(e.latlng)
-                  .setContent(generatePopupContent(feature, colorScheme))
-                  .openOn(map);
+                // Just highlight the layer, no popup
+                layer.setStyle({
+                  weight: 2,
+                  color: '#ff0000',
+                  fillOpacity: 0.9
+                });
               });
 
               layer.on('mouseout', (e) => {
-                map.closePopup();
+                // Reset to normal style
+                const isSelected = selectedGrid && selectedGrid.FID === layer.feature.properties.FID;
+                layer.setStyle({
+                  fillColor: getColor(layer.feature),
+                  weight: isSelected ? 3 : 0.5,
+                  opacity: 0.8,
+                  color: isSelected ? '#ff0000' : '#666666',
+                  fillOpacity: 0.7
+                });
               });
             }
           }
