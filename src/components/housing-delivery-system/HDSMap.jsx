@@ -389,7 +389,7 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
 
         hdsLayerRef.current = hdsLayer;
 
-        // Calculate bounds from transformed coordinates
+        // Calculate bounds from transformed coordinates (for initial view only)
         const bounds = L.latLngBounds();
         transformedGeoJSON.features.forEach(feature => {
           if (feature.geometry && feature.geometry.coordinates) {
@@ -400,11 +400,13 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
           }
         });
         
-        // Fit map to the data bounds
-        map.fitBounds(bounds, {
-          padding: isMobile ? [20, 20] : [50, 50],
-          maxZoom: isMobile ? 14 : 16
-        });
+        // Only fit bounds on initial load, don't force it afterwards
+        if (bounds.isValid()) {
+          map.fitBounds(bounds, {
+            padding: isMobile ? [20, 20] : [50, 50],
+            maxZoom: isMobile ? 14 : 16
+          });
+        }
 
         // Update legend initially
         updateLegend();
