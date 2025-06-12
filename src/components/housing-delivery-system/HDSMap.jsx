@@ -274,6 +274,7 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
       })
       .then(geojsonData => {
         console.log('GeoJSON data loaded:', geojsonData.features.length, 'features');
+        console.log('Original coordinates sample:', geojsonData.features[0]?.geometry?.coordinates[0]?.slice(0, 2));
         
         // Transform coordinates from Web Mercator (EPSG:3857) to WGS84 (EPSG:4326)
         const transformedGeoJSON = {
@@ -282,10 +283,18 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
             if (feature.geometry && feature.geometry.coordinates) {
               const transformedCoordinates = feature.geometry.coordinates.map(ring => 
                 ring.map(coord => {
-                  // Convert from Web Mercator to WGS84
+                  // Convert from Web Mercator to WGS84 using more precise formula
                   const [x, y] = coord;
-                  const lng = (x / 20037508.34) * 180;
-                  const lat = (Math.atan(Math.exp((y / 20037508.34) * Math.PI)) * 360 / Math.PI) - 90;
+                  
+                  // More precise Web Mercator to WGS84 conversion
+                  const lng = x / 20037508.342789244 * 180;
+                  const lat = Math.atan(Math.sinh(y / 20037508.342789244 * Math.PI)) * 180 / Math.PI;
+                  
+                  // Debug: Check if coordinates are reasonable for Thailand
+                  if (lng < 97 || lng > 106 || lat < 5 || lat > 21) {
+                    console.warn('Unusual coordinates detected:', { original: coord, transformed: [lng, lat] });
+                  }
+                  
                   return [lng, lat]; // GeoJSON format: [lng, lat]
                 })
               );
