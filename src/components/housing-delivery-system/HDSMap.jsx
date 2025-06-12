@@ -273,36 +273,8 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
         return response.json();
       })
       .then(geojsonData => {
-        console.log('Original GeoJSON data:', geojsonData.features.length, 'features');
-        
-        // Transform coordinates from Web Mercator (EPSG:3857) to WGS84 (EPSG:4326)
-        const transformedGeoJSON = {
-          ...geojsonData,
-          features: geojsonData.features.map(feature => {
-            if (feature.geometry && feature.geometry.coordinates) {
-              const transformedCoordinates = feature.geometry.coordinates.map(ring => 
-                ring.map(coord => {
-                  // Convert from Web Mercator to WGS84
-                  const [x, y] = coord;
-                  const lng = (x / 20037508.34) * 180;
-                  const lat = (Math.atan(Math.exp((y / 20037508.34) * Math.PI)) * 360 / Math.PI) - 90;
-                  return [lat, lng]; // Note: Leaflet uses [lat, lng] order
-                })
-              );
-              
-              return {
-                ...feature,
-                geometry: {
-                  ...feature.geometry,
-                  coordinates: transformedCoordinates
-                }
-              };
-            }
-            return feature;
-          })
-        };
-
-        console.log('Transformed GeoJSON:', transformedGeoJSON.features.length, 'features');
+        console.log('GeoJSON data loaded:', geojsonData.features.length, 'features');
+        console.log('Sample coordinates:', geojsonData.features[0]?.geometry?.coordinates[0]?.slice(0, 2));
 
         // Style function for HDS grids
         const style = (feature) => {
@@ -318,7 +290,7 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
         };
 
         // Add HDS layer
-        const hdsLayer = L.geoJSON(transformedGeoJSON, {
+        const hdsLayer = L.geoJSON(geojsonData, {
           style: style,
           onEachFeature: (feature, layer) => {
             // Add click functionality for grid selection
@@ -388,12 +360,13 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
 
         hdsLayerRef.current = hdsLayer;
 
-        // Calculate bounds from transformed coordinates
+        // Calculate bounds from coordinates
         const bounds = L.latLngBounds();
-        transformedGeoJSON.features.forEach(feature => {
+        geojsonData.features.forEach(feature => {
           if (feature.geometry && feature.geometry.coordinates) {
             feature.geometry.coordinates[0].forEach(coord => {
-              bounds.extend(coord);
+              // GeoJSON format is [lng, lat], Leaflet expects [lat, lng]
+              bounds.extend([coord[1], coord[0]]);
             });
           }
         });
