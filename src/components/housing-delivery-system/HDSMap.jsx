@@ -429,7 +429,7 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
         mapRef.current.remove();
       }
     };
-  }, [isMobile]);
+  }, [isMobile]); // REMOVED selectedGrid and colorScheme dependencies
 
   // Update filters when they change
   useEffect(() => {
@@ -474,7 +474,7 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
     });
   }, [filters]);
 
-  // Update colors when color scheme changes
+  // Update colors and selected grid styling when color scheme or selected grid changes
   useEffect(() => {
     if (!mapRef.current || !hdsLayerRef.current) return;
 
@@ -492,25 +492,7 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
     });
 
     updateLegend();
-  }, [colorScheme]);
-
-  // Update selected grid outline when selectedGrid changes
-  useEffect(() => {
-    if (!mapRef.current || !hdsLayerRef.current) return;
-
-    // Update the outline for selected grid
-    hdsLayerRef.current.eachLayer((layer) => {
-      const isSelected = selectedGrid && selectedGrid.FID === layer.feature.properties.FID;
-      
-      layer.setStyle({
-        fillColor: getColor(layer.feature),
-        weight: isSelected ? 3 : 0.5,
-        opacity: 0.8,
-        color: isSelected ? '#ff0000' : '#666666',
-        fillOpacity: 0.7
-      });
-    });
-  }, [selectedGrid]);
+  }, [colorScheme, selectedGrid]); // Combined both effects into one
 
   // Update legend content
   const updateLegend = () => {
