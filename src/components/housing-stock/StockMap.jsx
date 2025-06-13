@@ -1153,16 +1153,14 @@ const StockMap = ({ filters, colorScheme = 'buildingType', isMobile }) => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden relative h-full">
-      {/* Nearby Places Panel */}
-      <div className={`absolute z-10 bg-white rounded-lg shadow-lg transition-all duration-300 ${
-        isMobile 
-          ? 'top-4 left-4 right-4 max-h-[40vh] overflow-y-auto' 
-          : 'top-4 left-4 max-w-sm max-h-[80vh] overflow-y-auto'
-      } ${showNearbyPanel ? 'opacity-100' : 'opacity-95 hover:opacity-100'}`}>
+    <div className="bg-white rounded-lg shadow-md overflow-hidden relative h-full flex flex-col">
+      {/* Nearby Places Panel - Above the map */}
+      <div className={`bg-white border-b border-gray-200 transition-all duration-300 ${
+        showNearbyPanel ? 'block' : 'hidden'
+      }`}>
         
         {/* Panel Header */}
-        <div className="p-3 border-b border-gray-200">
+        <div className="p-3 border-b border-gray-100">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-gray-800 flex items-center">
               <span className="mr-2">🔍</span>
@@ -1192,191 +1190,203 @@ const StockMap = ({ filters, colorScheme = 'buildingType', isMobile }) => {
           )}
         </div>
 
-        {showNearbyPanel && (
-          <>
-            {/* Search Radius Control */}
-            <div className="p-3 border-b border-gray-100">
-              <label className="block text-xs font-medium text-gray-700 mb-2">
-                Search Radius: {searchRadius}m
-              </label>
-              <div className="flex items-center space-x-2">
-                <input
-                  type="range"
-                  min="500"
-                  max="2000"
-                  step="250"
-                  value={searchRadius}
-                  onChange={(e) => handleRadiusChange(parseInt(e.target.value))}
-                  className="flex-1"
-                />
-                <span className="text-xs text-gray-500 min-w-[60px]">
-                  {searchRadius < 1000 ? `${searchRadius}m` : `${(searchRadius/1000).toFixed(1)}km`}
-                </span>
-              </div>
-            </div>
+        {/* Search Radius Control */}
+        <div className="p-3 border-b border-gray-100">
+          <label className="block text-xs font-medium text-gray-700 mb-2">
+            Search Radius: {searchRadius}m
+          </label>
+          <div className="flex items-center space-x-2">
+            <input
+              type="range"
+              min="500"
+              max="2000"
+              step="250"
+              value={searchRadius}
+              onChange={(e) => handleRadiusChange(parseInt(e.target.value))}
+              className="flex-1"
+            />
+            <span className="text-xs text-gray-500 min-w-[60px]">
+              {searchRadius < 1000 ? `${searchRadius}m` : `${(searchRadius/1000).toFixed(1)}km`}
+            </span>
+          </div>
+        </div>
 
-            {/* Category Selection */}
-            <div className="p-3 border-b border-gray-100">
-              <div className="grid grid-cols-1 gap-2">
-                {Object.entries(CATEGORIES).map(([key, config]) => (
-                  <button
-                    key={key}
-                    onClick={() => toggleCategory(key)}
-                    className={`text-xs px-3 py-2 rounded-md flex items-center justify-between transition-all ${
-                      activeCategories.includes(key)
-                        ? `${config.bgColor} ${config.textColor} ${config.borderColor} border`
-                        : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-2">
-                      <span>{config.icon}</span>
-                      <span className="font-medium">{config.name}</span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      {nearbyData[key] && nearbyData[key].length > 0 && (
-                        <span className="bg-white text-gray-700 px-1.5 py-0.5 rounded-full text-xs font-bold">
-                          {nearbyData[key].length}
-                        </span>
-                      )}
-                      {activeCategories.includes(key) && (
-                        <span className="text-xs">✓</span>
-                      )}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Loading State */}
-            {loading && (
-              <div className="p-3 border-b border-gray-100">
-                <div className="flex items-center justify-center text-blue-600">
-                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-blue-500 mr-2"></div>
-                  <span className="text-xs">Searching nearby places...</span>
+        {/* Category Selection */}
+        <div className="p-3 border-b border-gray-100">
+          <div className={`grid gap-2 ${isMobile ? 'grid-cols-2' : 'grid-cols-4'}`}>
+            {Object.entries(CATEGORIES).map(([key, config]) => (
+              <button
+                key={key}
+                onClick={() => toggleCategory(key)}
+                className={`text-xs px-2 py-2 rounded-md flex items-center justify-between transition-all ${
+                  activeCategories.includes(key)
+                    ? `${config.bgColor} ${config.textColor} ${config.borderColor} border`
+                    : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200'
+                }`}
+              >
+                <div className="flex items-center space-x-1">
+                  <span>{config.icon}</span>
+                  <span className="font-medium">{config.name}</span>
                 </div>
-              </div>
-            )}
-
-            {/* Results Summary */}
-            {searchCenter && Object.keys(nearbyData).length > 0 && !loading && (
-              <div className="p-3">
-                <div className="text-xs text-gray-600 mb-2">
-                  <strong>Found {getTotalResults()} places</strong> within {searchRadius < 1000 ? `${searchRadius}m` : `${(searchRadius/1000).toFixed(1)}km`}
+                <div className="flex items-center space-x-1">
+                  {nearbyData[key] && nearbyData[key].length > 0 && (
+                    <span className="bg-white text-gray-700 px-1.5 py-0.5 rounded-full text-xs font-bold">
+                      {nearbyData[key].length}
+                    </span>
+                  )}
+                  {activeCategories.includes(key) && (
+                    <span className="text-xs">✓</span>
+                  )}
                 </div>
-                
-                {Object.entries(nearbyData).map(([category, pois]) => {
-                  if (activeCategories.includes(category) && pois.length > 0) {
-                    return (
-                      <div key={category} className="flex items-center justify-between text-xs mb-1 p-1 rounded bg-gray-50">
-                        <span className="flex items-center">
-                          <span className="mr-2">{CATEGORIES[category].icon}</span>
-                          <span className="font-medium">{CATEGORIES[category].name}</span>
-                        </span>
-                        <span className="bg-white px-2 py-1 rounded text-xs font-bold text-gray-700">
-                          {pois.length}
-                        </span>
-                      </div>
-                    );
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Loading State */}
+        {loading && (
+          <div className="p-3 border-b border-gray-100">
+            <div className="flex items-center justify-center text-blue-600">
+              <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-blue-500 mr-2"></div>
+              <span className="text-xs">Searching nearby places...</span>
+            </div>
+          </div>
+        )}
+
+        {/* Results Summary */}
+        {searchCenter && Object.keys(nearbyData).length > 0 && !loading && (
+          <div className="p-3 border-b border-gray-100">
+            <div className="text-xs text-gray-600 mb-2">
+              <strong>Found {getTotalResults()} places</strong> within {searchRadius < 1000 ? `${searchRadius}m` : `${(searchRadius/1000).toFixed(1)}km`}
+            </div>
+            
+            <div className={`grid gap-1 ${isMobile ? 'grid-cols-2' : 'grid-cols-4'}`}>
+              {Object.entries(nearbyData).map(([category, pois]) => {
+                if (activeCategories.includes(category) && pois.length > 0) {
+                  return (
+                    <div key={category} className="flex items-center justify-between text-xs p-1 rounded bg-gray-50">
+                      <span className="flex items-center">
+                        <span className="mr-1">{CATEGORIES[category].icon}</span>
+                        <span className="font-medium text-xs">{CATEGORIES[category].name}</span>
+                      </span>
+                      <span className="bg-white px-1 py-0.5 rounded text-xs font-bold text-gray-700">
+                        {pois.length}
+                      </span>
+                    </div>
+                  );
+                }
+                return null;
+              })}
+            </div>
+            
+            <div className="mt-2 pt-2 border-t border-gray-200 text-xs text-gray-500">
+              💡 Click on map markers for more details
+            </div>
+          </div>
+        )}
+
+        {/* No Results */}
+        {searchCenter && Object.keys(nearbyData).length > 0 && getTotalResults() === 0 && !loading && (
+          <div className="p-3 text-center">
+            <p className="text-xs text-gray-500">
+              No places found in selected categories
+            </p>
+            <p className="text-xs text-gray-400 mt-1">
+              Try increasing search radius or selecting more categories
+            </p>
+          </div>
+        )}
+
+        {/* Debug Info (only in development) */}
+        {process.env.NODE_ENV === 'development' && searchCenter && (
+          <div className="p-2 border-t border-gray-100 bg-gray-50">
+            <div className="text-xs text-gray-600">
+              <strong>Debug Info:</strong>
+              <br />
+              Search Center: {searchCenter.lat.toFixed(6)}, {searchCenter.lng.toFixed(6)}
+              <br />
+              Radius: {searchRadius}m
+              <br />
+              Active Categories: {activeCategories.join(', ')}
+            </div>
+          </div>
+        )}
+
+        {/* Test Buttons for debugging */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="p-3 border-t border-gray-100 bg-yellow-50">
+            <div className="text-xs text-gray-700 mb-2">
+              <strong>Debug Controls:</strong>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => {
+                  const testLat = 13.6688;
+                  const testLng = 100.6147;
+                  console.log('Testing nearby search with coordinates:', { testLat, testLng });
+                  if (activeCategories.length > 0) {
+                    fetchNearbyPlaces(testLat, testLng, activeCategories, searchRadius);
+                  } else {
+                    console.warn('No active categories selected');
                   }
-                  return null;
-                })}
-                
-                <div className="mt-2 pt-2 border-t border-gray-200 text-xs text-gray-500">
-                  💡 Click on map markers for more details
-                </div>
-              </div>
-            )}
-
-            {/* No Results */}
-            {searchCenter && Object.keys(nearbyData).length > 0 && getTotalResults() === 0 && !loading && (
-              <div className="p-3 text-center">
-                <p className="text-xs text-gray-500">
-                  No places found in selected categories
-                </p>
-                <p className="text-xs text-gray-400 mt-1">
-                  Try increasing search radius or selecting more categories
-                </p>
-              </div>
-            )}
-
-            {/* Debug Info (only in development) */}
-            {process.env.NODE_ENV === 'development' && searchCenter && (
-              <div className="p-2 border-t border-gray-100 bg-gray-50">
-                <div className="text-xs text-gray-600">
-                  <strong>Debug Info:</strong>
-                  <br />
-                  Search Center: {searchCenter.lat.toFixed(6)}, {searchCenter.lng.toFixed(6)}
-                  <br />
-                  Radius: {searchRadius}m
-                  <br />
-                  Active Categories: {activeCategories.join(', ')}
-                </div>
-              </div>
-            )}
-
-            {/* Test Buttons for debugging */}
-            {process.env.NODE_ENV === 'development' && (
-              <div className="p-3 border-t border-gray-100 bg-yellow-50">
-                <div className="text-xs text-gray-700 mb-2">
-                  <strong>Debug Controls:</strong>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    onClick={() => {
-                      const testLat = 13.6688;
-                      const testLng = 100.6147;
-                      console.log('Testing nearby search with coordinates:', { testLat, testLng });
-                      if (activeCategories.length > 0) {
-                        fetchNearbyPlaces(testLat, testLng, activeCategories, searchRadius);
-                      } else {
-                        console.warn('No active categories selected');
-                      }
-                    }}
-                    className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded"
-                  >
-                    Test API Call
-                  </button>
-                  <button
-                    onClick={() => {
-                      console.log('=== StockMap Debug Info ===');
-                      console.log('Active categories:', activeCategories);
-                      console.log('Search radius:', searchRadius);
-                      console.log('Search center:', searchCenter);
-                      console.log('Nearby data count:', Object.keys(nearbyData).length);
-                      console.log('Loading state:', loading);
-                      console.log('Map ref:', !!mapRef.current);
-                      console.log('Window functions available:', {
-                        searchNearby: typeof window.searchNearby,
-                        searchNearbyFromBuilding: typeof window.searchNearbyFromBuilding,
-                        handleNearbySearchFromBuilding: typeof window.handleNearbySearchFromBuilding,
-                        currentBuildingCoords: !!window.currentBuildingCoords
-                      });
-                      console.log('=== End Debug Info ===');
-                    }}
-                    className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded"
-                  >
-                    Log State
-                  </button>
-                </div>
-              </div>
-            )}
-          </>
+                }}
+                className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded"
+              >
+                Test API Call
+              </button>
+              <button
+                onClick={() => {
+                  console.log('=== StockMap Debug Info ===');
+                  console.log('Active categories:', activeCategories);
+                  console.log('Search radius:', searchRadius);
+                  console.log('Search center:', searchCenter);
+                  console.log('Nearby data count:', Object.keys(nearbyData).length);
+                  console.log('Loading state:', loading);
+                  console.log('Map ref:', !!mapRef.current);
+                  console.log('Window functions available:', {
+                    searchNearby: typeof window.searchNearby,
+                    searchNearbyFromBuilding: typeof window.searchNearbyFromBuilding,
+                    handleNearbySearchFromBuilding: typeof window.handleNearbySearchFromBuilding,
+                    currentBuildingCoords: !!window.currentBuildingCoords
+                  });
+                  console.log('=== End Debug Info ===');
+                }}
+                className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded"
+              >
+                Log State
+              </button>
+            </div>
+          </div>
         )}
       </div>
 
-      {/* Map Container */}
-      <div 
-        ref={mapContainerRef}
-        className="w-full h-full"
-        style={{ 
-          minHeight: "400px", 
-          height: getMapHeight() 
-        }}
-      />
-      
-      {/* Attribution */}
-      <div className="absolute bottom-0 right-0 bg-white bg-opacity-75 px-2 py-1 text-xs text-gray-600">
-        © OpenStreetMap contributors
+      {/* Toggle Button - When panel is hidden */}
+      {!showNearbyPanel && (
+        <div className="absolute top-2 left-2 z-10">
+          <button
+            onClick={() => setShowNearbyPanel(true)}
+            className="bg-white rounded-lg shadow-md px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center"
+          >
+            <span className="mr-2">🔍</span>
+            What's nearby?
+          </button>
+        </div>
+      )}
+
+      {/* Map Container - Takes remaining space */}
+      <div className="flex-1 relative">
+        <div 
+          ref={mapContainerRef}
+          className="w-full h-full"
+          style={{ 
+            minHeight: "400px"
+          }}
+        />
+        
+        {/* Attribution */}
+        <div className="absolute bottom-0 right-0 bg-white bg-opacity-75 px-2 py-1 text-xs text-gray-600">
+          © OpenStreetMap contributors
+        </div>
       </div>
 
       {/* Custom CSS for better popup styling */}
