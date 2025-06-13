@@ -10,11 +10,166 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
+// Overpass API queries for different categories
+const OVERPASS_QUERIES = {
+  schools: (lat, lon, radius = 1000) => `
+    [out:json][timeout:25];
+    (
+      node["amenity"="school"](around:${radius},${lat},${lon});
+      node["amenity"="university"](around:${radius},${lat},${lon});
+      node["amenity"="kindergarten"](around:${radius},${lat},${lon});
+      node["amenity"="college"](around:${radius},${lat},${lon});
+      way["amenity"="school"](around:${radius},${lat},${lon});
+      way["amenity"="university"](around:${radius},${lat},${lon});
+    );
+    out geom;
+  `,
+  shopping: (lat, lon, radius = 1000) => `
+    [out:json][timeout:25];
+    (
+      node["shop"](around:${radius},${lat},${lon});
+      node["amenity"="marketplace"](around:${radius},${lat},${lon});
+      node["shop"="supermarket"](around:${radius},${lat},${lon});
+      node["shop"="convenience"](around:${radius},${lat},${lon});
+      node["shop"="mall"](around:${radius},${lat},${lon});
+      way["amenity"="marketplace"](around:${radius},${lat},${lon});
+      way["shop"="mall"](around:${radius},${lat},${lon});
+    );
+    out geom;
+  `,
+  healthcare: (lat, lon, radius = 1000) => `
+    [out:json][timeout:25];
+    (
+      node["amenity"="hospital"](around:${radius},${lat},${lon});
+      node["amenity"="clinic"](around:${radius},${lat},${lon});
+      node["amenity"="pharmacy"](around:${radius},${lat},${lon});
+      node["amenity"="dentist"](around:${radius},${lat},${lon});
+      node["amenity"="doctors"](around:${radius},${lat},${lon});
+      way["amenity"="hospital"](around:${radius},${lat},${lon});
+      way["amenity"="clinic"](around:${radius},${lat},${lon});
+    );
+    out geom;
+  `,
+  food: (lat, lon, radius = 1000) => `
+    [out:json][timeout:25];
+    (
+      node["amenity"="restaurant"](around:${radius},${lat},${lon});
+      node["amenity"="cafe"](around:${radius},${lat},${lon});
+      node["amenity"="fast_food"](around:${radius},${lat},${lon});
+      node["amenity"="bar"](around:${radius},${lat},${lon});
+      node["amenity"="pub"](around:${radius},${lat},${lon});
+      node["amenity"="food_court"](around:${radius},${lat},${lon});
+    );
+    out geom;
+  `,
+  parks: (lat, lon, radius = 1000) => `
+    [out:json][timeout:25];
+    (
+      node["leisure"="park"](around:${radius},${lat},${lon});
+      way["leisure"="park"](around:${radius},${lat},${lon});
+      node["amenity"="playground"](around:${radius},${lat},${lon});
+      node["leisure"="garden"](around:${radius},${lat},${lon});
+      way["leisure"="garden"](around:${radius},${lat},${lon});
+      node["leisure"="recreation_ground"](around:${radius},${lat},${lon});
+    );
+    out geom;
+  `,
+  transport: (lat, lon, radius = 1000) => `
+    [out:json][timeout:25];
+    (
+      node["public_transport"="station"](around:${radius},${lat},${lon});
+      node["amenity"="bus_station"](around:${radius},${lat},${lon});
+      node["highway"="bus_stop"](around:${radius},${lat},${lon});
+      node["railway"="station"](around:${radius},${lat},${lon});
+      node["public_transport"="stop_position"](around:${radius},${lat},${lon});
+      node["amenity"="taxi"](around:${radius},${lat},${lon});
+    );
+    out geom;
+  `,
+  worship: (lat, lon, radius = 1000) => `
+    [out:json][timeout:25];
+    (
+      node["amenity"="place_of_worship"](around:${radius},${lat},${lon});
+      way["amenity"="place_of_worship"](around:${radius},${lat},${lon});
+    );
+    out geom;
+  `
+};
+
+// Category configurations
+const CATEGORIES = {
+  schools: { 
+    name: 'Schools', 
+    color: '#4285F4', 
+    icon: '🏫',
+    bgColor: 'bg-blue-100',
+    textColor: 'text-blue-800',
+    borderColor: 'border-blue-300'
+  },
+  shopping: { 
+    name: 'Shopping', 
+    color: '#EA4335', 
+    icon: '🛒',
+    bgColor: 'bg-red-100',
+    textColor: 'text-red-800',
+    borderColor: 'border-red-300'
+  },
+  healthcare: { 
+    name: 'Healthcare', 
+    color: '#34A853', 
+    icon: '🏥',
+    bgColor: 'bg-green-100',
+    textColor: 'text-green-800',
+    borderColor: 'border-green-300'
+  },
+  food: { 
+    name: 'Food & Drink', 
+    color: '#FBBC04', 
+    icon: '🍽️',
+    bgColor: 'bg-yellow-100',
+    textColor: 'text-yellow-800',
+    borderColor: 'border-yellow-300'
+  },
+  parks: { 
+    name: 'Parks', 
+    color: '#0F9D58', 
+    icon: '🌳',
+    bgColor: 'bg-green-100',
+    textColor: 'text-green-800',
+    borderColor: 'border-green-300'
+  },
+  transport: { 
+    name: 'Transport', 
+    color: '#9C27B0', 
+    icon: '🚌',
+    bgColor: 'bg-purple-100',
+    textColor: 'text-purple-800',
+    borderColor: 'border-purple-300'
+  },
+  worship: { 
+    name: 'Places of Worship', 
+    color: '#FF5722', 
+    icon: '⛪',
+    bgColor: 'bg-orange-100',
+    textColor: 'text-orange-800',
+    borderColor: 'border-orange-300'
+  }
+};
+
 const StockMap = ({ filters, colorScheme = 'buildingType', isMobile }) => {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const buildingLayerRef = useRef(null);
   const legendRef = useRef(null);
+  const poiLayersRef = useRef({});
+  const searchMarkerRef = useRef(null);
+  
+  const [activeCategories, setActiveCategories] = useState(['schools', 'healthcare']);
+  const [nearbyData, setNearbyData] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [searchCenter, setSearchCenter] = useState(null);
+  const [showNearbyPanel, setShowNearbyPanel] = useState(true);
+  const [searchRadius, setSearchRadius] = useState(1000);
 
   // Dynamic height calculation based on viewport
   const getMapHeight = () => {
@@ -25,6 +180,263 @@ const StockMap = ({ filters, colorScheme = 'buildingType', isMobile }) => {
     }
   };
 
+  // Function to query Overpass API
+  const queryOverpass = async (query) => {
+    try {
+      const response = await fetch('https://overpass-api.de/api/interpreter', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain'
+        },
+        body: query
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return data.elements || [];
+    } catch (error) {
+      console.error('Overpass API error:', error);
+      throw error;
+    }
+  };
+
+  // Function to create custom markers for POIs
+  const createPOIMarker = (category, size = 24) => {
+    const config = CATEGORIES[category];
+    return L.divIcon({
+      className: 'poi-marker',
+      html: `<div style="
+        background-color: ${config.color};
+        width: ${size}px;
+        height: ${size}px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid white;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        font-size: ${size * 0.6}px;
+        cursor: pointer;
+      ">${config.icon}</div>`,
+      iconSize: [size, size],
+      iconAnchor: [size/2, size/2]
+    });
+  };
+
+  // Function to calculate distance between two points
+  const calculateDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371000; // Earth's radius in meters
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  };
+
+  // Function to format distance
+  const formatDistance = (distance) => {
+    if (distance < 1000) {
+      return `${Math.round(distance)}m`;
+    } else {
+      return `${(distance / 1000).toFixed(1)}km`;
+    }
+  };
+
+  // Function to get POI name
+  const getPOIName = (poi) => {
+    return poi.tags?.name || 
+           poi.tags?.brand || 
+           poi.tags?.shop || 
+           poi.tags?.amenity || 
+           poi.tags?.cuisine ||
+           'Unknown';
+  };
+
+  // Function to get POI address
+  const getPOIAddress = (poi) => {
+    const tags = poi.tags || {};
+    const addressParts = [];
+    
+    if (tags['addr:housenumber']) addressParts.push(tags['addr:housenumber']);
+    if (tags['addr:street']) addressParts.push(tags['addr:street']);
+    if (tags['addr:district']) addressParts.push(tags['addr:district']);
+    if (tags['addr:city']) addressParts.push(tags['addr:city']);
+    
+    return addressParts.length > 0 ? addressParts.join(', ') : null;
+  };
+
+  // Function to fetch nearby places
+  const fetchNearbyPlaces = async (lat, lon, categories = activeCategories, radius = searchRadius) => {
+    if (categories.length === 0) return;
+    
+    setLoading(true);
+    const results = {};
+    const errors = [];
+
+    try {
+      for (const category of categories) {
+        if (OVERPASS_QUERIES[category]) {
+          try {
+            const query = OVERPASS_QUERIES[category](lat, lon, radius);
+            const elements = await queryOverpass(query);
+            results[category] = elements.filter(element => element.lat && element.lon);
+            
+            // Add small delay to avoid overwhelming the API
+            await new Promise(resolve => setTimeout(resolve, 200));
+          } catch (error) {
+            console.error(`Error fetching ${category}:`, error);
+            errors.push(category);
+            results[category] = [];
+          }
+        }
+      }
+      
+      setNearbyData(results);
+      displayPOIs(results, lat, lon);
+      
+      if (errors.length > 0) {
+        console.warn('Failed to fetch data for categories:', errors);
+      }
+    } catch (error) {
+      console.error('Error fetching nearby places:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Function to display POIs on map
+  const displayPOIs = (data, centerLat, centerLon) => {
+    if (!mapRef.current) return;
+
+    // Clear existing POI layers
+    Object.values(poiLayersRef.current).forEach(layer => {
+      if (mapRef.current.hasLayer(layer)) {
+        mapRef.current.removeLayer(layer);
+      }
+    });
+    poiLayersRef.current = {};
+
+    // Add new POI layers
+    Object.entries(data).forEach(([category, pois]) => {
+      if (activeCategories.includes(category) && pois.length > 0) {
+        const layerGroup = L.layerGroup();
+        
+        pois.forEach((poi, index) => {
+          const lat = poi.lat;
+          const lon = poi.lon;
+          
+          if (lat && lon) {
+            const distance = calculateDistance(centerLat, centerLon, lat, lon);
+            const marker = L.marker([lat, lon], {
+              icon: createPOIMarker(category, 28)
+            });
+            
+            // Create popup content
+            const name = getPOIName(poi);
+            const address = getPOIAddress(poi);
+            const category_display = CATEGORIES[category].name;
+            
+            const popupContent = `
+              <div style="min-width: 220px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                  <span style="font-size: 20px; margin-right: 8px;">${CATEGORIES[category].icon}</span>
+                  <h3 style="margin: 0; font-size: 16px; font-weight: 600; color: ${CATEGORIES[category].color};">
+                    ${name}
+                  </h3>
+                </div>
+                <p style="margin: 0 0 4px 0; font-size: 12px; color: #666; font-weight: 500;">
+                  ${category_display}
+                </p>
+                ${address ? `<p style="margin: 0 0 4px 0; font-size: 11px; color: #888; line-height: 1.3;">${address}</p>` : ''}
+                <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #eee;">
+                  <p style="margin: 0; font-size: 11px; color: #999; display: flex; align-items: center;">
+                    <span style="margin-right: 4px;">📍</span>
+                    Distance: <strong style="margin-left: 4px; color: ${CATEGORIES[category].color};">${formatDistance(distance)}</strong>
+                  </p>
+                </div>
+                ${poi.tags?.phone ? `<p style="margin: 4px 0 0 0; font-size: 11px; color: #666;">📞 ${poi.tags.phone}</p>` : ''}
+                ${poi.tags?.website ? `<p style="margin: 4px 0 0 0; font-size: 11px;"><a href="${poi.tags.website}" target="_blank" style="color: ${CATEGORIES[category].color};">🌐 Website</a></p>` : ''}
+              </div>
+            `;
+            
+            marker.bindPopup(popupContent, {
+              maxWidth: 300,
+              className: 'poi-popup'
+            });
+            
+            // Add hover effect
+            marker.on('mouseover', function() {
+              this.openPopup();
+            });
+            
+            layerGroup.addLayer(marker);
+          }
+        });
+        
+        poiLayersRef.current[category] = layerGroup;
+        layerGroup.addTo(mapRef.current);
+      }
+    });
+  };
+
+  // Handle category toggle
+  const toggleCategory = (category) => {
+    const newCategories = activeCategories.includes(category)
+      ? activeCategories.filter(c => c !== category)
+      : [...activeCategories, category];
+    
+    setActiveCategories(newCategories);
+    
+    if (searchCenter && newCategories.length > 0) {
+      fetchNearbyPlaces(searchCenter.lat, searchCenter.lng, newCategories);
+    } else if (newCategories.length === 0) {
+      // Clear all POI layers if no categories selected
+      Object.values(poiLayersRef.current).forEach(layer => {
+        if (mapRef.current && mapRef.current.hasLayer(layer)) {
+          mapRef.current.removeLayer(layer);
+        }
+      });
+      poiLayersRef.current = {};
+      setNearbyData({});
+    }
+  };
+
+  // Handle search radius change
+  const handleRadiusChange = (newRadius) => {
+    setSearchRadius(newRadius);
+    if (searchCenter && activeCategories.length > 0) {
+      fetchNearbyPlaces(searchCenter.lat, searchCenter.lng, activeCategories, newRadius);
+    }
+  };
+
+  // Clear search
+  const clearSearch = () => {
+    if (mapRef.current) {
+      // Remove search marker
+      if (searchMarkerRef.current) {
+        mapRef.current.removeLayer(searchMarkerRef.current);
+        searchMarkerRef.current = null;
+      }
+      
+      // Clear POI layers
+      Object.values(poiLayersRef.current).forEach(layer => {
+        if (mapRef.current.hasLayer(layer)) {
+          mapRef.current.removeLayer(layer);
+        }
+      });
+      poiLayersRef.current = {};
+    }
+    
+    setSearchCenter(null);
+    setNearbyData({});
+  };
+
+  // Building popup content generation (your existing function)
   const generatePopupContent = (feature, colorScheme) => {
     return `
       <div class="p-3 min-w-[240px]">
@@ -91,12 +503,19 @@ const StockMap = ({ filters, colorScheme = 'buildingType', isMobile }) => {
               </div>
             ` : ''}
           ` : ''}
+          
+          <div class="border-t border-gray-200 mt-3 pt-3">
+            <button onclick="window.searchNearby(${feature.geometry?.coordinates?.[1] || 0}, ${feature.geometry?.coordinates?.[0] || 0})" 
+                    class="w-full bg-blue-600 text-white text-sm py-1 px-2 rounded hover:bg-blue-700">
+              🔍 What's nearby?
+            </button>
+          </div>
         </div>
       </div>
     `;
   };
 
-  // Color schemes for different attributes
+  // Color schemes for different attributes (your existing function)
   const getColor = (feature) => {
     const schemes = {
       buildingType: () => {
@@ -168,7 +587,7 @@ const StockMap = ({ filters, colorScheme = 'buildingType', isMobile }) => {
     return schemes[colorScheme] ? schemes[colorScheme]() : schemes.buildingType();
   };
 
-  // Legend items for each color scheme
+  // Legend items for each color scheme (your existing function)
   const getLegendItems = () => {
     const items = {
       buildingType: [
@@ -271,6 +690,83 @@ const StockMap = ({ filters, colorScheme = 'buildingType', isMobile }) => {
     legend.addTo(map);
     legendRef.current = legend;
 
+    // Add click handler for "What's nearby" search
+    map.on('click', (e) => {
+      const { lat, lng } = e.latlng;
+      
+      // Remove previous search marker
+      if (searchMarkerRef.current) {
+        map.removeLayer(searchMarkerRef.current);
+      }
+      
+      // Add new search center marker
+      searchMarkerRef.current = L.marker([lat, lng], {
+        icon: L.divIcon({
+          className: 'search-center-marker',
+          html: `<div style="
+            background-color: #FF4444;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+          ">📍</div>`,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12]
+        })
+      }).addTo(map);
+      
+      setSearchCenter({ lat, lng });
+      
+      if (activeCategories.length > 0) {
+        fetchNearbyPlaces(lat, lng, activeCategories, searchRadius);
+      }
+    });
+
+    // Global function for popup buttons
+    window.searchNearby = (lat, lon) => {
+      // Remove previous search marker
+      if (searchMarkerRef.current) {
+        map.removeLayer(searchMarkerRef.current);
+      }
+      
+      // Add new search center marker
+      searchMarkerRef.current = L.marker([lat, lon], {
+        icon: L.divIcon({
+          className: 'search-center-marker',
+          html: `<div style="
+            background-color: #FF4444;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+          ">📍</div>`,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12]
+        })
+      }).addTo(map);
+      
+      setSearchCenter({ lat, lng: lon });
+      map.setView([lat, lon], Math.max(map.getZoom(), 14));
+      
+      if (activeCategories.length > 0) {
+        fetchNearbyPlaces(lat, lon, activeCategories, searchRadius);
+      }
+    };
+
     // Load GeoJSON data
     fetch('/data/bldg_pkn.geojson')
       .then(response => {
@@ -335,6 +831,10 @@ const StockMap = ({ filters, colorScheme = 'buildingType', isMobile }) => {
       });
 
     return () => {
+      // Cleanup
+      if (window.searchNearby) {
+        delete window.searchNearby;
+      }
       if (mapRef.current) {
         mapRef.current.remove();
       }
@@ -426,8 +926,160 @@ const StockMap = ({ filters, colorScheme = 'buildingType', isMobile }) => {
     `;
   };
 
+  // Calculate total results
+  const getTotalResults = () => {
+    return Object.values(nearbyData).reduce((total, pois) => total + pois.length, 0);
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden relative h-full">
+      {/* Nearby Places Panel */}
+      <div className={`absolute top-4 left-4 z-10 bg-white rounded-lg shadow-lg transition-all duration-300 ${
+        isMobile ? 'max-w-[90vw]' : 'max-w-sm'
+      } ${showNearbyPanel ? 'opacity-100' : 'opacity-95 hover:opacity-100'}`}>
+        
+        {/* Panel Header */}
+        <div className="p-3 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-gray-800 flex items-center">
+              <span className="mr-2">🔍</span>
+              What's nearby?
+            </h3>
+            <button
+              onClick={() => setShowNearbyPanel(!showNearbyPanel)}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              {showNearbyPanel ? '−' : '+'}
+            </button>
+          </div>
+          {!searchCenter && (
+            <p className="text-xs text-gray-500 mt-1">Click on map to search</p>
+          )}
+          {searchCenter && (
+            <p className="text-xs text-green-600 mt-1 flex items-center">
+              <span className="mr-1">📍</span>
+              Search location set
+              <button
+                onClick={clearSearch}
+                className="ml-2 text-red-500 hover:text-red-700 text-xs underline"
+              >
+                Clear
+              </button>
+            </p>
+          )}
+        </div>
+
+        {showNearbyPanel && (
+          <>
+            {/* Search Radius Control */}
+            <div className="p-3 border-b border-gray-100">
+              <label className="block text-xs font-medium text-gray-700 mb-2">
+                Search Radius: {searchRadius}m
+              </label>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="range"
+                  min="500"
+                  max="2000"
+                  step="250"
+                  value={searchRadius}
+                  onChange={(e) => handleRadiusChange(parseInt(e.target.value))}
+                  className="flex-1"
+                />
+                <span className="text-xs text-gray-500 min-w-[60px]">
+                  {searchRadius < 1000 ? `${searchRadius}m` : `${(searchRadius/1000).toFixed(1)}km`}
+                </span>
+              </div>
+            </div>
+
+            {/* Category Selection */}
+            <div className="p-3 border-b border-gray-100">
+              <div className="grid grid-cols-1 gap-2">
+                {Object.entries(CATEGORIES).map(([key, config]) => (
+                  <button
+                    key={key}
+                    onClick={() => toggleCategory(key)}
+                    className={`text-xs px-3 py-2 rounded-md flex items-center justify-between transition-all ${
+                      activeCategories.includes(key)
+                        ? `${config.bgColor} ${config.textColor} ${config.borderColor} border`
+                        : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <span>{config.icon}</span>
+                      <span className="font-medium">{config.name}</span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      {nearbyData[key] && nearbyData[key].length > 0 && (
+                        <span className="bg-white text-gray-700 px-1.5 py-0.5 rounded-full text-xs font-bold">
+                          {nearbyData[key].length}
+                        </span>
+                      )}
+                      {activeCategories.includes(key) && (
+                        <span className="text-xs">✓</span>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Loading State */}
+            {loading && (
+              <div className="p-3 border-b border-gray-100">
+                <div className="flex items-center justify-center text-blue-600">
+                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-blue-500 mr-2"></div>
+                  <span className="text-xs">Searching nearby places...</span>
+                </div>
+              </div>
+            )}
+
+            {/* Results Summary */}
+            {searchCenter && Object.keys(nearbyData).length > 0 && !loading && (
+              <div className="p-3">
+                <div className="text-xs text-gray-600 mb-2">
+                  <strong>Found {getTotalResults()} places</strong> within {searchRadius < 1000 ? `${searchRadius}m` : `${(searchRadius/1000).toFixed(1)}km`}
+                </div>
+                
+                {Object.entries(nearbyData).map(([category, pois]) => {
+                  if (activeCategories.includes(category) && pois.length > 0) {
+                    return (
+                      <div key={category} className="flex items-center justify-between text-xs mb-1 p-1 rounded bg-gray-50">
+                        <span className="flex items-center">
+                          <span className="mr-2">{CATEGORIES[category].icon}</span>
+                          <span className="font-medium">{CATEGORIES[category].name}</span>
+                        </span>
+                        <span className="bg-white px-2 py-1 rounded text-xs font-bold text-gray-700">
+                          {pois.length}
+                        </span>
+                      </div>
+                    );
+                  }
+                  return null;
+                })}
+                
+                <div className="mt-2 pt-2 border-t border-gray-200 text-xs text-gray-500">
+                  💡 Click on map markers for more details
+                </div>
+              </div>
+            )}
+
+            {/* No Results */}
+            {searchCenter && Object.keys(nearbyData).length > 0 && getTotalResults() === 0 && !loading && (
+              <div className="p-3 text-center">
+                <p className="text-xs text-gray-500">
+                  No places found in selected categories
+                </p>
+                <p className="text-xs text-gray-400 mt-1">
+                  Try increasing search radius or selecting more categories
+                </p>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Map Container */}
       <div 
         ref={mapContainerRef}
         className="w-full h-full"
@@ -436,9 +1088,35 @@ const StockMap = ({ filters, colorScheme = 'buildingType', isMobile }) => {
           height: getMapHeight() 
         }}
       />
+      
+      {/* Attribution */}
       <div className="absolute bottom-0 right-0 bg-white bg-opacity-75 px-2 py-1 text-xs text-gray-600">
         © OpenStreetMap contributors
       </div>
+
+      {/* Custom CSS for better popup styling */}
+      <style jsx>{`
+        .poi-popup .leaflet-popup-content-wrapper {
+          border-radius: 8px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        .poi-popup .leaflet-popup-content {
+          margin: 0;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        .building-popup .leaflet-popup-content-wrapper {
+          border-radius: 8px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        .search-center-marker {
+          animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+          0% { transform: scale(1); }
+          50% { transform: scale(1.1); }
+          100% { transform: scale(1); }
+        }
+      `}</style>
     </div>
   );
 };
