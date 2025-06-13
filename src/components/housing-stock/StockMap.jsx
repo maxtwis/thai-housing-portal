@@ -10,7 +10,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
-// Overpass API queries for different categories
+// Overpass API queries for different categories - IMPROVED VERSION
 const OVERPASS_QUERIES = {
   schools: (lat, lon, radius = 1000) => `
     [out:json][timeout:25];
@@ -21,6 +21,8 @@ const OVERPASS_QUERIES = {
       node["amenity"="college"](around:${radius},${lat},${lon});
       way["amenity"="school"](around:${radius},${lat},${lon});
       way["amenity"="university"](around:${radius},${lat},${lon});
+      relation["amenity"="school"](around:${radius},${lat},${lon});
+      relation["amenity"="university"](around:${radius},${lat},${lon});
     );
     out geom;
   `,
@@ -28,12 +30,20 @@ const OVERPASS_QUERIES = {
     [out:json][timeout:25];
     (
       node["shop"](around:${radius},${lat},${lon});
-      node["amenity"="marketplace"](around:${radius},${lat},${lon});
       node["shop"="supermarket"](around:${radius},${lat},${lon});
       node["shop"="convenience"](around:${radius},${lat},${lon});
       node["shop"="mall"](around:${radius},${lat},${lon});
+      node["shop"="department_store"](around:${radius},${lat},${lon});
+      node["shop"="general"](around:${radius},${lat},${lon});
+      node["amenity"="marketplace"](around:${radius},${lat},${lon});
+      node["brand"="7-Eleven"](around:${radius},${lat},${lon});
+      node["brand"="Family Mart"](around:${radius},${lat},${lon});
+      node["brand"="Lotus"](around:${radius},${lat},${lon});
+      node["brand"="Big C"](around:${radius},${lat},${lon});
+      node["brand"="Tesco Lotus"](around:${radius},${lat},${lon});
+      way["shop"](around:${radius},${lat},${lon});
       way["amenity"="marketplace"](around:${radius},${lat},${lon});
-      way["shop"="mall"](around:${radius},${lat},${lon});
+      relation["shop"](around:${radius},${lat},${lon});
     );
     out geom;
   `,
@@ -45,8 +55,13 @@ const OVERPASS_QUERIES = {
       node["amenity"="pharmacy"](around:${radius},${lat},${lon});
       node["amenity"="dentist"](around:${radius},${lat},${lon});
       node["amenity"="doctors"](around:${radius},${lat},${lon});
+      node["amenity"="veterinary"](around:${radius},${lat},${lon});
+      node["healthcare"](around:${radius},${lat},${lon});
+      node["shop"="pharmacy"](around:${radius},${lat},${lon});
       way["amenity"="hospital"](around:${radius},${lat},${lon});
       way["amenity"="clinic"](around:${radius},${lat},${lon});
+      way["healthcare"](around:${radius},${lat},${lon});
+      relation["amenity"="hospital"](around:${radius},${lat},${lon});
     );
     out geom;
   `,
@@ -59,6 +74,16 @@ const OVERPASS_QUERIES = {
       node["amenity"="bar"](around:${radius},${lat},${lon});
       node["amenity"="pub"](around:${radius},${lat},${lon});
       node["amenity"="food_court"](around:${radius},${lat},${lon});
+      node["amenity"="ice_cream"](around:${radius},${lat},${lon});
+      node["shop"="bakery"](around:${radius},${lat},${lon});
+      node["cuisine"](around:${radius},${lat},${lon});
+      node["brand"="McDonald's"](around:${radius},${lat},${lon});
+      node["brand"="KFC"](around:${radius},${lat},${lon});
+      node["brand"="Starbucks"](around:${radius},${lat},${lon});
+      node["brand"="Pizza Hut"](around:${radius},${lat},${lon});
+      way["amenity"="restaurant"](around:${radius},${lat},${lon});
+      way["amenity"="cafe"](around:${radius},${lat},${lon});
+      relation["amenity"="restaurant"](around:${radius},${lat},${lon});
     );
     out geom;
   `,
@@ -66,11 +91,16 @@ const OVERPASS_QUERIES = {
     [out:json][timeout:25];
     (
       node["leisure"="park"](around:${radius},${lat},${lon});
-      way["leisure"="park"](around:${radius},${lat},${lon});
-      node["amenity"="playground"](around:${radius},${lat},${lon});
       node["leisure"="garden"](around:${radius},${lat},${lon});
-      way["leisure"="garden"](around:${radius},${lat},${lon});
       node["leisure"="recreation_ground"](around:${radius},${lat},${lon});
+      node["leisure"="playground"](around:${radius},${lat},${lon});
+      node["amenity"="playground"](around:${radius},${lat},${lon});
+      node["natural"="tree"](around:${radius},${lat},${lon});
+      node["landuse"="recreation_ground"](around:${radius},${lat},${lon});
+      way["leisure"="park"](around:${radius},${lat},${lon});
+      way["leisure"="garden"](around:${radius},${lat},${lon});
+      way["landuse"="recreation_ground"](around:${radius},${lat},${lon});
+      relation["leisure"="park"](around:${radius},${lat},${lon});
     );
     out geom;
   `,
@@ -78,11 +108,17 @@ const OVERPASS_QUERIES = {
     [out:json][timeout:25];
     (
       node["public_transport"="station"](around:${radius},${lat},${lon});
+      node["public_transport"="stop_position"](around:${radius},${lat},${lon});
+      node["public_transport"="platform"](around:${radius},${lat},${lon});
       node["amenity"="bus_station"](around:${radius},${lat},${lon});
       node["highway"="bus_stop"](around:${radius},${lat},${lon});
       node["railway"="station"](around:${radius},${lat},${lon});
-      node["public_transport"="stop_position"](around:${radius},${lat},${lon});
+      node["railway"="subway_entrance"](around:${radius},${lat},${lon});
       node["amenity"="taxi"](around:${radius},${lat},${lon});
+      node["amenity"="fuel"](around:${radius},${lat},${lon});
+      way["public_transport"="station"](around:${radius},${lat},${lon});
+      way["amenity"="bus_station"](around:${radius},${lat},${lon});
+      relation["public_transport"="stop_area"](around:${radius},${lat},${lon});
     );
     out geom;
   `,
@@ -90,7 +126,14 @@ const OVERPASS_QUERIES = {
     [out:json][timeout:25];
     (
       node["amenity"="place_of_worship"](around:${radius},${lat},${lon});
+      node["building"="temple"](around:${radius},${lat},${lon});
+      node["building"="church"](around:${radius},${lat},${lon});
+      node["building"="mosque"](around:${radius},${lat},${lon});
+      node["religion"](around:${radius},${lat},${lon});
       way["amenity"="place_of_worship"](around:${radius},${lat},${lon});
+      way["building"="temple"](around:${radius},${lat},${lon});
+      way["building"="church"](around:${radius},${lat},${lon});
+      relation["amenity"="place_of_worship"](around:${radius},${lat},${lon});
     );
     out geom;
   `
@@ -214,9 +257,11 @@ const StockMap = ({ filters, colorScheme = 'buildingType', isMobile }) => {
     }
   };
 
-  // Function to query Overpass API
+  // Function to query Overpass API with better debugging
   const queryOverpass = async (query) => {
     try {
+      console.log('🔍 Overpass Query:', query.substring(0, 200) + '...');
+      
       const response = await fetch('https://overpass-api.de/api/interpreter', {
         method: 'POST',
         headers: {
@@ -226,13 +271,20 @@ const StockMap = ({ filters, colorScheme = 'buildingType', isMobile }) => {
       });
       
       if (!response.ok) {
+        console.error('❌ Overpass API HTTP Error:', response.status, response.statusText);
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
       const data = await response.json();
+      console.log('✅ Overpass API Response:', {
+        elements: data.elements?.length || 0,
+        generator: data.generator,
+        timestamp: data.osm3s?.timestamp_osm_base
+      });
+      
       return data.elements || [];
     } catch (error) {
-      console.error('Overpass API error:', error);
+      console.error('❌ Overpass API Error:', error);
       throw error;
     }
   };
@@ -281,14 +333,37 @@ const StockMap = ({ filters, colorScheme = 'buildingType', isMobile }) => {
     }
   };
 
-  // Function to get POI name
+  // Function to get POI name with better fallbacks
   const getPOIName = (poi) => {
-    return poi.tags?.name || 
-           poi.tags?.brand || 
-           poi.tags?.shop || 
-           poi.tags?.amenity || 
-           poi.tags?.cuisine ||
-           'Unknown';
+    // Try different name fields in order of preference
+    const nameFields = [
+      'name:en',    // English name
+      'name:th',    // Thai name
+      'name',       // Default name
+      'brand',      // Brand name (e.g., 7-Eleven)
+      'operator',   // Operator name
+      'shop',       // Shop type
+      'amenity',    // Amenity type
+      'cuisine',    // Cuisine type for restaurants
+      'healthcare', // Healthcare type
+      'leisure',    // Leisure type
+      'building'    // Building type
+    ];
+    
+    for (const field of nameFields) {
+      if (poi.tags?.[field]) {
+        return poi.tags[field];
+      }
+    }
+    
+    // If no name found, create descriptive name from tags
+    if (poi.tags) {
+      if (poi.tags.shop) return `${poi.tags.shop} shop`;
+      if (poi.tags.amenity) return poi.tags.amenity;
+      if (poi.tags.building) return `${poi.tags.building} building`;
+    }
+    
+    return 'Unknown Place';
   };
 
   // Function to get POI address
@@ -1335,6 +1410,61 @@ const StockMap = ({ filters, colorScheme = 'buildingType', isMobile }) => {
                 Test API Call
               </button>
               <button
+                onClick={async () => {
+                  if (!searchCenter) {
+                    alert('Please click on the map first to set a search location');
+                    return;
+                  }
+                  
+                  const { lat, lng } = searchCenter;
+                  console.log('🔍 Testing broad query for all POIs near:', { lat, lng });
+                  
+                  try {
+                    const broadQuery = `
+                      [out:json][timeout:25];
+                      (
+                        node(around:1000,${lat},${lng});
+                        way(around:1000,${lat},${lng});
+                      );
+                      out geom;
+                    `;
+                    
+                    const results = await queryOverpass(broadQuery);
+                    console.log('📊 Broad search results:', {
+                      total: results.length,
+                      nodes: results.filter(r => r.type === 'node').length,
+                      ways: results.filter(r => r.type === 'way').length,
+                      sample: results.slice(0, 5).map(r => ({
+                        type: r.type,
+                        tags: r.tags,
+                        id: r.id
+                      }))
+                    });
+                    
+                    // Count by common tags
+                    const tagCounts = {};
+                    results.forEach(r => {
+                      if (r.tags) {
+                        Object.keys(r.tags).forEach(key => {
+                          if (['amenity', 'shop', 'leisure', 'healthcare', 'building'].includes(key)) {
+                            const tagValue = `${key}=${r.tags[key]}`;
+                            tagCounts[tagValue] = (tagCounts[tagValue] || 0) + 1;
+                          }
+                        });
+                      }
+                    });
+                    
+                    console.log('🏷️ Common tags found:', tagCounts);
+                    
+                  } catch (error) {
+                    console.error('Broad query failed:', error);
+                  }
+                }}
+                className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded"
+              >
+                Test Broad Query
+              </button>
+              <button
                 onClick={() => {
                   console.log('=== StockMap Debug Info ===');
                   console.log('Active categories:', activeCategories);
@@ -1343,6 +1473,21 @@ const StockMap = ({ filters, colorScheme = 'buildingType', isMobile }) => {
                   console.log('Nearby data count:', Object.keys(nearbyData).length);
                   console.log('Loading state:', loading);
                   console.log('Map ref:', !!mapRef.current);
+                  
+                  // Show detailed results per category
+                  Object.entries(nearbyData).forEach(([category, pois]) => {
+                    if (pois.length > 0) {
+                      console.log(`📍 ${category.toUpperCase()}:`, {
+                        count: pois.length,
+                        samples: pois.slice(0, 3).map(p => ({
+                          name: getPOIName(p),
+                          tags: p.tags,
+                          coords: [p.lat, p.lon]
+                        }))
+                      });
+                    }
+                  });
+                  
                   console.log('Window functions available:', {
                     searchNearby: typeof window.searchNearby,
                     searchNearbyFromBuilding: typeof window.searchNearbyFromBuilding,
