@@ -505,7 +505,7 @@ const StockMap = ({ filters, colorScheme = 'buildingType', isMobile }) => {
           ` : ''}
           
           <div class="border-t border-gray-200 mt-3 pt-3">
-            <button onclick="window.searchNearby(${feature.geometry?.coordinates?.[1] || 0}, ${feature.geometry?.coordinates?.[0] || 0})" 
+            <button onclick="window.searchNearbyFromBuilding()" 
                     class="w-full bg-blue-600 text-white text-sm py-1 px-2 rounded hover:bg-blue-700">
               🔍 What's nearby?
             </button>
@@ -694,13 +694,22 @@ const StockMap = ({ filters, colorScheme = 'buildingType', isMobile }) => {
     map.on('click', (e) => {
       const { lat, lng } = e.latlng;
       
+      // Validate coordinates
+      const validCoords = validateAndTransformCoords(lat, lng);
+      if (!validCoords) {
+        console.error('Invalid coordinates from map click:', { lat, lng });
+        return;
+      }
+      
+      const { lat: validLat, lng: validLng } = validCoords;
+      
       // Remove previous search marker
       if (searchMarkerRef.current) {
         map.removeLayer(searchMarkerRef.current);
       }
       
       // Add new search center marker
-      searchMarkerRef.current = L.marker([lat, lng], {
+      searchMarkerRef.current = L.marker([validLat, validLng], {
         icon: L.divIcon({
           className: 'search-center-marker',
           html: `<div style="
@@ -722,22 +731,32 @@ const StockMap = ({ filters, colorScheme = 'buildingType', isMobile }) => {
         })
       }).addTo(map);
       
-      setSearchCenter({ lat, lng });
+      setSearchCenter({ lat: validLat, lng: validLng });
       
       if (activeCategories.length > 0) {
-        fetchNearbyPlaces(lat, lng, activeCategories, searchRadius);
+        fetchNearbyPlaces(validLat, validLng, activeCategories, searchRadius);
       }
     });
 
     // Global function for popup buttons
     window.searchNearby = (lat, lon) => {
+      // Validate coordinates
+      const validCoords = validateAndTransformCoords(lat, lon);
+      if (!validCoords) {
+        console.error('Invalid coordinates for nearby search:', { lat, lon });
+        alert('Invalid coordinates detected. Please try clicking directly on the map.');
+        return;
+      }
+      
+      const { lat: validLat, lng: validLng } = validCoords;
+      
       // Remove previous search marker
       if (searchMarkerRef.current) {
         map.removeLayer(searchMarkerRef.current);
       }
       
       // Add new search center marker
-      searchMarkerRef.current = L.marker([lat, lon], {
+      searchMarkerRef.current = L.marker([validLat, validLng], {
         icon: L.divIcon({
           className: 'search-center-marker',
           html: `<div style="
@@ -759,11 +778,21 @@ const StockMap = ({ filters, colorScheme = 'buildingType', isMobile }) => {
         })
       }).addTo(map);
       
-      setSearchCenter({ lat, lng: lon });
-      map.setView([lat, lon], Math.max(map.getZoom(), 14));
+      setSearchCenter({ lat: validLat, lng: validLng });
+      map.setView([validLat, validLng], Math.max(map.getZoom(), 14));
       
       if (activeCategories.length > 0) {
-        fetchNearbyPlaces(lat, lon, activeCategories, searchRadius);
+        fetchNearbyPlaces(validLat, validLng, activeCategories, searchRadius);
+      }
+    };
+
+    // Global function for building popup buttons (stores coordinates in closure)
+    window.searchNearbyFromBuilding = () => {
+      if (window.currentBuildingCoords) {
+        const { lat, lng } = window.currentBuildingCoords;
+        window.searchNearby(lat, lng);
+      } else {
+        alert('No building coordinates available. Please click on a building first.');
       }
     };
 
@@ -789,6 +818,10 @@ const StockMap = ({ filters, colorScheme = 'buildingType', isMobile }) => {
           onEachFeature: (feature, layer) => {
             // Add popup on click (for all devices)
             layer.on('click', (e) => {
+              // Store building coordinates for nearby search
+              const coords = e.latlng;
+              window.currentBuildingCoords = coords;
+              
               const popup = L.popup({
                 maxWidth: isMobile ? 300 : 400,
                 className: 'building-popup'
@@ -834,6 +867,12 @@ const StockMap = ({ filters, colorScheme = 'buildingType', isMobile }) => {
       // Cleanup
       if (window.searchNearby) {
         delete window.searchNearby;
+      }
+      if (window.searchNearbyFromBuilding) {
+        delete window.searchNearbyFromBuilding;
+      }
+      if (window.currentBuildingCoords) {
+        delete window.currentBuildingCoords;
       }
       if (mapRef.current) {
         mapRef.current.remove();
@@ -934,8 +973,10 @@ const StockMap = ({ filters, colorScheme = 'buildingType', isMobile }) => {
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden relative h-full">
       {/* Nearby Places Panel */}
-      <div className={`absolute top-4 left-4 z-10 bg-white rounded-lg shadow-lg transition-all duration-300 ${
-        isMobile ? 'max-w-[90vw]' : 'max-w-sm'
+      <div className={`absolute z-10 bg-white rounded-lg shadow-lg transition-all duration-300 ${
+        isMobile 
+          ? 'top-4 left-4 right-4 max-h-[40vh] overflow-y-auto' 
+          : 'top-4 left-4 max-w-sm max-h-[80vh] overflow-y-auto'
       } ${showNearbyPanel ? 'opacity-100' : 'opacity-95 hover:opacity-100'}`}>
         
         {/* Panel Header */}
@@ -1073,6 +1114,21 @@ const StockMap = ({ filters, colorScheme = 'buildingType', isMobile }) => {
                 <p className="text-xs text-gray-400 mt-1">
                   Try increasing search radius or selecting more categories
                 </p>
+              </div>
+            )}
+
+            {/* Debug Info (only in development) */}
+            {process.env.NODE_ENV === 'development' && searchCenter && (
+              <div className="p-2 border-t border-gray-100 bg-gray-50">
+                <div className="text-xs text-gray-600">
+                  <strong>Debug Info:</strong>
+                  <br />
+                  Search Center: {searchCenter.lat.toFixed(6)}, {searchCenter.lng.toFixed(6)}
+                  <br />
+                  Radius: {searchRadius}m
+                  <br />
+                  Active Categories: {activeCategories.join(', ')}
+                </div>
               </div>
             )}
           </>
