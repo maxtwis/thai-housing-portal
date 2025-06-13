@@ -171,6 +171,40 @@ const StockMap = ({ filters, colorScheme = 'buildingType', isMobile }) => {
   const [showNearbyPanel, setShowNearbyPanel] = useState(true);
   const [searchRadius, setSearchRadius] = useState(1000);
 
+  // Function to validate and possibly transform coordinates
+  const validateAndTransformCoords = (lat, lng) => {
+    // Check if coordinates are in Thailand's expected range
+    const isValidThaiCoords = (
+      lat >= 5.0 && lat <= 21.0 &&  // Thailand latitude range
+      lng >= 97.0 && lng <= 106.0    // Thailand longitude range
+    );
+    
+    if (isValidThaiCoords) {
+      return { lat, lng, transformed: false };
+    }
+    
+    // Check if coordinates might be swapped
+    const isSwappedValid = (
+      lng >= 5.0 && lng <= 21.0 &&
+      lat >= 97.0 && lat <= 106.0
+    );
+    
+    if (isSwappedValid) {
+      console.warn('Coordinates appear to be swapped, correcting:', { original: { lat, lng }, corrected: { lat: lng, lng: lat } });
+      return { lat: lng, lng: lat, transformed: true };
+    }
+    
+    // Check if coordinates are in projected system (need transformation)
+    // Common Thai projected coordinates are much larger numbers
+    if (Math.abs(lat) > 1000000 || Math.abs(lng) > 1000000) {
+      console.warn('Coordinates appear to be in projected system, cannot auto-transform:', { lat, lng });
+      return null;
+    }
+    
+    console.warn('Invalid coordinates detected:', { lat, lng });
+    return null;
+  };
+
   // Dynamic height calculation based on viewport
   const getMapHeight = () => {
     if (isMobile) {
@@ -505,8 +539,21 @@ const StockMap = ({ filters, colorScheme = 'buildingType', isMobile }) => {
           ` : ''}
           
           <div class="border-t border-gray-200 mt-3 pt-3">
-            <button onclick="window.searchNearbyFromBuilding()" 
-                    class="w-full bg-blue-600 text-white text-sm py-1 px-2 rounded hover:bg-blue-700">
+            <button onclick="
+              try {
+                if (window.searchNearbyFromBuilding) {
+                  window.searchNearbyFromBuilding();
+                } else if (window.handleNearbySearchFromBuilding && window.currentBuildingCoords) {
+                  window.handleNearbySearchFromBuilding(window.currentBuildingCoords);
+                } else {
+                  alert('Nearby search function not available. Please try clicking directly on the map.');
+                }
+              } catch (error) {
+                console.error('Error in nearby search:', error);
+                alert('Error occurred while searching nearby places. Please try again.');
+              }
+            " 
+            class="w-full bg-blue-600 text-white text-sm py-1 px-2 rounded hover:bg-blue-700">
               🔍 What's nearby?
             </button>
           </div>
@@ -783,6 +830,9 @@ const StockMap = ({ filters, colorScheme = 'buildingType', isMobile }) => {
       
       if (activeCategories.length > 0) {
         fetchNearbyPlaces(validLat, validLng, activeCategories, searchRadius);
+      } else {
+        // If no categories are selected, show a message
+        alert('Please select at least one category to search for nearby places.');
       }
     };
 
@@ -878,7 +928,74 @@ const StockMap = ({ filters, colorScheme = 'buildingType', isMobile }) => {
         mapRef.current.remove();
       }
     };
-  }, [isMobile]);
+  }, [isMobile]); // Keep only isMobile as dependency
+
+  // Separate useEffect to update global functions when dependencies change
+  useEffect(() => {
+    if (!mapRef.current) return;
+
+    const map = mapRef.current;
+
+    // Update global functions with current state
+    window.searchNearby = (lat, lon) => {
+      // Validate coordinates
+      const validCoords = validateAndTransformCoords(lat, lon);
+      if (!validCoords) {
+        console.error('Invalid coordinates for nearby search:', { lat, lon });
+        alert('Invalid coordinates detected. Please try clicking directly on the map.');
+        return;
+      }
+      
+      const { lat: validLat, lng: validLng } = validCoords;
+      
+      // Remove previous search marker
+      if (searchMarkerRef.current) {
+        map.removeLayer(searchMarkerRef.current);
+      }
+      
+      // Add new search center marker
+      searchMarkerRef.current = L.marker([validLat, validLng], {
+        icon: L.divIcon({
+          className: 'search-center-marker',
+          html: `<div style="
+            background-color: #FF4444;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+          ">📍</div>`,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12]
+        })
+      }).addTo(map);
+      
+      setSearchCenter({ lat: validLat, lng: validLng });
+      map.setView([validLat, validLng], Math.max(map.getZoom(), 14));
+      
+      if (activeCategories.length > 0) {
+        fetchNearbyPlaces(validLat, validLng, activeCategories, searchRadius);
+      } else {
+        // If no categories are selected, show a message
+        alert('Please select at least one category to search for nearby places.');
+      }
+    };
+
+    window.searchNearbyFromBuilding = () => {
+      if (window.currentBuildingCoords) {
+        const { lat, lng } = window.currentBuildingCoords;
+        window.searchNearby(lat, lng);
+      } else {
+        alert('No building coordinates available. Please click on a building first.');
+      }
+    };
+  }, [activeCategories, searchRadius]); // Update when these change
 
   // Update filters when they change
   useEffect(() => {
@@ -969,6 +1086,14 @@ const StockMap = ({ filters, colorScheme = 'buildingType', isMobile }) => {
   const getTotalResults = () => {
     return Object.values(nearbyData).reduce((total, pois) => total + pois.length, 0);
   };
+
+  // Make the handle function available globally as a backup
+  useEffect(() => {
+    window.handleNearbySearchFromBuilding = handleNearbySearchFromBuilding;
+    return () => {
+      delete window.handleNearbySearchFromBuilding;
+    };
+  }, [handleNearbySearchFromBuilding]);
 
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden relative h-full">
@@ -1128,6 +1253,44 @@ const StockMap = ({ filters, colorScheme = 'buildingType', isMobile }) => {
                   Radius: {searchRadius}m
                   <br />
                   Active Categories: {activeCategories.join(', ')}
+                </div>
+              </div>
+            )}
+
+            {/* Test Buttons for debugging */}
+            {process.env.NODE_ENV === 'development' && (
+              <div className="p-3 border-t border-gray-100 bg-yellow-50">
+                <div className="text-xs text-gray-700 mb-2">
+                  <strong>Debug Controls:</strong>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => {
+                      const testLat = 13.6688;
+                      const testLng = 100.6147;
+                      console.log('Testing nearby search with coordinates:', { testLat, testLng });
+                      fetchNearbyPlaces(testLat, testLng, activeCategories, searchRadius);
+                    }}
+                    className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded"
+                  >
+                    Test API Call
+                  </button>
+                  <button
+                    onClick={() => {
+                      console.log('Active categories:', activeCategories);
+                      console.log('Search radius:', searchRadius);
+                      console.log('Search center:', searchCenter);
+                      console.log('Nearby data:', nearbyData);
+                      console.log('Window functions:', {
+                        searchNearby: typeof window.searchNearby,
+                        searchNearbyFromBuilding: typeof window.searchNearbyFromBuilding,
+                        handleNearbySearchFromBuilding: typeof window.handleNearbySearchFromBuilding
+                      });
+                    }}
+                    className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded"
+                  >
+                    Log State
+                  </button>
                 </div>
               </div>
             )}
