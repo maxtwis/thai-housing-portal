@@ -212,15 +212,7 @@ const ApartmentMap = ({
     }
   };
 
-  // Clear nearby places
-  const clearNearbyPlaces = () => {
-    if (!mapRef.current) return;
 
-    Object.values(nearbyLayersRef.current).forEach(layer => {
-      mapRef.current.removeLayer(layer);
-    });
-    nearbyLayersRef.current = {};
-  };
 
   // Initialize map
   useEffect(() => {
