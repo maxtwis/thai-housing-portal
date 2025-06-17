@@ -16,7 +16,8 @@ const ApartmentMap = ({
   colorScheme = 'priceRange', 
   isMobile = false, 
   selectedApartment = null, 
-  onApartmentSelect = () => {} 
+  onApartmentSelect = () => {},
+  calculateFacilityScore = () => 0
 }) => {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
@@ -31,14 +32,6 @@ const ApartmentMap = ({
     } else {
       return "calc(100vh - 120px)";
     }
-  };
-
-  // Calculate facility score for an apartment
-  const calculateFacilityScore = (apartment) => {
-    const facilityKeys = Object.keys(apartment).filter(key => key.startsWith('facility_'));
-    const totalFacilities = facilityKeys.length;
-    const availableFacilities = facilityKeys.filter(key => apartment[key] > 0).length;
-    return totalFacilities > 0 ? Math.round((availableFacilities / totalFacilities) * 100) : 0;
   };
 
   // Color schemes for different attributes
@@ -271,7 +264,7 @@ const ApartmentMap = ({
     };
   }, [isMobile]);
 
-  // Update apartment markers when data or filters change
+  // Update apartment markers when data or filters change (but NOT when apartment is selected)
   useEffect(() => {
     if (!mapRef.current || !apartmentData) return;
 
@@ -304,6 +297,11 @@ const ApartmentMap = ({
         if (onApartmentSelect) {
           onApartmentSelect(apartment);
         }
+        // Zoom to the selected apartment marker - THIS IS THE KEY FIX
+        mapRef.current.setView([apartment.latitude, apartment.longitude], 16, {
+          animate: true,
+          duration: 0.5
+        });
       });
 
       // Add hover effect for desktop
@@ -327,13 +325,35 @@ const ApartmentMap = ({
       markersRef.current.push(marker);
     });
 
-    // Fit map to markers if there are any
-    if (markersRef.current.length > 0) {
+    // Only fit bounds on initial load or filter changes (NOT when apartment is selected)
+    if (!selectedApartment && markersRef.current.length > 0) {
       const group = new L.featureGroup(markersRef.current);
       mapRef.current.fitBounds(group.getBounds().pad(0.1));
     }
 
-  }, [apartmentData, colorScheme, selectedApartment, isMobile, onApartmentSelect]);
+  }, [apartmentData, colorScheme, isMobile]); // REMOVED selectedApartment from dependencies
+
+  // Separate effect to handle selected apartment styling without refitting bounds
+  useEffect(() => {
+    if (!mapRef.current || !selectedApartment) return;
+
+    // Update marker styles without recreating them
+    markersRef.current.forEach(marker => {
+      const apartment = apartmentData.find(apt => 
+        Math.abs(apt.latitude - marker.getLatLng().lat) < 0.0001 && 
+        Math.abs(apt.longitude - marker.getLatLng().lng) < 0.0001
+      );
+      
+      if (apartment) {
+        const isSelected = apartment.apartment_id === selectedApartment.apartment_id;
+        marker.setStyle({
+          radius: isSelected ? 12 : 8,
+          color: isSelected ? '#000' : '#fff',
+          weight: isSelected ? 3 : 2
+        });
+      }
+    });
+  }, [selectedApartment, apartmentData]); // This effect only handles styling
 
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden relative h-full">

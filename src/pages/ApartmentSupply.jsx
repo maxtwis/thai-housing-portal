@@ -529,6 +529,7 @@ const ApartmentSupply = () => {
               isMobile={isMobile}
               selectedApartment={selectedApartment}
               onApartmentSelect={setSelectedApartment}
+              calculateFacilityScore={calculateFacilityScore}
             />
           </div>
         </div>
