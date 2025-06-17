@@ -266,131 +266,57 @@ const ApartmentMap = ({
     };
   }, [isMobile]);
 
-  // Create simple, clean custom marker icon
-  const createCustomMarker = (apartment, isSelected, isHover = false) => {
+  // Create SVG-based marker icon that scales properly
+  const createSVGMarker = (apartment, isSelected, isHover = false) => {
     const markerColor = getMarkerColor(apartment);
     const size = isSelected || isHover ? 24 : 20;
-    const borderWidth = isSelected ? 3 : 2;
-    const borderColor = isSelected ? '#ffffff' : '#ffffff';
+    const borderColor = '#ffffff';
     
-    // Create a simple, clean pin-style marker
-    const markerHtml = `
-      <div style="
-        position: relative;
-        width: ${size}px;
-        height: ${size + 8}px;
-        cursor: pointer;
-        transform: translate(-50%, -100%);
-      ">
+    // Create SVG marker that scales properly with zoom
+    const svgIcon = `
+      <svg width="${size}" height="${size + 8}" viewBox="0 0 ${size} ${size + 8}" xmlns="http://www.w3.org/2000/svg">
         <!-- Drop shadow -->
-        <div style="
-          position: absolute;
-          bottom: 0;
-          left: 50%;
-          transform: translateX(-50%);
-          width: ${size * 0.8}px;
-          height: 3px;
-          background: rgba(0,0,0,0.2);
-          border-radius: 50%;
-          filter: blur(1px);
-        "></div>
+        <ellipse cx="${size/2}" cy="${size + 6}" rx="${size * 0.4}" ry="2" fill="rgba(0,0,0,0.2)"/>
         
         <!-- Main circle -->
-        <div style="
-          width: ${size}px;
-          height: ${size}px;
-          background: ${markerColor};
-          border: ${borderWidth}px solid ${borderColor};
-          border-radius: 50%;
-          box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-          position: relative;
-          top: 0;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        ">
-          <!-- Inner dot -->
-          <div style="
-            width: ${size * 0.3}px;
-            height: ${size * 0.3}px;
-            background: ${borderColor};
-            border-radius: 50%;
-          "></div>
-        </div>
+        <circle cx="${size/2}" cy="${size/2}" r="${(size - 4)/2}" 
+                fill="${markerColor}" 
+                stroke="${borderColor}" 
+                stroke-width="2"/>
+        
+        <!-- Inner dot -->
+        <circle cx="${size/2}" cy="${size/2}" r="${size * 0.15}" fill="${borderColor}"/>
         
         <!-- Pin pointer -->
-        <div style="
-          position: absolute;
-          bottom: 3px;
-          left: 50%;
-          transform: translateX(-50%);
-          width: 0;
-          height: 0;
-          border-left: 4px solid transparent;
-          border-right: 4px solid transparent;
-          border-top: 8px solid ${markerColor};
-          filter: drop-shadow(0 1px 2px rgba(0,0,0,0.2));
-        "></div>
-      </div>
+        <polygon points="${size/2 - 3},${size/2 + (size - 4)/2} ${size/2 + 3},${size/2 + (size - 4)/2} ${size/2},${size + 4}" 
+                 fill="${markerColor}"/>
+      </svg>
     `;
 
-    return L.divIcon({
-      html: markerHtml,
-      className: 'custom-clean-marker',
+    const svgUrl = 'data:image/svg+xml;base64,' + btoa(svgIcon);
+
+    return L.icon({
+      iconUrl: svgUrl,
       iconSize: [size, size + 8],
       iconAnchor: [size/2, size + 8],
       popupAnchor: [0, -(size + 8)]
     });
   };
 
-  // Alternative: Use Font Awesome or Unicode icons
-  const createIconMarker = (apartment, isSelected, isHover = false) => {
+  // Alternative: Use simple circle markers (most reliable)
+  const createSimpleMarker = (apartment, isSelected, isHover = false) => {
     const markerColor = getMarkerColor(apartment);
-    const size = isSelected || isHover ? 32 : 28;
-    const borderColor = isSelected ? '#ffffff' : '#ffffff';
+    const size = isSelected || isHover ? 12 : 10;
     
-    const markerHtml = `
-      <div style="
-        position: relative;
-        width: ${size}px;
-        height: ${size}px;
-        cursor: pointer;
-        transform: translate(-50%, -50%);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      ">
-        <!-- Background circle -->
-        <div style="
-          width: ${size}px;
-          height: ${size}px;
-          background: ${markerColor};
-          border: 2px solid ${borderColor};
-          border-radius: 50%;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          position: relative;
-        ">
-          <!-- Building icon (Unicode) -->
-          <span style="
-            font-size: ${size * 0.5}px;
-            color: ${borderColor};
-            font-weight: bold;
-            line-height: 1;
-          ">🏢</span>
-        </div>
-      </div>
-    `;
-
-    return L.divIcon({
-      html: markerHtml,
-      className: 'custom-icon-marker',
-      iconSize: [size, size],
-      iconAnchor: [size/2, size/2],
-      popupAnchor: [0, -size/2]
-    });
+    // Return circle marker options instead of icon
+    return {
+      radius: size,
+      fillColor: markerColor,
+      color: '#ffffff',
+      weight: isSelected ? 3 : 2,
+      opacity: 1,
+      fillOpacity: 0.9
+    };
   };
 
   // Update apartment markers when data or filters change (but NOT when apartment is selected)
@@ -411,19 +337,23 @@ const ApartmentMap = ({
 
       const isSelected = selectedApartment && selectedApartment.apartment_id === apartment.apartment_id;
 
-      // Create custom marker using the clean style
-      const customIcon = createCustomMarker(apartment, isSelected, false);
-
-      // Create marker with custom icon
-      const marker = L.marker([apartment.latitude, apartment.longitude], {
-        icon: customIcon
-      });
+      // Use CircleMarker for better accuracy and reliability
+      const markerOptions = createSimpleMarker(apartment, isSelected, false);
+      
+      const marker = L.circleMarker([apartment.latitude, apartment.longitude], markerOptions);
 
       // Store apartment data on the marker for reference
       marker.apartmentData = apartment;
       marker.isHovered = false;
 
-      marker.bindPopup(generatePopupContent(apartment));
+      // Bind popup with better options
+      marker.bindPopup(generatePopupContent(apartment), {
+        closeButton: true,
+        autoClose: true,
+        closeOnEscapeKey: true,
+        maxWidth: 300,
+        offset: [0, -10]
+      });
 
       // CLICK HANDLER
       marker.on('click', (e) => {
@@ -454,14 +384,14 @@ const ApartmentMap = ({
       if (!isMobile) {
         marker.on('mouseover', () => {
           marker.isHovered = true;
-          const hoverIcon = createCustomMarker(apartment, isSelected, true);
-          marker.setIcon(hoverIcon);
+          const hoverOptions = createSimpleMarker(apartment, isSelected, true);
+          marker.setStyle(hoverOptions);
         });
 
         marker.on('mouseout', () => {
           marker.isHovered = false;
-          const normalIcon = createCustomMarker(apartment, isSelected, false);
-          marker.setIcon(normalIcon);
+          const normalOptions = createSimpleMarker(apartment, isSelected, false);
+          marker.setStyle(normalOptions);
         });
       }
 
@@ -482,13 +412,13 @@ const ApartmentMap = ({
 
   }, [apartmentData, colorScheme, isMobile]); // Keep selectedApartment OUT of dependencies
 
-  // Separate effect ONLY for updating marker icons when selection changes
+  // Separate effect ONLY for updating marker styles when selection changes
   useEffect(() => {
     if (!mapRef.current || !selectedApartment) return;
 
-    console.log('Updating marker icons for selected apartment:', selectedApartment.apartment_name);
+    console.log('Updating marker styles for selected apartment:', selectedApartment.apartment_name);
 
-    // Update marker icons without recreating them or changing map view
+    // Update marker styles without recreating them or changing map view
     markersRef.current.forEach(marker => {
       const apartment = apartmentData.find(apt => 
         Math.abs(apt.latitude - marker.getLatLng().lat) < 0.0001 && 
@@ -498,12 +428,12 @@ const ApartmentMap = ({
       if (apartment) {
         const isSelected = apartment.apartment_id === selectedApartment.apartment_id;
         const isHovered = marker.isHovered || false;
-        const updatedIcon = createCustomMarker(apartment, isSelected, isHovered);
-        marker.setIcon(updatedIcon);
+        const updatedOptions = createSimpleMarker(apartment, isSelected, isHovered);
+        marker.setStyle(updatedOptions);
       }
     });
 
-  }, [selectedApartment, apartmentData]); // This effect ONLY handles icon updates
+  }, [selectedApartment, apartmentData]); // This effect ONLY handles style updates
 
   // Reset zoom flag when filters change (but not when apartment selection changes)
   useEffect(() => {
