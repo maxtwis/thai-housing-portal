@@ -291,17 +291,48 @@ const ApartmentMap = ({
         fillOpacity: 0.8
       });
 
+      // Store apartment data on the marker for reference
+      marker.apartmentData = apartment;
+
       marker.bindPopup(generatePopupContent(apartment));
 
-      marker.on('click', () => {
+      // IMPROVED CLICK HANDLER with debugging
+      marker.on('click', (e) => {
+        console.log('Marker clicked!', apartment.apartment_name, apartment.latitude, apartment.longitude);
+        
+        // Prevent event bubbling
+        L.DomEvent.stopPropagation(e);
+        
+        // Set selected apartment
         if (onApartmentSelect) {
           onApartmentSelect(apartment);
         }
-        // Zoom to the selected apartment marker - THIS IS THE KEY FIX
-        mapRef.current.setView([apartment.latitude, apartment.longitude], 16, {
-          animate: true,
-          duration: 0.5
-        });
+        
+        // Zoom to the selected apartment marker with multiple fallback methods
+        setTimeout(() => {
+          try {
+            const lat = apartment.latitude;
+            const lng = apartment.longitude;
+            
+            console.log('Attempting to zoom to:', lat, lng);
+            
+            // Method 1: setView with animation
+            mapRef.current.setView([lat, lng], 16, {
+              animate: true,
+              duration: 1.0
+            });
+            
+            // Method 2: Fallback - fly to location (in case setView doesn't work)
+            setTimeout(() => {
+              mapRef.current.flyTo([lat, lng], 16, {
+                duration: 1.0
+              });
+            }, 100);
+            
+          } catch (error) {
+            console.error('Error zooming to marker:', error);
+          }
+        }, 100);
       });
 
       // Add hover effect for desktop
@@ -333,9 +364,11 @@ const ApartmentMap = ({
 
   }, [apartmentData, colorScheme, isMobile]); // REMOVED selectedApartment from dependencies
 
-  // Separate effect to handle selected apartment styling without refitting bounds
+  // Separate effect to handle selected apartment styling AND zooming
   useEffect(() => {
     if (!mapRef.current || !selectedApartment) return;
+
+    console.log('Selected apartment changed:', selectedApartment.apartment_name);
 
     // Update marker styles without recreating them
     markersRef.current.forEach(marker => {
@@ -353,7 +386,82 @@ const ApartmentMap = ({
         });
       }
     });
-  }, [selectedApartment, apartmentData]); // This effect only handles styling
+
+    // ADDITIONAL ZOOM LOGIC - Zoom when apartment is selected from outside the map
+    setTimeout(() => {
+      try {
+        const lat = selectedApartment.latitude;
+        const lng = selectedApartment.longitude;
+        
+        console.log('Zooming to selected apartment:', lat, lng);
+        
+        // Multiple zoom attempts to ensure it works
+        mapRef.current.setView([lat, lng], 16, {
+          animate: true,
+          duration: 1.0
+        });
+
+        // Alternative method in case the first doesn't work
+        setTimeout(() => {
+          mapRef.current.panTo([lat, lng]);
+          setTimeout(() => {
+            mapRef.current.setZoom(16);
+          }, 500);
+        }, 200);
+        
+      } catch (error) {
+        console.error('Error in selected apartment zoom:', error);
+      }
+    }, 100);
+
+  }, [selectedApartment, apartmentData]);
+
+  // Add a manual zoom function for debugging
+  const zoomToApartment = (apartment) => {
+    if (!mapRef.current || !apartment) return;
+    
+    console.log('Manual zoom function called for:', apartment.apartment_name);
+    
+    try {
+      // Close any open popups first
+      mapRef.current.closePopup();
+      
+      // Multiple zoom strategies
+      const lat = apartment.latitude;
+      const lng = apartment.longitude;
+      
+      // Strategy 1: Direct setView
+      mapRef.current.setView([lat, lng], 16);
+      
+      // Strategy 2: Pan then zoom
+      setTimeout(() => {
+        mapRef.current.panTo([lat, lng]);
+        setTimeout(() => {
+          mapRef.current.setZoom(16);
+        }, 300);
+      }, 100);
+      
+      // Strategy 3: flyTo as final fallback
+      setTimeout(() => {
+        mapRef.current.flyTo([lat, lng], 16, {
+          duration: 1.5
+        });
+      }, 500);
+      
+    } catch (error) {
+      console.error('Manual zoom error:', error);
+    }
+  };
+
+  // Expose zoom function to window for debugging
+  useEffect(() => {
+    window.apartmentMapInstance = {
+      showNearbyPlaces,
+      clearNearbyPlaces,
+      zoomToApartment, // Add this for debugging
+      mapRef: mapRef.current
+    };
+  }, []);
 
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden relative h-full">
@@ -365,6 +473,23 @@ const ApartmentMap = ({
           </div>
         </div>
       )}
+      
+      {/* Debug panel - remove this in production */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="absolute top-4 left-4 bg-white bg-opacity-90 px-2 py-1 text-xs z-10 rounded">
+          <div>Markers: {markersRef.current.length}</div>
+          <div>Selected: {selectedApartment ? selectedApartment.apartment_name : 'None'}</div>
+          {selectedApartment && (
+            <button 
+              onClick={() => zoomToApartment(selectedApartment)}
+              className="bg-blue-500 text-white px-2 py-1 rounded text-xs mt-1"
+            >
+              Manual Zoom
+            </button>
+          )}
+        </div>
+      )}
+      
       <div 
         ref={mapContainerRef}
         className="w-full h-full"
