@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getCkanData } from '../utils/ckanClient';
-import ApartmentMap from '../components/ApartmentMap';
+import ApartmentMap from '../components/apartment-supply/ApartmentMap';
 
 const ApartmentSupply = () => {
   const [apartmentData, setApartmentData] = useState([]);
