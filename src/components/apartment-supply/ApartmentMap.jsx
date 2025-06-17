@@ -266,6 +266,137 @@ const ApartmentMap = ({
     };
   }, [isMobile]);
 
+  // Create custom marker icon based on apartment data
+  const createCustomMarker = (apartment, isSelected) => {
+    const markerColor = getMarkerColor(apartment);
+    const size = isSelected ? 40 : 32;
+    const borderColor = isSelected ? '#000' : '#fff';
+    
+    // Create a custom HTML marker that looks like Google Maps style
+    const markerHtml = `
+      <div style="
+        position: relative;
+        width: ${size}px;
+        height: ${size}px;
+        transform: translate(-50%, -100%);
+      ">
+        <!-- Main pin body -->
+        <div style="
+          width: ${size}px;
+          height: ${size}px;
+          background: ${markerColor};
+          border: 3px solid ${borderColor};
+          border-radius: 50% 50% 50% 0;
+          transform: rotate(-45deg);
+          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+          position: absolute;
+          top: 0;
+          left: 0;
+        "></div>
+        
+        <!-- Inner icon/dot -->
+        <div style="
+          width: ${size * 0.4}px;
+          height: ${size * 0.4}px;
+          background: ${borderColor};
+          border-radius: 50%;
+          position: absolute;
+          top: ${size * 0.15}px;
+          left: ${size * 0.15}px;
+          z-index: 2;
+        "></div>
+        
+        <!-- Optional apartment icon -->
+        <div style="
+          position: absolute;
+          top: ${size * 0.25}px;
+          left: ${size * 0.25}px;
+          width: ${size * 0.5}px;
+          height: ${size * 0.5}px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 3;
+          font-size: ${size * 0.3}px;
+          color: ${markerColor};
+          font-weight: bold;
+        ">🏠</div>
+      </div>
+    `;
+
+    return L.divIcon({
+      html: markerHtml,
+      className: 'custom-apartment-marker',
+      iconSize: [size, size],
+      iconAnchor: [size/2, size],
+      popupAnchor: [0, -size]
+    });
+  };
+
+  // Alternative: Create Google Maps-style marker
+  const createGoogleStyleMarker = (apartment, isSelected) => {
+    const markerColor = getMarkerColor(apartment);
+    const size = isSelected ? 36 : 28;
+    const borderColor = isSelected ? '#000' : '#fff';
+    
+    const markerHtml = `
+      <div style="
+        position: relative;
+        width: ${size}px;
+        height: ${size + 8}px;
+        transform: translate(-50%, -100%);
+      ">
+        <!-- Pin drop shadow -->
+        <div style="
+          position: absolute;
+          bottom: -2px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: ${size * 0.6}px;
+          height: 4px;
+          background: rgba(0,0,0,0.2);
+          border-radius: 50%;
+          filter: blur(1px);
+        "></div>
+        
+        <!-- Main pin body -->
+        <div style="
+          width: ${size}px;
+          height: ${size}px;
+          background: ${markerColor};
+          border: 2px solid ${borderColor};
+          border-radius: 50% 50% 50% 0;
+          transform: rotate(-45deg);
+          box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+          position: absolute;
+          top: 0;
+          left: 0;
+        "></div>
+        
+        <!-- Inner circle -->
+        <div style="
+          width: ${size * 0.5}px;
+          height: ${size * 0.5}px;
+          background: ${borderColor};
+          border-radius: 50%;
+          position: absolute;
+          top: ${size * 0.125}px;
+          left: ${size * 0.125}px;
+          z-index: 2;
+          box-shadow: inset 0 1px 2px rgba(0,0,0,0.2);
+        "></div>
+      </div>
+    `;
+
+    return L.divIcon({
+      html: markerHtml,
+      className: 'google-style-marker',
+      iconSize: [size, size + 8],
+      iconAnchor: [size/2, size + 8],
+      popupAnchor: [0, -(size + 8)]
+    });
+  };
+
   // Update apartment markers when data or filters change (but NOT when apartment is selected)
   useEffect(() => {
     if (!mapRef.current || !apartmentData) return;
@@ -283,16 +414,13 @@ const ApartmentMap = ({
       if (!apartment.latitude || !apartment.longitude) return;
 
       const isSelected = selectedApartment && selectedApartment.apartment_id === apartment.apartment_id;
-      const markerColor = getMarkerColor(apartment);
 
-      // Create custom marker
-      const marker = L.circleMarker([apartment.latitude, apartment.longitude], {
-        radius: isSelected ? 12 : 8,
-        fillColor: markerColor,
-        color: isSelected ? '#000' : '#fff',
-        weight: isSelected ? 3 : 2,
-        opacity: 1,
-        fillOpacity: 0.8
+      // Create custom marker using Google style
+      const customIcon = createGoogleStyleMarker(apartment, isSelected);
+
+      // Create marker with custom icon
+      const marker = L.marker([apartment.latitude, apartment.longitude], {
+        icon: customIcon
       });
 
       // Store apartment data on the marker for reference
@@ -325,20 +453,18 @@ const ApartmentMap = ({
         }, 300);
       });
 
-      // Add hover effect for desktop
+      // Add hover effect for desktop (change marker size)
       if (!isMobile) {
         marker.on('mouseover', () => {
-          marker.setStyle({
-            radius: 10,
-            weight: 3
-          });
+          // Create a larger version on hover
+          const hoverIcon = createGoogleStyleMarker(apartment, true);
+          marker.setIcon(hoverIcon);
         });
 
         marker.on('mouseout', () => {
-          marker.setStyle({
-            radius: isSelected ? 12 : 8,
-            weight: isSelected ? 3 : 2
-          });
+          // Restore original size
+          const originalIcon = createGoogleStyleMarker(apartment, isSelected);
+          marker.setIcon(originalIcon);
         });
       }
 
@@ -359,13 +485,13 @@ const ApartmentMap = ({
 
   }, [apartmentData, colorScheme, isMobile]); // Keep selectedApartment OUT of dependencies
 
-  // Separate effect ONLY for styling selected markers (no zoom logic here)
+  // Separate effect ONLY for updating marker icons when selection changes
   useEffect(() => {
     if (!mapRef.current || !selectedApartment) return;
 
-    console.log('Updating marker styles for selected apartment:', selectedApartment.apartment_name);
+    console.log('Updating marker icons for selected apartment:', selectedApartment.apartment_name);
 
-    // Update marker styles without recreating them or changing map view
+    // Update marker icons without recreating them or changing map view
     markersRef.current.forEach(marker => {
       const apartment = apartmentData.find(apt => 
         Math.abs(apt.latitude - marker.getLatLng().lat) < 0.0001 && 
@@ -374,15 +500,12 @@ const ApartmentMap = ({
       
       if (apartment) {
         const isSelected = apartment.apartment_id === selectedApartment.apartment_id;
-        marker.setStyle({
-          radius: isSelected ? 12 : 8,
-          color: isSelected ? '#000' : '#fff',
-          weight: isSelected ? 3 : 2
-        });
+        const updatedIcon = createGoogleStyleMarker(apartment, isSelected);
+        marker.setIcon(updatedIcon);
       }
     });
 
-  }, [selectedApartment, apartmentData]); // This effect ONLY handles styling
+  }, [selectedApartment, apartmentData]); // This effect ONLY handles icon updates
 
   // Reset zoom flag when filters change (but not when apartment selection changes)
   useEffect(() => {
