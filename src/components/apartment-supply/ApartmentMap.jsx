@@ -266,134 +266,130 @@ const ApartmentMap = ({
     };
   }, [isMobile]);
 
-  // Create custom marker icon based on apartment data
-  const createCustomMarker = (apartment, isSelected) => {
+  // Create simple, clean custom marker icon
+  const createCustomMarker = (apartment, isSelected, isHover = false) => {
     const markerColor = getMarkerColor(apartment);
-    const size = isSelected ? 40 : 32;
-    const borderColor = isSelected ? '#000' : '#fff';
+    const size = isSelected || isHover ? 24 : 20;
+    const borderWidth = isSelected ? 3 : 2;
+    const borderColor = isSelected ? '#ffffff' : '#ffffff';
     
-    // Create a custom HTML marker that looks like Google Maps style
-    const markerHtml = `
-      <div style="
-        position: relative;
-        width: ${size}px;
-        height: ${size}px;
-        transform: translate(-50%, -100%);
-      ">
-        <!-- Main pin body -->
-        <div style="
-          width: ${size}px;
-          height: ${size}px;
-          background: ${markerColor};
-          border: 3px solid ${borderColor};
-          border-radius: 50% 50% 50% 0;
-          transform: rotate(-45deg);
-          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-          position: absolute;
-          top: 0;
-          left: 0;
-        "></div>
-        
-        <!-- Inner icon/dot -->
-        <div style="
-          width: ${size * 0.4}px;
-          height: ${size * 0.4}px;
-          background: ${borderColor};
-          border-radius: 50%;
-          position: absolute;
-          top: ${size * 0.15}px;
-          left: ${size * 0.15}px;
-          z-index: 2;
-        "></div>
-        
-        <!-- Optional apartment icon -->
-        <div style="
-          position: absolute;
-          top: ${size * 0.25}px;
-          left: ${size * 0.25}px;
-          width: ${size * 0.5}px;
-          height: ${size * 0.5}px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 3;
-          font-size: ${size * 0.3}px;
-          color: ${markerColor};
-          font-weight: bold;
-        ">🏠</div>
-      </div>
-    `;
-
-    return L.divIcon({
-      html: markerHtml,
-      className: 'custom-apartment-marker',
-      iconSize: [size, size],
-      iconAnchor: [size/2, size],
-      popupAnchor: [0, -size]
-    });
-  };
-
-  // Alternative: Create Google Maps-style marker
-  const createGoogleStyleMarker = (apartment, isSelected) => {
-    const markerColor = getMarkerColor(apartment);
-    const size = isSelected ? 36 : 28;
-    const borderColor = isSelected ? '#000' : '#fff';
-    
+    // Create a simple, clean pin-style marker
     const markerHtml = `
       <div style="
         position: relative;
         width: ${size}px;
         height: ${size + 8}px;
+        cursor: pointer;
         transform: translate(-50%, -100%);
       ">
-        <!-- Pin drop shadow -->
+        <!-- Drop shadow -->
         <div style="
           position: absolute;
-          bottom: -2px;
+          bottom: 0;
           left: 50%;
           transform: translateX(-50%);
-          width: ${size * 0.6}px;
-          height: 4px;
+          width: ${size * 0.8}px;
+          height: 3px;
           background: rgba(0,0,0,0.2);
           border-radius: 50%;
           filter: blur(1px);
         "></div>
         
-        <!-- Main pin body -->
+        <!-- Main circle -->
         <div style="
           width: ${size}px;
           height: ${size}px;
           background: ${markerColor};
-          border: 2px solid ${borderColor};
-          border-radius: 50% 50% 50% 0;
-          transform: rotate(-45deg);
-          box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-          position: absolute;
-          top: 0;
-          left: 0;
-        "></div>
-        
-        <!-- Inner circle -->
-        <div style="
-          width: ${size * 0.5}px;
-          height: ${size * 0.5}px;
-          background: ${borderColor};
+          border: ${borderWidth}px solid ${borderColor};
           border-radius: 50%;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+          position: relative;
+          top: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        ">
+          <!-- Inner dot -->
+          <div style="
+            width: ${size * 0.3}px;
+            height: ${size * 0.3}px;
+            background: ${borderColor};
+            border-radius: 50%;
+          "></div>
+        </div>
+        
+        <!-- Pin pointer -->
+        <div style="
           position: absolute;
-          top: ${size * 0.125}px;
-          left: ${size * 0.125}px;
-          z-index: 2;
-          box-shadow: inset 0 1px 2px rgba(0,0,0,0.2);
+          bottom: 3px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 0;
+          height: 0;
+          border-left: 4px solid transparent;
+          border-right: 4px solid transparent;
+          border-top: 8px solid ${markerColor};
+          filter: drop-shadow(0 1px 2px rgba(0,0,0,0.2));
         "></div>
       </div>
     `;
 
     return L.divIcon({
       html: markerHtml,
-      className: 'google-style-marker',
+      className: 'custom-clean-marker',
       iconSize: [size, size + 8],
       iconAnchor: [size/2, size + 8],
       popupAnchor: [0, -(size + 8)]
+    });
+  };
+
+  // Alternative: Use Font Awesome or Unicode icons
+  const createIconMarker = (apartment, isSelected, isHover = false) => {
+    const markerColor = getMarkerColor(apartment);
+    const size = isSelected || isHover ? 32 : 28;
+    const borderColor = isSelected ? '#ffffff' : '#ffffff';
+    
+    const markerHtml = `
+      <div style="
+        position: relative;
+        width: ${size}px;
+        height: ${size}px;
+        cursor: pointer;
+        transform: translate(-50%, -50%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      ">
+        <!-- Background circle -->
+        <div style="
+          width: ${size}px;
+          height: ${size}px;
+          background: ${markerColor};
+          border: 2px solid ${borderColor};
+          border-radius: 50%;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          position: relative;
+        ">
+          <!-- Building icon (Unicode) -->
+          <span style="
+            font-size: ${size * 0.5}px;
+            color: ${borderColor};
+            font-weight: bold;
+            line-height: 1;
+          ">🏢</span>
+        </div>
+      </div>
+    `;
+
+    return L.divIcon({
+      html: markerHtml,
+      className: 'custom-icon-marker',
+      iconSize: [size, size],
+      iconAnchor: [size/2, size/2],
+      popupAnchor: [0, -size/2]
     });
   };
 
@@ -415,8 +411,8 @@ const ApartmentMap = ({
 
       const isSelected = selectedApartment && selectedApartment.apartment_id === apartment.apartment_id;
 
-      // Create custom marker using Google style
-      const customIcon = createGoogleStyleMarker(apartment, isSelected);
+      // Create custom marker using the clean style
+      const customIcon = createCustomMarker(apartment, isSelected, false);
 
       // Create marker with custom icon
       const marker = L.marker([apartment.latitude, apartment.longitude], {
@@ -425,10 +421,11 @@ const ApartmentMap = ({
 
       // Store apartment data on the marker for reference
       marker.apartmentData = apartment;
+      marker.isHovered = false;
 
       marker.bindPopup(generatePopupContent(apartment));
 
-      // CLICK HANDLER - The key fix is here
+      // CLICK HANDLER
       marker.on('click', (e) => {
         console.log('Marker clicked!', apartment.apartment_name);
         
@@ -453,18 +450,18 @@ const ApartmentMap = ({
         }, 300);
       });
 
-      // Add hover effect for desktop (change marker size)
+      // FIXED HOVER EFFECT - only changes size, keeps color
       if (!isMobile) {
         marker.on('mouseover', () => {
-          // Create a larger version on hover
-          const hoverIcon = createGoogleStyleMarker(apartment, true);
+          marker.isHovered = true;
+          const hoverIcon = createCustomMarker(apartment, isSelected, true);
           marker.setIcon(hoverIcon);
         });
 
         marker.on('mouseout', () => {
-          // Restore original size
-          const originalIcon = createGoogleStyleMarker(apartment, isSelected);
-          marker.setIcon(originalIcon);
+          marker.isHovered = false;
+          const normalIcon = createCustomMarker(apartment, isSelected, false);
+          marker.setIcon(normalIcon);
         });
       }
 
@@ -500,7 +497,8 @@ const ApartmentMap = ({
       
       if (apartment) {
         const isSelected = apartment.apartment_id === selectedApartment.apartment_id;
-        const updatedIcon = createGoogleStyleMarker(apartment, isSelected);
+        const isHovered = marker.isHovered || false;
+        const updatedIcon = createCustomMarker(apartment, isSelected, isHovered);
         marker.setIcon(updatedIcon);
       }
     });
