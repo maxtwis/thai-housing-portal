@@ -11,492 +11,437 @@ L.Icon.Default.mergeOptions({
 });
 
 const ApartmentMap = ({ 
-  apartmentData = [], 
-  filters = {}, 
+  apartmentData, 
   colorScheme = 'priceRange', 
-  isMobile = false, 
-  selectedApartment = null, 
-  onApartmentSelect = () => {},
-  calculateFacilityScore = () => 0
+  isMobile, 
+  onApartmentSelect, 
+  selectedApartment 
 }) => {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const markersRef = useRef([]);
   const nearbyLayersRef = useRef({});
+  const isInitialLoad = useRef(true);
+  const hasZoomedToMarker = useRef(false);
+  
   const [loadingNearby, setLoadingNearby] = useState(false);
-  const hasZoomedToMarker = useRef(false); // Track if we've zoomed to a marker
-  const isInitialLoad = useRef(true); // Track initial load
 
   // Dynamic height calculation based on viewport
   const getMapHeight = () => {
     if (isMobile) {
       return "60vh";
     } else {
-      return "calc(100vh - 120px)";
+      return "calc(100vh - 150px)";
     }
   };
 
-  // Color schemes for different attributes
+  // Calculate facility score
+  const calculateFacilityScore = (apartment) => {
+    const facilities = [
+      'facility_wifi',
+      'facility_parking', 
+      'facility_aircondition',
+      'facility_pool',
+      'facility_gym',
+      'facility_security',
+      'facility_elevator',
+      'facility_waterheater',
+      'facility_laundry',
+      'facility_cctv'
+    ];
+    
+    const availableFacilities = facilities.filter(facility => apartment[facility]);
+    return Math.round((availableFacilities.length / facilities.length) * 100);
+  };
+
+  // Enhanced popup content generator for apartment markers
+  const generatePopupContent = (apartment) => {
+    const facilityScore = calculateFacilityScore(apartment);
+    
+    // Helper function to format price range
+    const formatPriceRange = () => {
+      if (apartment.price_min && apartment.price_max && apartment.price_min !== apartment.price_max) {
+        return `฿${apartment.price_min?.toLocaleString()} - ฿${apartment.price_max?.toLocaleString()}`;
+      } else if (apartment.price_min) {
+        return `฿${apartment.price_min?.toLocaleString()}`;
+      }
+      return 'ราคาไม่ระบุ';
+    };
+
+    // Helper function to format size range
+    const formatSizeRange = () => {
+      if (apartment.size_min && apartment.size_max && apartment.size_min !== apartment.size_max) {
+        return `${apartment.size_min} - ${apartment.size_max} ตร.ม.`;
+      } else if (apartment.size_max || apartment.size_min) {
+        return `${apartment.size_max || apartment.size_min} ตร.ม.`;
+      }
+      return 'ขนาดไม่ระบุ';
+    };
+
+    // Facility icons mapping
+    const facilityIcons = {
+      wifi: '📶',
+      parking: '🚗',
+      aircondition: '❄️',
+      pool: '🏊‍♂️',
+      gym: '💪',
+      security: '🔒',
+      elevator: '🛗',
+      waterheater: '🚿',
+      laundry: '👕',
+      cctv: '📹'
+    };
+
+    // Get available facilities
+    const facilities = [];
+    if (apartment.facility_wifi) facilities.push({ key: 'wifi', label: 'WiFi', icon: facilityIcons.wifi });
+    if (apartment.facility_parking) facilities.push({ key: 'parking', label: 'ที่จอดรถ', icon: facilityIcons.parking });
+    if (apartment.facility_aircondition) facilities.push({ key: 'aircondition', label: 'เครื่องปรับอากาศ', icon: facilityIcons.aircondition });
+    if (apartment.facility_pool) facilities.push({ key: 'pool', label: 'สระว่ายน้ำ', icon: facilityIcons.pool });
+    if (apartment.facility_gym) facilities.push({ key: 'gym', label: 'ห้องออกกำลังกาย', icon: facilityIcons.gym });
+    if (apartment.facility_security) facilities.push({ key: 'security', label: 'รปภ. 24 ชั่วโมง', icon: facilityIcons.security });
+    if (apartment.facility_elevator) facilities.push({ key: 'elevator', label: 'ลิฟต์', icon: facilityIcons.elevator });
+    if (apartment.facility_waterheater) facilities.push({ key: 'waterheater', label: 'เครื่องทำน้ำอุ่น', icon: facilityIcons.waterheater });
+    if (apartment.facility_laundry) facilities.push({ key: 'laundry', label: 'ห้องซักรีด', icon: facilityIcons.laundry });
+    if (apartment.facility_cctv) facilities.push({ key: 'cctv', label: 'กล้องวงจรปิด', icon: facilityIcons.cctv });
+
+    // Facility score color
+    const getScoreColor = (score) => {
+      if (score >= 80) return '#10b981'; // green
+      if (score >= 60) return '#f59e0b'; // yellow
+      if (score >= 40) return '#ef4444'; // orange
+      return '#6b7280'; // gray
+    };
+
+    return `
+      <div style="
+        max-width: 320px; 
+        padding: 0; 
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: white;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      ">
+        <!-- Header Section -->
+        <div style="
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          padding: 16px;
+          color: white;
+          position: relative;
+          overflow: hidden;
+        ">
+          <div style="position: absolute; top: -50%; right: -50%; width: 100px; height: 100px; background: rgba(255,255,255,0.1); border-radius: 50%;"></div>
+          <div style="position: relative; z-index: 1;">
+            <h3 style="
+              margin: 0 0 8px 0; 
+              font-size: 18px; 
+              font-weight: 700; 
+              line-height: 1.3;
+              text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            ">${apartment.apartment_name}</h3>
+            
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+              <div style="
+                background: rgba(255,255,255,0.2); 
+                backdrop-filter: blur(10px);
+                padding: 4px 10px; 
+                border-radius: 20px; 
+                font-size: 12px; 
+                font-weight: 600;
+                border: 1px solid rgba(255,255,255,0.3);
+              ">${apartment.room_type || 'ห้องพัก'}</div>
+              
+              <div style="
+                background: rgba(255,255,255,0.2); 
+                backdrop-filter: blur(10px);
+                padding: 4px 10px; 
+                border-radius: 20px; 
+                font-size: 12px; 
+                font-weight: 600;
+                border: 1px solid rgba(255,255,255,0.3);
+              ">${formatSizeRange()}</div>
+            </div>
+
+            <div style="
+              font-size: 20px; 
+              font-weight: 800; 
+              color: #fff;
+              text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            ">${formatPriceRange()}<span style="font-size: 14px; font-weight: 500;">/เดือน</span></div>
+          </div>
+        </div>
+
+        <!-- Content Section -->
+        <div style="padding: 16px;">
+          <!-- Facility Score -->
+          <div style="
+            background: linear-gradient(90deg, rgba(${getScoreColor(facilityScore).replace('#', '')}, 0.1) 0%, rgba(${getScoreColor(facilityScore).replace('#', '')}, 0.05) 100%);
+            border: 1px solid rgba(${getScoreColor(facilityScore).replace('#', '')}, 0.2);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 16px;
+            text-align: center;
+          ">
+            <div style="
+              font-size: 24px; 
+              font-weight: 800; 
+              color: ${getScoreColor(facilityScore)};
+              margin-bottom: 4px;
+            ">${facilityScore}%</div>
+            <div style="
+              font-size: 12px; 
+              color: #6b7280; 
+              font-weight: 500;
+            ">คะแนนสิ่งอำนวยความสะดวก</div>
+          </div>
+
+          <!-- Facilities Grid -->
+          ${facilities.length > 0 ? `
+            <div style="margin-bottom: 16px;">
+              <h4 style="
+                margin: 0 0 12px 0; 
+                font-size: 14px; 
+                font-weight: 600; 
+                color: #374151;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+              ">
+                <span style="font-size: 16px;">✨</span>
+                สิ่งอำนวยความสะดวก
+              </h4>
+              
+              <div style="
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+                gap: 8px;
+              ">
+                ${facilities.map(facility => `
+                  <div style="
+                    background: #f8fafc;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 6px;
+                    padding: 8px 12px;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    transition: all 0.2s ease;
+                  ">
+                    <span style="font-size: 16px;">${facility.icon}</span>
+                    <span style="
+                      font-size: 12px; 
+                      color: #475569; 
+                      font-weight: 500;
+                      line-height: 1.2;
+                    ">${facility.label}</span>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          ` : `
+            <div style="
+              text-align: center;
+              padding: 20px;
+              color: #9ca3af;
+              font-size: 14px;
+            ">
+              <div style="font-size: 24px; margin-bottom: 8px;">🏢</div>
+              ไม่มีข้อมูลสิ่งอำนวยความสะดวก
+            </div>
+          `}
+
+          <!-- Address Section -->
+          ${apartment.address ? `
+            <div style="
+              background: #f1f5f9;
+              border-left: 4px solid #3b82f6;
+              padding: 12px;
+              border-radius: 0 8px 8px 0;
+              margin-bottom: 16px;
+            ">
+              <div style="
+                display: flex;
+                align-items: flex-start;
+                gap: 8px;
+              ">
+                <span style="font-size: 16px; margin-top: 2px;">📍</span>
+                <div>
+                  <div style="
+                    font-size: 12px; 
+                    color: #475569; 
+                    font-weight: 500; 
+                    margin-bottom: 4px;
+                  ">ที่อยู่</div>
+                  <div style="
+                    font-size: 13px; 
+                    color: #1e293b; 
+                    line-height: 1.4;
+                  ">${apartment.address}</div>
+                </div>
+              </div>
+            </div>
+          ` : ''}
+
+          <!-- Action Buttons -->
+          <div style="
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+          ">
+            <button onclick="window.apartmentMapInstance && window.apartmentMapInstance.showNearbyPlaces && window.apartmentMapInstance.showNearbyPlaces('restaurant')" style="
+              flex: 1;
+              background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+              color: white;
+              border: none;
+              border-radius: 8px;
+              padding: 10px 12px;
+              font-size: 12px;
+              font-weight: 600;
+              cursor: pointer;
+              transition: all 0.2s ease;
+              box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+            " onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(59, 130, 246, 0.4)'"
+               onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(59, 130, 246, 0.3)'">
+              🍴 ร้านอาหารใกล้เคียง
+            </button>
+            
+            <button onclick="window.apartmentMapInstance && window.apartmentMapInstance.showNearbyPlaces && window.apartmentMapInstance.showNearbyPlaces('convenience')" style="
+              flex: 1;
+              background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+              color: white;
+              border: none;
+              border-radius: 8px;
+              padding: 10px 12px;
+              font-size: 12px;
+              font-weight: 600;
+              cursor: pointer;
+              transition: all 0.2s ease;
+              box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
+            " onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(16, 185, 129, 0.4)'"
+               onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(16, 185, 129, 0.3)'">
+              🏪 ร้านสะดวกซื้อ
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  };
+
+  // Get marker color based on apartment data and color scheme
   const getMarkerColor = (apartment) => {
     const schemes = {
       priceRange: () => {
         const price = apartment.price_min || 0;
-        if (price < 5000) return '#22c55e';  // Green - Budget
-        if (price < 10000) return '#84cc16'; // Light green
-        if (price < 20000) return '#eab308'; // Yellow
-        if (price < 30000) return '#f97316'; // Orange
-        return '#ef4444'; // Red - Expensive
-      },
-      roomType: () => {
-        const roomTypeColors = {
-          'หอพัก': '#3b82f6',
-          'แมนชั่น': '#8b5cf6',
-          'อพาร์ตเมนต์': '#06b6d4',
-          'คอนโด': '#f59e0b'
-        };
-        return roomTypeColors[apartment.room_type] || '#6b7280';
+        if (price < 5000) return '#10b981'; // green
+        if (price < 10000) return '#f59e0b'; // amber
+        if (price < 20000) return '#ef4444'; // red
+        return '#8b5cf6'; // purple
       },
       facilityScore: () => {
         const score = calculateFacilityScore(apartment);
-        if (score >= 80) return '#059669';  // High score - green
-        if (score >= 60) return '#0891b2';  // Medium-high - blue
-        if (score >= 40) return '#ca8a04';  // Medium - yellow
-        if (score >= 20) return '#ea580c';  // Low - orange
-        return '#dc2626';  // Very low - red
+        if (score >= 80) return '#10b981';
+        if (score >= 60) return '#f59e0b';
+        if (score >= 40) return '#ef4444';
+        return '#6b7280';
       },
-      size: () => {
-        const size = apartment.size_max || apartment.size_min || 0;
-        if (size >= 50) return '#7c3aed';   // Large - purple
-        if (size >= 35) return '#2563eb';   // Medium-large - blue
-        if (size >= 25) return '#059669';   // Medium - green
-        if (size >= 15) return '#ea580c';   // Small - orange
-        return '#dc2626';  // Very small - red
+      roomType: () => {
+        const typeColors = {
+          'Studio': '#8b5cf6',
+          '1 Bedroom': '#3b82f6',
+          '2 Bedroom': '#10b981',
+          '3 Bedroom': '#f59e0b',
+          'Condo': '#ef4444'
+        };
+        return typeColors[apartment.room_type] || '#6b7280';
       }
     };
-    
+
     return schemes[colorScheme] ? schemes[colorScheme]() : schemes.priceRange();
   };
 
-  // Generate popup content for apartment markers
-// Enhanced popup content generator for apartment markers
-const generatePopupContent = (apartment) => {
-  const facilityScore = calculateFacilityScore(apartment);
-  
-  // Helper function to format price range
-  const formatPriceRange = () => {
-    if (apartment.price_min && apartment.price_max && apartment.price_min !== apartment.price_max) {
-      return `฿${apartment.price_min?.toLocaleString()} - ฿${apartment.price_max?.toLocaleString()}`;
-    } else if (apartment.price_min) {
-      return `฿${apartment.price_min?.toLocaleString()}`;
-    }
-    return 'ราคาไม่ระบุ';
+  // Create simple circle marker options
+  const createSimpleMarker = (apartment, isSelected, isHover = false) => {
+    const markerColor = getMarkerColor(apartment);
+    const size = isSelected || isHover ? 12 : 8;
+
+    return {
+      radius: size,
+      fillColor: markerColor,
+      color: '#ffffff',
+      weight: isSelected ? 3 : 2,
+      opacity: 1,
+      fillOpacity: 0.9
+    };
   };
-
-  // Helper function to format size range
-  const formatSizeRange = () => {
-    if (apartment.size_min && apartment.size_max && apartment.size_min !== apartment.size_max) {
-      return `${apartment.size_min} - ${apartment.size_max} ตร.ม.`;
-    } else if (apartment.size_max || apartment.size_min) {
-      return `${apartment.size_max || apartment.size_min} ตร.ม.`;
-    }
-    return 'ขนาดไม่ระบุ';
-  };
-
-  // Facility icons mapping
-  const facilityIcons = {
-    wifi: '📶',
-    parking: '🚗',
-    aircondition: '❄️',
-    pool: '🏊‍♂️',
-    gym: '💪',
-    security: '🔒',
-    elevator: '🛗',
-    waterheater: '🚿',
-    laundry: '👕',
-    cctv: '📹'
-  };
-
-  // Get available facilities
-  const facilities = [];
-  if (apartment.facility_wifi) facilities.push({ key: 'wifi', label: 'WiFi', icon: facilityIcons.wifi });
-  if (apartment.facility_parking) facilities.push({ key: 'parking', label: 'ที่จอดรถ', icon: facilityIcons.parking });
-  if (apartment.facility_aircondition) facilities.push({ key: 'aircondition', label: 'เครื่องปรับอากาศ', icon: facilityIcons.aircondition });
-  if (apartment.facility_pool) facilities.push({ key: 'pool', label: 'สระว่ายน้ำ', icon: facilityIcons.pool });
-  if (apartment.facility_gym) facilities.push({ key: 'gym', label: 'ห้องออกกำลังกาย', icon: facilityIcons.gym });
-  if (apartment.facility_security) facilities.push({ key: 'security', label: 'รปภ. 24 ชั่วโมง', icon: facilityIcons.security });
-  if (apartment.facility_elevator) facilities.push({ key: 'elevator', label: 'ลิฟต์', icon: facilityIcons.elevator });
-  if (apartment.facility_waterheater) facilities.push({ key: 'waterheater', label: 'เครื่องทำน้ำอุ่น', icon: facilityIcons.waterheater });
-  if (apartment.facility_laundry) facilities.push({ key: 'laundry', label: 'ห้องซักรีด', icon: facilityIcons.laundry });
-  if (apartment.facility_cctv) facilities.push({ key: 'cctv', label: 'กล้องวงจรปิด', icon: facilityIcons.cctv });
-
-  // Facility score color
-  const getScoreColor = (score) => {
-    if (score >= 80) return '#10b981'; // green
-    if (score >= 60) return '#f59e0b'; // yellow
-    if (score >= 40) return '#ef4444'; // orange
-    return '#6b7280'; // gray
-  };
-
-  return `
-    <div style="
-      max-width: 320px; 
-      padding: 0; 
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: white;
-      border-radius: 12px;
-      overflow: hidden;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-    ">
-      <!-- Header Section -->
-      <div style="
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 16px;
-        color: white;
-        position: relative;
-        overflow: hidden;
-      ">
-        <div style="position: absolute; top: -50%; right: -50%; width: 100px; height: 100px; background: rgba(255,255,255,0.1); border-radius: 50%;"></div>
-        <div style="position: relative; z-index: 1;">
-          <h3 style="
-            margin: 0 0 8px 0; 
-            font-size: 18px; 
-            font-weight: 700; 
-            line-height: 1.3;
-            text-shadow: 0 1px 2px rgba(0,0,0,0.1);
-          ">${apartment.apartment_name}</h3>
-          
-          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-            <div style="
-              background: rgba(255,255,255,0.2); 
-              backdrop-filter: blur(10px);
-              padding: 4px 10px; 
-              border-radius: 20px; 
-              font-size: 12px; 
-              font-weight: 600;
-              border: 1px solid rgba(255,255,255,0.3);
-            ">${apartment.room_type || 'ห้องพัก'}</div>
-            
-            <div style="
-              background: rgba(255,255,255,0.2); 
-              backdrop-filter: blur(10px);
-              padding: 4px 10px; 
-              border-radius: 20px; 
-              font-size: 12px; 
-              font-weight: 600;
-              border: 1px solid rgba(255,255,255,0.3);
-            ">${formatSizeRange()}</div>
-          </div>
-
-          <div style="
-            font-size: 20px; 
-            font-weight: 800; 
-            color: #fff;
-            text-shadow: 0 1px 2px rgba(0,0,0,0.1);
-          ">${formatPriceRange()}<span style="font-size: 14px; font-weight: 500;">/เดือน</span></div>
-        </div>
-      </div>
-
-      <!-- Content Section -->
-      <div style="padding: 16px;">
-        <!-- Facility Score -->
-        <div style="
-          background: linear-gradient(90deg, rgba(${getScoreColor(facilityScore)}, 0.1) 0%, rgba(${getScoreColor(facilityScore)}, 0.05) 100%);
-          border: 1px solid rgba(${getScoreColor(facilityScore)}, 0.2);
-          border-radius: 8px;
-          padding: 12px;
-          margin-bottom: 16px;
-          text-align: center;
-        ">
-          <div style="
-            font-size: 24px; 
-            font-weight: 800; 
-            color: ${getScoreColor(facilityScore)};
-            margin-bottom: 4px;
-          ">${facilityScore}%</div>
-          <div style="
-            font-size: 12px; 
-            color: #6b7280; 
-            font-weight: 500;
-          ">คะแนนสิ่งอำนวยความสะดวก</div>
-        </div>
-
-        <!-- Facilities Grid -->
-        ${facilities.length > 0 ? `
-          <div style="margin-bottom: 16px;">
-            <h4 style="
-              margin: 0 0 12px 0; 
-              font-size: 14px; 
-              font-weight: 600; 
-              color: #374151;
-              display: flex;
-              align-items: center;
-              gap: 8px;
-            ">
-              <span style="font-size: 16px;">✨</span>
-              สิ่งอำนวยความสะดวก
-            </h4>
-            
-            <div style="
-              display: grid;
-              grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-              gap: 8px;
-            ">
-              ${facilities.map(facility => `
-                <div style="
-                  background: #f8fafc;
-                  border: 1px solid #e2e8f0;
-                  border-radius: 6px;
-                  padding: 8px 12px;
-                  display: flex;
-                  align-items: center;
-                  gap: 8px;
-                  transition: all 0.2s ease;
-                ">
-                  <span style="font-size: 16px;">${facility.icon}</span>
-                  <span style="
-                    font-size: 12px; 
-                    color: #475569; 
-                    font-weight: 500;
-                    line-height: 1.2;
-                  ">${facility.label}</span>
-                </div>
-              `).join('')}
-            </div>
-          </div>
-        ` : `
-          <div style="
-            text-align: center;
-            padding: 20px;
-            color: #9ca3af;
-            font-size: 14px;
-          ">
-            <div style="font-size: 24px; margin-bottom: 8px;">🏢</div>
-            ไม่มีข้อมูลสิ่งอำนวยความสะดวก
-          </div>
-        `}
-
-        <!-- Address Section -->
-        ${apartment.address ? `
-          <div style="
-            background: #f1f5f9;
-            border-left: 4px solid #3b82f6;
-            padding: 12px;
-            border-radius: 0 8px 8px 0;
-            margin-bottom: 16px;
-          ">
-            <div style="
-              display: flex;
-              align-items: flex-start;
-              gap: 8px;
-            ">
-              <span style="font-size: 16px; margin-top: 2px;">📍</span>
-              <div>
-                <div style="
-                  font-size: 12px; 
-                  color: #475569; 
-                  font-weight: 500; 
-                  margin-bottom: 4px;
-                ">ที่อยู่</div>
-                <div style="
-                  font-size: 13px; 
-                  color: #1e293b; 
-                  line-height: 1.4;
-                ">${apartment.address}</div>
-              </div>
-            </div>
-          </div>
-        ` : ''}
-
-        <!-- Action Buttons -->
-        <div style="
-          display: flex;
-          gap: 8px;
-          margin-top: 16px;
-        ">
-          <button onclick="window.apartmentMapInstance && window.apartmentMapInstance.showNearbyPlaces && window.apartmentMapInstance.showNearbyPlaces('restaurant')" style="
-            flex: 1;
-            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            padding: 10px 12px;
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
-          " onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(59, 130, 246, 0.4)'"
-             onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(59, 130, 246, 0.3)'">
-            🍴 ร้านอาหารใกล้เคียง
-          </button>
-          
-          <button onclick="window.apartmentMapInstance && window.apartmentMapInstance.showNearbyPlaces && window.apartmentMapInstance.showNearbyPlaces('convenience')" style="
-            flex: 1;
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            padding: 10px 12px;
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
-          " onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(16, 185, 129, 0.4)'"
-             onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(16, 185, 129, 0.3)'">
-            🏪 ร้านสะดวกซื้อ
-          </button>
-        </div>
-      </div>
-    </div>
-  `;
-};
-
-// Enhanced popup binding options
-const popupOptions = {
-  closeButton: true,
-  autoClose: true,
-  closeOnEscapeKey: true,
-  maxWidth: 340,
-  minWidth: 300,
-  offset: [0, -12],
-  className: 'custom-apartment-popup',
-  autoPanPadding: [10, 10]
-};
-
-// Apply the popup to marker
-marker.bindPopup(generatePopupContent(apartment), popupOptions);
-
-// Additional CSS styles that should be added to your component
-const customPopupStyles = `
-  .custom-apartment-popup .leaflet-popup-content-wrapper {
-    border-radius: 12px !important;
-    padding: 0 !important;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.15), 0 4px 8px rgba(0,0,0,0.1) !important;
-    border: none !important;
-    background: white !important;
-  }
-  
-  .custom-apartment-popup .leaflet-popup-content {
-    margin: 0 !important;
-    width: auto !important;
-  }
-  
-  .custom-apartment-popup .leaflet-popup-tip {
-    background: white !important;
-    border: none !important;
-    box-shadow: -2px 2px 4px rgba(0,0,0,0.1) !important;
-  }
-  
-  .custom-apartment-popup .leaflet-popup-close-button {
-    position: absolute !important;
-    top: 12px !important;
-    right: 12px !important;
-    color: white !important;
-    font-size: 20px !important;
-    font-weight: bold !important;
-    background: rgba(0,0,0,0.3) !important;
-    border-radius: 50% !important;
-    width: 28px !important;
-    height: 28px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    text-decoration: none !important;
-    z-index: 10 !important;
-    transition: all 0.2s ease !important;
-  }
-  
-  .custom-apartment-popup .leaflet-popup-close-button:hover {
-    background: rgba(0,0,0,0.5) !important;
-    transform: scale(1.1) !important;
-  }
-`;
 
   // Show nearby places function
-  const showNearbyPlaces = async (lat, lng) => {
+  const showNearbyPlaces = async (category = 'restaurant') => {
     if (!mapRef.current) return;
 
     setLoadingNearby(true);
     
     try {
-      // Clear existing nearby data
       clearNearbyPlaces();
 
-      // Overpass API query for nearby amenities
+      const center = mapRef.current.getCenter();
       const radius = 500; // 500 meters
+
+      // Category-specific queries
+      const queries = {
+        restaurant: 'node["amenity"~"^(restaurant|cafe|fast_food)$"]',
+        convenience: 'node["shop"~"^(convenience|supermarket)$"]',
+        transport: 'node["public_transport"="stop_position"]'
+      };
+
       const overpassQuery = `
         [out:json][timeout:25];
         (
-          node["amenity"~"^(restaurant|cafe|convenience|school|hospital|bank|atm)$"](around:${radius},${lat},${lng});
-          node["shop"~"^(supermarket|convenience|department_store)$"](around:${radius},${lat},${lng});
-          node["public_transport"~"^(platform|station)$"](around:${radius},${lat},${lng});
+          ${queries[category] || queries.restaurant}
+          (around:${radius},${center.lat},${center.lng});
         );
         out geom;
       `;
-      
-      const response = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(overpassQuery)}`);
-      const data = await response.json();
 
-      // Group places by category
-      const categories = {
-        'ร้านอาหาร': { places: [], color: '#ef4444' },
-        'ร้านสะดวกซื้อ': { places: [], color: '#22c55e' },
-        'โรงพยาบาล': { places: [], color: '#3b82f6' },
-        'ธนาคาร/ATM': { places: [], color: '#f59e0b' },
-        'ขนส่งสาธารณะ': { places: [], color: '#8b5cf6' }
-      };
-
-      data.elements.forEach(element => {
-        const amenity = element.tags.amenity;
-        const shop = element.tags.shop;
-        const transport = element.tags.public_transport;
-
-        if (amenity === 'restaurant' || amenity === 'cafe') {
-          categories['ร้านอาหาร'].places.push(element);
-        } else if (amenity === 'convenience' || shop === 'convenience' || shop === 'supermarket') {
-          categories['ร้านสะดวกซื้อ'].places.push(element);
-        } else if (amenity === 'hospital') {
-          categories['โรงพยาบาล'].places.push(element);
-        } else if (amenity === 'bank' || amenity === 'atm') {
-          categories['ธนาคาร/ATM'].places.push(element);
-        } else if (transport) {
-          categories['ขนส่งสาธารณะ'].places.push(element);
-        }
+      const response = await fetch('https://overpass-api.de/api/interpreter', {
+        method: 'POST',
+        body: overpassQuery
       });
 
-      // Add markers for each category
-      Object.entries(categories).forEach(([categoryName, category]) => {
-        if (category.places.length === 0) return;
-
+      const data = await response.json();
+      
+      if (data.elements && data.elements.length > 0) {
         const layerGroup = L.layerGroup();
+        
+        data.elements.forEach(place => {
+          if (place.lat && place.lon) {
+            const marker = L.circleMarker([place.lat, place.lon], {
+              radius: 6,
+              fillColor: category === 'restaurant' ? '#ef4444' : category === 'convenience' ? '#10b981' : '#3b82f6',
+              color: '#ffffff',
+              weight: 2,
+              opacity: 1,
+              fillOpacity: 0.8
+            });
 
-        category.places.forEach(place => {
-          const marker = L.circleMarker([place.lat, place.lon], {
-            radius: 6,
-            fillColor: category.color,
-            color: '#fff',
-            weight: 2,
-            opacity: 1,
-            fillOpacity: 0.8
-          });
+            const popupContent = `
+              <div style="padding: 8px; min-width: 200px;">
+                <h4 style="margin: 0 0 4px 0; font-size: 14px; font-weight: 600;">
+                  ${place.tags.name || place.tags.amenity || place.tags.shop || 'สถานที่'}
+                </h4>
+                ${place.tags.cuisine ? `<p style="font-size: 12px; color: #6b7280; margin: 4px 0 0 0;">Cuisine: ${place.tags.cuisine}</p>` : ''}
+                ${place.tags?.opening_hours ? `<p style="font-size: 12px; color: #6b7280; margin: 4px 0 0 0;">Hours: ${place.tags.opening_hours}</p>` : ''}
+              </div>
+            `;
 
-          const popupContent = `
-            <div style="font-family: system-ui, -apple-system, sans-serif;">
-              <h4 style="margin: 0 0 8px 0; font-size: 14px; color: #1f2937;">${place.tags.name || categoryName}</h4>
-              <p style="margin: 0; font-size: 12px; color: #6b7280;">ประเภท: ${categoryName}</p>
-              ${place.tags?.cuisine ? `<p style="font-size: 12px; color: #6b7280; margin: 4px 0 0 0;">Cuisine: ${place.tags.cuisine}</p>` : ''}
-              ${place.tags?.opening_hours ? `<p style="font-size: 12px; color: #6b7280; margin: 4px 0 0 0;">Hours: ${place.tags.opening_hours}</p>` : ''}
-            </div>
-          `;
-
-          marker.bindPopup(popupContent);
-          marker.addTo(layerGroup);
+            marker.bindPopup(popupContent);
+            marker.addTo(layerGroup);
+          }
         });
 
-        nearbyLayersRef.current[categoryName] = layerGroup;
+        nearbyLayersRef.current[category] = layerGroup;
         layerGroup.addTo(mapRef.current);
-      });
+      }
 
     } catch (error) {
       console.error('Error showing nearby places:', error);
@@ -559,60 +504,7 @@ const customPopupStyles = `
     };
   }, [isMobile]);
 
-  // Create SVG-based marker icon that scales properly
-  const createSVGMarker = (apartment, isSelected, isHover = false) => {
-    const markerColor = getMarkerColor(apartment);
-    const size = isSelected || isHover ? 24 : 20;
-    const borderColor = '#ffffff';
-    
-    // Create SVG marker that scales properly with zoom
-    const svgIcon = `
-      <svg width="${size}" height="${size + 8}" viewBox="0 0 ${size} ${size + 8}" xmlns="http://www.w3.org/2000/svg">
-        <!-- Drop shadow -->
-        <ellipse cx="${size/2}" cy="${size + 6}" rx="${size * 0.4}" ry="2" fill="rgba(0,0,0,0.2)"/>
-        
-        <!-- Main circle -->
-        <circle cx="${size/2}" cy="${size/2}" r="${(size - 4)/2}" 
-                fill="${markerColor}" 
-                stroke="${borderColor}" 
-                stroke-width="2"/>
-        
-        <!-- Inner dot -->
-        <circle cx="${size/2}" cy="${size/2}" r="${size * 0.15}" fill="${borderColor}"/>
-        
-        <!-- Pin pointer -->
-        <polygon points="${size/2 - 3},${size/2 + (size - 4)/2} ${size/2 + 3},${size/2 + (size - 4)/2} ${size/2},${size + 4}" 
-                 fill="${markerColor}"/>
-      </svg>
-    `;
-
-    const svgUrl = 'data:image/svg+xml;base64,' + btoa(svgIcon);
-
-    return L.icon({
-      iconUrl: svgUrl,
-      iconSize: [size, size + 8],
-      iconAnchor: [size/2, size + 8],
-      popupAnchor: [0, -(size + 8)]
-    });
-  };
-
-  // Alternative: Use simple circle markers (most reliable)
-  const createSimpleMarker = (apartment, isSelected, isHover = false) => {
-    const markerColor = getMarkerColor(apartment);
-    const size = isSelected || isHover ? 12 : 10;
-    
-    // Return circle marker options instead of icon
-    return {
-      radius: size,
-      fillColor: markerColor,
-      color: '#ffffff',
-      weight: isSelected ? 3 : 2,
-      opacity: 1,
-      fillOpacity: 0.9
-    };
-  };
-
-  // Update apartment markers when data or filters change (but NOT when apartment is selected)
+  // Update apartment markers when data or filters change
   useEffect(() => {
     if (!mapRef.current || !apartmentData) return;
 
@@ -639,14 +531,20 @@ const customPopupStyles = `
       marker.apartmentData = apartment;
       marker.isHovered = false;
 
-      // Bind popup with better options
-      marker.bindPopup(generatePopupContent(apartment), {
+      // Enhanced popup binding options
+      const popupOptions = {
         closeButton: true,
         autoClose: true,
         closeOnEscapeKey: true,
-        maxWidth: 300,
-        offset: [0, -10]
-      });
+        maxWidth: 340,
+        minWidth: 300,
+        offset: [0, -12],
+        className: 'custom-apartment-popup',
+        autoPanPadding: [10, 10]
+      };
+
+      // Bind popup with enhanced content
+      marker.bindPopup(generatePopupContent(apartment), popupOptions);
 
       // CLICK HANDLER
       marker.on('click', (e) => {
@@ -673,7 +571,7 @@ const customPopupStyles = `
         }, 300);
       });
 
-      // FIXED HOVER EFFECT - only changes size, keeps color
+      // HOVER EFFECTS - only changes size, keeps color
       if (!isMobile) {
         marker.on('mouseover', () => {
           marker.isHovered = true;
@@ -692,26 +590,25 @@ const customPopupStyles = `
       markersRef.current.push(marker);
     });
 
-    // CRITICAL FIX: Only fit bounds on initial load and when no apartment is selected
-    // AND when we haven't manually zoomed to a marker
+    // Only fit bounds on initial load and when no apartment is selected
     if (isInitialLoad.current && !selectedApartment && !hasZoomedToMarker.current && markersRef.current.length > 0) {
       console.log('Fitting bounds to all markers (initial load)');
       const group = new L.featureGroup(markersRef.current);
       mapRef.current.fitBounds(group.getBounds().pad(0.1));
       isInitialLoad.current = false;
     } else {
-      console.log('Skipping fitBounds - selectedApartment:', !!selectedApartment, 'hasZoomedToMarker:', hasZoomedToMarker.current);
+      console.log('Skipping fitBounds - selectedApartment:', !selectedApartment, 'hasZoomedToMarker:', hasZoomedToMarker.current);
     }
 
-  }, [apartmentData, colorScheme, isMobile]); // Keep selectedApartment OUT of dependencies
+  }, [apartmentData, colorScheme, isMobile]);
 
-  // Separate effect ONLY for updating marker styles when selection changes
+  // Separate effect for updating marker styles when selection changes
   useEffect(() => {
     if (!mapRef.current || !selectedApartment) return;
 
     console.log('Updating marker styles for selected apartment:', selectedApartment.apartment_name);
 
-    // Update marker styles without recreating them or changing map view
+    // Update marker styles without recreating them
     markersRef.current.forEach(marker => {
       const apartment = apartmentData.find(apt => 
         Math.abs(apt.latitude - marker.getLatLng().lat) < 0.0001 && 
@@ -726,15 +623,15 @@ const customPopupStyles = `
       }
     });
 
-  }, [selectedApartment, apartmentData]); // This effect ONLY handles style updates
+  }, [selectedApartment, apartmentData]);
 
-  // Reset zoom flag when filters change (but not when apartment selection changes)
+  // Reset zoom flag when filters change
   useEffect(() => {
     hasZoomedToMarker.current = false;
     console.log('Reset zoom flag due to filter/data change');
   }, [apartmentData, colorScheme]);
 
-  // Add a manual zoom function for debugging
+  // Manual zoom function for debugging
   const zoomToApartment = (apartment) => {
     if (!mapRef.current || !apartment) return;
     
@@ -742,15 +639,11 @@ const customPopupStyles = `
     hasZoomedToMarker.current = true;
     
     try {
-      // Close any open popups first
       mapRef.current.closePopup();
-      
-      // Use panTo + setZoom for reliability
       mapRef.current.panTo([apartment.latitude, apartment.longitude]);
       setTimeout(() => {
         mapRef.current.setZoom(16);
       }, 300);
-      
     } catch (error) {
       console.error('Manual zoom error:', error);
     }
@@ -760,7 +653,7 @@ const customPopupStyles = `
   const resetView = () => {
     hasZoomedToMarker.current = false;
     if (onApartmentSelect) {
-      onApartmentSelect(null); // Clear selection
+      onApartmentSelect(null);
     }
     if (markersRef.current.length > 0) {
       const group = new L.featureGroup(markersRef.current);
@@ -773,8 +666,8 @@ const customPopupStyles = `
     window.apartmentMapInstance = {
       showNearbyPlaces,
       clearNearbyPlaces,
-      zoomToApartment, // Add this for debugging
-      resetView, // Add reset function
+      zoomToApartment,
+      resetView,
       mapRef: mapRef.current
     };
   }, []);
@@ -823,9 +716,66 @@ const customPopupStyles = `
           height: getMapHeight() 
         }}
       />
+      
       <div className="absolute bottom-0 right-0 bg-white bg-opacity-75 px-2 py-1 text-xs text-gray-600">
         © OpenStreetMap contributors
       </div>
+
+      {/* Custom CSS for enhanced popup styling */}
+      <style jsx>{`
+        :global(.custom-apartment-popup .leaflet-popup-content-wrapper) {
+          border-radius: 12px !important;
+          padding: 0 !important;
+          box-shadow: 0 10px 25px rgba(0,0,0,0.15), 0 4px 8px rgba(0,0,0,0.1) !important;
+          border: none !important;
+          background: white !important;
+        }
+        
+        :global(.custom-apartment-popup .leaflet-popup-content) {
+          margin: 0 !important;
+          width: auto !important;
+        }
+        
+        :global(.custom-apartment-popup .leaflet-popup-tip) {
+          background: white !important;
+          border: none !important;
+          box-shadow: -2px 2px 4px rgba(0,0,0,0.1) !important;
+        }
+        
+        :global(.custom-apartment-popup .leaflet-popup-close-button) {
+          position: absolute !important;
+          top: 12px !important;
+          right: 12px !important;
+          color: white !important;
+          font-size: 20px !important;
+          font-weight: bold !important;
+          background: rgba(0,0,0,0.3) !important;
+          border-radius: 50% !important;
+          width: 28px !important;
+          height: 28px !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          text-decoration: none !important;
+          z-index: 10 !important;
+          transition: all 0.2s ease !important;
+        }
+        
+        :global(.custom-apartment-popup .leaflet-popup-close-button:hover) {
+          background: rgba(0,0,0,0.5) !important;
+          transform: scale(1.1) !important;
+        }
+
+        :global(.poi-popup .leaflet-popup-content-wrapper) {
+          border-radius: 8px !important;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important;
+        }
+        
+        :global(.poi-popup .leaflet-popup-content) {
+          margin: 0 !important;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+        }
+      `}</style>
     </div>
   );
 };
