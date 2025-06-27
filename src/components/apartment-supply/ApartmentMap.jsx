@@ -468,22 +468,65 @@ const ApartmentMap = ({
       const center = mapRef.current.getCenter();
       const radius = 500; // 500 meters
 
-      // Category-specific queries with proper Overpass union syntax
-      const queries = {
-        restaurant: 'node["amenity"~"^(restaurant|cafe|fast_food)$"]',
-        convenience: 'node["shop"~"^(convenience|supermarket)$"]',
-        school: 'node["amenity"~"^(school|university|college|kindergarten)$"]',
-        health: 'node["amenity"~"^(hospital|clinic|doctors|dentist|pharmacy)$"]; node["healthcare"]; node["building"~"^(hospital|clinic)$"]; node["shop"="chemist"]',
-        transport: 'node["public_transport"~"^(stop_position|platform|station)$"]'
+      // Category-specific queries with correct Overpass syntax
+      const buildQuery = (category, lat, lng, radius) => {
+        switch(category) {
+          case 'restaurant':
+            return `
+              [out:json][timeout:25];
+              (
+                node["amenity"~"^(restaurant|cafe|fast_food)$"](around:${radius},${lat},${lng});
+              );
+              out geom;
+            `;
+          case 'convenience':
+            return `
+              [out:json][timeout:25];
+              (
+                node["shop"~"^(convenience|supermarket)$"](around:${radius},${lat},${lng});
+              );
+              out geom;
+            `;
+          case 'school':
+            return `
+              [out:json][timeout:25];
+              (
+                node["amenity"~"^(school|university|college|kindergarten)$"](around:${radius},${lat},${lng});
+              );
+              out geom;
+            `;
+          case 'health':
+            return `
+              [out:json][timeout:25];
+              (
+                node["amenity"~"^(hospital|clinic|doctors|dentist|pharmacy)$"](around:${radius},${lat},${lng});
+                node["healthcare"](around:${radius},${lat},${lng});
+                node["building"~"^(hospital|clinic)$"](around:${radius},${lat},${lng});
+                node["shop"="chemist"](around:${radius},${lat},${lng});
+              );
+              out geom;
+            `;
+          case 'transport':
+            return `
+              [out:json][timeout:25];
+              (
+                node["public_transport"~"^(stop_position|platform|station)$"](around:${radius},${lat},${lng});
+                node["highway"="bus_stop"](around:${radius},${lat},${lng});
+              );
+              out geom;
+            `;
+          default:
+            return `
+              [out:json][timeout:25];
+              (
+                node["amenity"~"^(restaurant|cafe|fast_food)$"](around:${radius},${lat},${lng});
+              );
+              out geom;
+            `;
+        }
       };
 
-      const overpassQuery = `
-        [out:json][timeout:25];
-        (
-          ${queries[category] || queries.restaurant}
-        )(around:${radius},${center.lat},${center.lng});
-        out geom;
-      `;
+      const overpassQuery = buildQuery(category, center.lat, center.lng, radius);
 
       console.log('Overpass query:', overpassQuery); // Debug log
 
