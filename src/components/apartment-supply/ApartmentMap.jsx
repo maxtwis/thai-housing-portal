@@ -465,8 +465,15 @@ const ApartmentMap = ({
       
       clearNearbyPlaces();
 
-      const center = mapRef.current.getCenter();
-      const radius = 500; // 500 meters
+      // Use selected apartment coordinates if available, otherwise use map center
+      let searchCenter;
+      if (selectedApartment && selectedApartment.latitude && selectedApartment.longitude) {
+        searchCenter = { lat: selectedApartment.latitude, lng: selectedApartment.longitude };
+      } else {
+        searchCenter = mapRef.current.getCenter();
+      }
+
+      const radius = 1000; // Increased radius to 1000 meters (1km)
 
       // Category-specific queries with correct Overpass syntax
       const buildQuery = (category, lat, lng, radius) => {
@@ -491,7 +498,10 @@ const ApartmentMap = ({
             return `
               [out:json][timeout:25];
               (
-                node["amenity"~"^(school|university|college|kindergarten)$"](around:${radius},${lat},${lng});
+                node["amenity"="school"](around:${radius},${lat},${lng});
+                node["amenity"="university"](around:${radius},${lat},${lng});
+                node["amenity"="college"](around:${radius},${lat},${lng});
+                node["amenity"="kindergarten"](around:${radius},${lat},${lng});
               );
               out geom;
             `;
@@ -499,9 +509,14 @@ const ApartmentMap = ({
             return `
               [out:json][timeout:25];
               (
-                node["amenity"~"^(hospital|clinic|doctors|dentist|pharmacy)$"](around:${radius},${lat},${lng});
+                node["amenity"="hospital"](around:${radius},${lat},${lng});
+                node["amenity"="clinic"](around:${radius},${lat},${lng});
+                node["amenity"="doctors"](around:${radius},${lat},${lng});
+                node["amenity"="dentist"](around:${radius},${lat},${lng});
+                node["amenity"="pharmacy"](around:${radius},${lat},${lng});
                 node["healthcare"](around:${radius},${lat},${lng});
-                node["building"~"^(hospital|clinic)$"](around:${radius},${lat},${lng});
+                node["building"="hospital"](around:${radius},${lat},${lng});
+                node["building"="clinic"](around:${radius},${lat},${lng});
                 node["shop"="chemist"](around:${radius},${lat},${lng});
               );
               out geom;
@@ -510,7 +525,9 @@ const ApartmentMap = ({
             return `
               [out:json][timeout:25];
               (
-                node["public_transport"~"^(stop_position|platform|station)$"](around:${radius},${lat},${lng});
+                node["public_transport"="stop_position"](around:${radius},${lat},${lng});
+                node["public_transport"="platform"](around:${radius},${lat},${lng});
+                node["public_transport"="station"](around:${radius},${lat},${lng});
                 node["highway"="bus_stop"](around:${radius},${lat},${lng});
               );
               out geom;
@@ -526,8 +543,9 @@ const ApartmentMap = ({
         }
       };
 
-      const overpassQuery = buildQuery(category, center.lat, center.lng, radius);
+      const overpassQuery = buildQuery(category, searchCenter.lat, searchCenter.lng, radius);
 
+      console.log('Search center:', searchCenter); // Debug log
       console.log('Overpass query:', overpassQuery); // Debug log
 
       const response = await fetch('https://overpass-api.de/api/interpreter', {
@@ -609,6 +627,7 @@ const ApartmentMap = ({
               if (tags.building === 'hospital') return 'อาคารโรงพยาบาล';
               if (tags.building === 'clinic') return 'อาคารคลินิก';
               if (tags.public_transport) return 'ขนส่งสาธารณะ';
+              if (tags.highway === 'bus_stop') return 'ป้ายรถเมล์';
               return 'สถานที่';
             };
 
