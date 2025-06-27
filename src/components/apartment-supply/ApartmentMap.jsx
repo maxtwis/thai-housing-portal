@@ -475,7 +475,7 @@ const ApartmentMap = ({
 
       const radius = 1000; // Increased radius to 1000 meters (1km)
 
-      // Category-specific queries with correct Overpass syntax
+      // Category-specific queries with both nodes and ways
       const buildQuery = (category, lat, lng, radius) => {
         switch(category) {
           case 'restaurant':
@@ -483,6 +483,7 @@ const ApartmentMap = ({
               [out:json][timeout:25];
               (
                 node["amenity"~"^(restaurant|cafe|fast_food)$"](around:${radius},${lat},${lng});
+                way["amenity"~"^(restaurant|cafe|fast_food)$"](around:${radius},${lat},${lng});
               );
               out geom;
             `;
@@ -491,6 +492,7 @@ const ApartmentMap = ({
               [out:json][timeout:25];
               (
                 node["shop"~"^(convenience|supermarket)$"](around:${radius},${lat},${lng});
+                way["shop"~"^(convenience|supermarket)$"](around:${radius},${lat},${lng});
               );
               out geom;
             `;
@@ -502,6 +504,10 @@ const ApartmentMap = ({
                 node["amenity"="university"](around:${radius},${lat},${lng});
                 node["amenity"="college"](around:${radius},${lat},${lng});
                 node["amenity"="kindergarten"](around:${radius},${lat},${lng});
+                way["amenity"="school"](around:${radius},${lat},${lng});
+                way["amenity"="university"](around:${radius},${lat},${lng});
+                way["amenity"="college"](around:${radius},${lat},${lng});
+                way["amenity"="kindergarten"](around:${radius},${lat},${lng});
               );
               out geom;
             `;
@@ -518,6 +524,15 @@ const ApartmentMap = ({
                 node["building"="hospital"](around:${radius},${lat},${lng});
                 node["building"="clinic"](around:${radius},${lat},${lng});
                 node["shop"="chemist"](around:${radius},${lat},${lng});
+                way["amenity"="hospital"](around:${radius},${lat},${lng});
+                way["amenity"="clinic"](around:${radius},${lat},${lng});
+                way["amenity"="doctors"](around:${radius},${lat},${lng});
+                way["amenity"="dentist"](around:${radius},${lat},${lng});
+                way["amenity"="pharmacy"](around:${radius},${lat},${lng});
+                way["healthcare"](around:${radius},${lat},${lng});
+                way["building"="hospital"](around:${radius},${lat},${lng});
+                way["building"="clinic"](around:${radius},${lat},${lng});
+                way["shop"="chemist"](around:${radius},${lat},${lng});
               );
               out geom;
             `;
@@ -529,6 +544,8 @@ const ApartmentMap = ({
                 node["public_transport"="platform"](around:${radius},${lat},${lng});
                 node["public_transport"="station"](around:${radius},${lat},${lng});
                 node["highway"="bus_stop"](around:${radius},${lat},${lng});
+                way["public_transport"="platform"](around:${radius},${lat},${lng});
+                way["public_transport"="station"](around:${radius},${lat},${lng});
               );
               out geom;
             `;
@@ -537,6 +554,7 @@ const ApartmentMap = ({
               [out:json][timeout:25];
               (
                 node["amenity"~"^(restaurant|cafe|fast_food)$"](around:${radius},${lat},${lng});
+                way["amenity"~"^(restaurant|cafe|fast_food)$"](around:${radius},${lat},${lng});
               );
               out geom;
             `;
@@ -567,7 +585,25 @@ const ApartmentMap = ({
         const layerGroup = L.layerGroup();
         
         data.elements.forEach(place => {
-          if (place.lat && place.lon) {
+          // Handle both nodes (with lat/lon) and ways (with geometry)
+          let markerLat, markerLng;
+          
+          if (place.type === 'node' && place.lat && place.lon) {
+            // For nodes, use direct coordinates
+            markerLat = place.lat;
+            markerLng = place.lon;
+          } else if (place.type === 'way' && place.geometry) {
+            // For ways, calculate center point from geometry
+            const coords = place.geometry;
+            if (coords && coords.length > 0) {
+              const latSum = coords.reduce((sum, coord) => sum + coord.lat, 0);
+              const lngSum = coords.reduce((sum, coord) => sum + coord.lon, 0);
+              markerLat = latSum / coords.length;
+              markerLng = lngSum / coords.length;
+            }
+          }
+          
+          if (markerLat && markerLng) {
             // Define colors and icons for each category
             const categoryStyles = {
               restaurant: { color: '#ef4444', icon: '🍽️', bgColor: 'rgba(239, 68, 68, 0.1)' },
@@ -579,13 +615,16 @@ const ApartmentMap = ({
 
             const style = categoryStyles[category] || categoryStyles.restaurant;
 
-            const marker = L.circleMarker([place.lat, place.lon], {
-              radius: 8,
+            // Use different marker sizes for ways vs nodes
+            const markerRadius = place.type === 'way' ? 10 : 8;
+
+            const marker = L.circleMarker([markerLat, markerLng], {
+              radius: markerRadius,
               fillColor: style.color,
               color: '#ffffff',
               weight: 2,
               opacity: 1,
-              fillOpacity: 0.9
+              fillOpacity: place.type === 'way' ? 0.7 : 0.9
             });
 
             // Enhanced amenity popup content with category-specific information
@@ -639,9 +678,14 @@ const ApartmentMap = ({
                     <h4 style="margin: 0; font-size: 15px; font-weight: 600; color: #1f2937; line-height: 1.3;">
                       ${place.tags.name || getPlaceType()}
                     </h4>
-                    <span style="font-size: 12px; color: ${style.color}; font-weight: 500;">
-                      ${getPlaceType()}
-                    </span>
+                    <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
+                      <span style="font-size: 12px; color: ${style.color}; font-weight: 500;">
+                        ${getPlaceType()}
+                      </span>
+                      <span style="font-size: 10px; color: #9ca3af; background: #f3f4f6; padding: 2px 6px; border-radius: 3px;">
+                        ${place.type === 'way' ? 'อาคาร/พื้นที่' : 'จุด'}
+                      </span>
+                    </div>
                   </div>
                 </div>
                 
@@ -688,15 +732,15 @@ const ApartmentMap = ({
             // Add hover effects for amenity markers
             marker.on('mouseover', function() {
               this.setStyle({
-                radius: 10,
+                radius: place.type === 'way' ? 12 : 10,
                 fillOpacity: 1
               });
             });
             
             marker.on('mouseout', function() {
               this.setStyle({
-                radius: 8,
-                fillOpacity: 0.9
+                radius: place.type === 'way' ? 10 : 8,
+                fillOpacity: place.type === 'way' ? 0.7 : 0.9
               });
             });
             
