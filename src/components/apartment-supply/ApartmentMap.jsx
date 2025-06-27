@@ -32,6 +32,8 @@ const ApartmentMap = ({
     const categoryNames = {
       restaurant: 'ร้านอาหาร',
       convenience: 'ร้านสะดวกซื้อ',
+      school: 'สถานศึกษา',
+      health: 'สถานพยาบาล',
       transport: 'ขนส่งสาธารณะ'
     };
     
@@ -308,18 +310,18 @@ const ApartmentMap = ({
 
           <!-- Action Buttons -->
           <div style="
-            display: flex;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
             gap: 8px;
             margin-top: 16px;
           ">
             <button onclick="window.apartmentMapInstance && window.apartmentMapInstance.showNearbyPlaces && window.apartmentMapInstance.showNearbyPlaces('restaurant')" style="
-              flex: 1;
               background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
               color: white;
               border: none;
               border-radius: 8px;
-              padding: 10px 12px;
-              font-size: 12px;
+              padding: 10px 8px;
+              font-size: 11px;
               font-weight: 600;
               cursor: pointer;
               transition: all 0.2s ease;
@@ -327,17 +329,16 @@ const ApartmentMap = ({
             " onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(59, 130, 246, 0.4)'"
                onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(59, 130, 246, 0.3)'"
                title="ปิดป๊อปอัปนี้และแสดงร้านอาหารใกล้เคียง">
-              🍴 ร้านอาหารใกล้เคียง
+              🍴 ร้านอาหาร
             </button>
             
             <button onclick="window.apartmentMapInstance && window.apartmentMapInstance.showNearbyPlaces && window.apartmentMapInstance.showNearbyPlaces('convenience')" style="
-              flex: 1;
               background: linear-gradient(135deg, #10b981 0%, #059669 100%);
               color: white;
               border: none;
               border-radius: 8px;
-              padding: 10px 12px;
-              font-size: 12px;
+              padding: 10px 8px;
+              font-size: 11px;
               font-weight: 600;
               cursor: pointer;
               transition: all 0.2s ease;
@@ -346,6 +347,58 @@ const ApartmentMap = ({
                onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(16, 185, 129, 0.3)'"
                title="ปิดป๊อปอัปนี้และแสดงร้านสะดวกซื้อใกล้เคียง">
               🏪 ร้านสะดวกซื้อ
+            </button>
+
+            <button onclick="window.apartmentMapInstance && window.apartmentMapInstance.showNearbyPlaces && window.apartmentMapInstance.showNearbyPlaces('school')" style="
+              background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+              color: white;
+              border: none;
+              border-radius: 8px;
+              padding: 10px 8px;
+              font-size: 11px;
+              font-weight: 600;
+              cursor: pointer;
+              transition: all 0.2s ease;
+              box-shadow: 0 2px 4px rgba(139, 92, 246, 0.3);
+            " onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(139, 92, 246, 0.4)'"
+               onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(139, 92, 246, 0.3)'"
+               title="ปิดป๊อปอัปนี้และแสดงสถานศึกษาใกล้เคียง">
+              🎓 สถานศึกษา
+            </button>
+
+            <button onclick="window.apartmentMapInstance && window.apartmentMapInstance.showNearbyPlaces && window.apartmentMapInstance.showNearbyPlaces('health')" style="
+              background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
+              color: white;
+              border: none;
+              border-radius: 8px;
+              padding: 10px 8px;
+              font-size: 11px;
+              font-weight: 600;
+              cursor: pointer;
+              transition: all 0.2s ease;
+              box-shadow: 0 2px 4px rgba(236, 72, 153, 0.3);
+            " onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(236, 72, 153, 0.4)'"
+               onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(236, 72, 153, 0.3)'"
+               title="ปิดป๊อปอัปนี้และแสดงสถานพยาบาลใกล้เคียง">
+              🏥 สถานพยาบาล
+            </button>
+
+            <button onclick="window.apartmentMapInstance && window.apartmentMapInstance.showNearbyPlaces && window.apartmentMapInstance.showNearbyPlaces('transport')" style="
+              background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+              color: white;
+              border: none;
+              border-radius: 8px;
+              padding: 10px 8px;
+              font-size: 11px;
+              font-weight: 600;
+              cursor: pointer;
+              transition: all 0.2s ease;
+              box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3);
+              grid-column: span 2;
+            " onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(245, 158, 11, 0.4)'"
+               onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(245, 158, 11, 0.3)'"
+               title="ปิดป๊อปอัปนี้และแสดงขนส่งสาธารณะใกล้เคียง">
+              🚌 ขนส่งสาธารณะ
             </button>
           </div>
         </div>
@@ -419,7 +472,9 @@ const ApartmentMap = ({
       const queries = {
         restaurant: 'node["amenity"~"^(restaurant|cafe|fast_food)$"]',
         convenience: 'node["shop"~"^(convenience|supermarket)$"]',
-        transport: 'node["public_transport"="stop_position"]'
+        school: '(node["amenity"~"^(school|university|college|kindergarten)$"];node["building"="school"];)',
+        health: '(node["amenity"~"^(hospital|clinic|doctors|dentist|pharmacy)$"];node["healthcare"~"^(hospital|clinic|centre|doctor)$"];)',
+        transport: '(node["public_transport"~"^(stop_position|platform|station)$"];node["highway"="bus_stop"];node["railway"~"^(station|halt|tram_stop)$"];)'
       };
 
       const overpassQuery = `
@@ -443,42 +498,113 @@ const ApartmentMap = ({
         
         data.elements.forEach(place => {
           if (place.lat && place.lon) {
+            // Define colors and icons for each category
+            const categoryStyles = {
+              restaurant: { color: '#ef4444', icon: '🍽️', bgColor: 'rgba(239, 68, 68, 0.1)' },
+              convenience: { color: '#10b981', icon: '🏪', bgColor: 'rgba(16, 185, 129, 0.1)' },
+              school: { color: '#8b5cf6', icon: '🎓', bgColor: 'rgba(139, 92, 246, 0.1)' },
+              health: { color: '#ec4899', icon: '🏥', bgColor: 'rgba(236, 72, 153, 0.1)' },
+              transport: { color: '#3b82f6', icon: '🚌', bgColor: 'rgba(59, 130, 246, 0.1)' }
+            };
+
+            const style = categoryStyles[category] || categoryStyles.restaurant;
+
             const marker = L.circleMarker([place.lat, place.lon], {
               radius: 8,
-              fillColor: category === 'restaurant' ? '#ef4444' : category === 'convenience' ? '#10b981' : '#3b82f6',
+              fillColor: style.color,
               color: '#ffffff',
               weight: 2,
               opacity: 1,
               fillOpacity: 0.9
             });
 
-            // Enhanced amenity popup content
+            // Enhanced amenity popup content with category-specific information
+            const getPlaceType = () => {
+              const tags = place.tags;
+              if (tags.amenity) {
+                const typeMap = {
+                  restaurant: 'ร้านอาหาร',
+                  cafe: 'ร้านกาแฟ',
+                  fast_food: 'ฟาสต์ฟูด',
+                  convenience: 'ร้านสะดวกซื้อ',
+                  supermarket: 'ซูเปอร์มาร์เก็ต',
+                  school: 'โรงเรียน',
+                  university: 'มหาวิทยาลัย',
+                  college: 'วิทยาลัย',
+                  kindergarten: 'โรงเรียนอนุบาล',
+                  hospital: 'โรงพยาบาล',
+                  clinic: 'คลินิก',
+                  doctors: 'คลินิกแพทย์',
+                  dentist: 'คลินิกทันตกรรม',
+                  pharmacy: 'ร้านยา'
+                };
+                return typeMap[tags.amenity] || tags.amenity;
+              }
+              if (tags.shop) return 'ร้านค้า';
+              if (tags.building === 'school') return 'อาคารโรงเรียน';
+              if (tags.healthcare) return 'สถานพยาบาล';
+              if (tags.public_transport || tags.highway === 'bus_stop' || tags.railway) return 'ขนส่งสาธารณะ';
+              return 'สถานที่';
+            };
+
             const popupContent = `
-              <div style="padding: 12px; min-width: 220px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-                  <span style="font-size: 20px;">${category === 'restaurant' ? '🍽️' : category === 'convenience' ? '🏪' : '🚌'}</span>
-                  <h4 style="margin: 0; font-size: 15px; font-weight: 600; color: #1f2937;">
-                    ${place.tags.name || place.tags.amenity || place.tags.shop || 'สถานที่'}
-                  </h4>
+              <div style="padding: 12px; min-width: 250px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px; padding: 8px; background: ${style.bgColor}; border-radius: 8px;">
+                  <span style="font-size: 24px;">${style.icon}</span>
+                  <div>
+                    <h4 style="margin: 0; font-size: 15px; font-weight: 600; color: #1f2937; line-height: 1.3;">
+                      ${place.tags.name || getPlaceType()}
+                    </h4>
+                    <span style="font-size: 12px; color: ${style.color}; font-weight: 500;">
+                      ${getPlaceType()}
+                    </span>
+                  </div>
                 </div>
-                ${place.tags.cuisine ? `
-                  <div style="background: #f3f4f6; padding: 4px 8px; border-radius: 4px; margin-bottom: 6px;">
-                    <span style="font-size: 12px; color: #6b7280;">ประเภทอาหาร: </span>
-                    <span style="font-size: 12px; color: #374151; font-weight: 500;">${place.tags.cuisine}</span>
-                  </div>
-                ` : ''}
-                ${place.tags?.opening_hours ? `
-                  <div style="background: #f3f4f6; padding: 4px 8px; border-radius: 4px;">
-                    <span style="font-size: 12px; color: #6b7280;">เวลาเปิด: </span>
-                    <span style="font-size: 12px; color: #374151; font-weight: 500;">${place.tags.opening_hours}</span>
-                  </div>
-                ` : ''}
+                
+                <div style="space-y: 6px;">
+                  ${place.tags.cuisine ? `
+                    <div style="background: #f8fafc; padding: 6px 10px; border-radius: 6px; margin-bottom: 6px; border-left: 3px solid ${style.color};">
+                      <span style="font-size: 12px; color: #64748b;">ประเภทอาหาร: </span>
+                      <span style="font-size: 12px; color: #334155; font-weight: 500;">${place.tags.cuisine}</span>
+                    </div>
+                  ` : ''}
+                  
+                  ${place.tags.opening_hours ? `
+                    <div style="background: #f8fafc; padding: 6px 10px; border-radius: 6px; margin-bottom: 6px; border-left: 3px solid ${style.color};">
+                      <span style="font-size: 12px; color: #64748b;">เวลาเปิด: </span>
+                      <span style="font-size: 12px; color: #334155; font-weight: 500;">${place.tags.opening_hours}</span>
+                    </div>
+                  ` : ''}
+                  
+                  ${place.tags.phone ? `
+                    <div style="background: #f8fafc; padding: 6px 10px; border-radius: 6px; margin-bottom: 6px; border-left: 3px solid ${style.color};">
+                      <span style="font-size: 12px; color: #64748b;">โทรศัพท์: </span>
+                      <span style="font-size: 12px; color: #334155; font-weight: 500;">${place.tags.phone}</span>
+                    </div>
+                  ` : ''}
+                  
+                  ${place.tags.website ? `
+                    <div style="background: #f8fafc; padding: 6px 10px; border-radius: 6px; margin-bottom: 6px; border-left: 3px solid ${style.color};">
+                      <span style="font-size: 12px; color: #64748b;">เว็บไซต์: </span>
+                      <a href="${place.tags.website}" target="_blank" style="font-size: 12px; color: ${style.color}; font-weight: 500; text-decoration: none;">
+                        ดูเว็บไซต์
+                      </a>
+                    </div>
+                  ` : ''}
+                  
+                  ${place.tags.addr ? `
+                    <div style="background: #f8fafc; padding: 6px 10px; border-radius: 6px; border-left: 3px solid ${style.color};">
+                      <span style="font-size: 12px; color: #64748b;">ที่อยู่: </span>
+                      <span style="font-size: 12px; color: #334155; font-weight: 500;">${place.tags.addr}</span>
+                    </div>
+                  ` : ''}
+                </div>
               </div>
             `;
 
             marker.bindPopup(popupContent, {
               className: 'poi-popup',
-              maxWidth: 250,
+              maxWidth: 280,
               offset: [0, -10]
             });
             
