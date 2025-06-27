@@ -468,20 +468,20 @@ const ApartmentMap = ({
       const center = mapRef.current.getCenter();
       const radius = 500; // 500 meters
 
-      // Category-specific queries with expanded health facility coverage
+      // Category-specific queries with proper Overpass union syntax
       const queries = {
         restaurant: 'node["amenity"~"^(restaurant|cafe|fast_food)$"]',
         convenience: 'node["shop"~"^(convenience|supermarket)$"]',
         school: 'node["amenity"~"^(school|university|college|kindergarten)$"]',
-        health: '(node["amenity"~"^(hospital|clinic|doctors|dentist|pharmacy)$"]; node["healthcare"]; node["medical"]; node["building"~"^(hospital|clinic)$"]; node["shop"="chemist"];)',
+        health: 'node["amenity"~"^(hospital|clinic|doctors|dentist|pharmacy)$"]; node["healthcare"]; node["building"~"^(hospital|clinic)$"]; node["shop"="chemist"]',
         transport: 'node["public_transport"~"^(stop_position|platform|station)$"]'
       };
 
       const overpassQuery = `
         [out:json][timeout:25];
         (
-          ${queries[category] || queries.restaurant}(around:${radius},${center.lat},${center.lng});
-        );
+          ${queries[category] || queries.restaurant}
+        )(around:${radius},${center.lat},${center.lng});
         out geom;
       `;
 
