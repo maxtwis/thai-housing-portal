@@ -26,7 +26,30 @@ const ApartmentMap = ({
   
   const [loadingNearby, setLoadingNearby] = useState(false);
   const [nearbyNotification, setNearbyNotification] = useState(null);
-  const [amenityScores, setAmenityScores] = useState({});
+
+  // Show notification about nearby places
+  const showNearbyNotification = (category, count) => {
+    const categoryNames = {
+      restaurant: 'ร้านอาหาร',
+      convenience: 'ร้านสะดวกซื้อ',
+      school: 'สถานศึกษา',
+      health: 'สถานพยาบาล',
+      transport: 'ขนส่งสาธารณะ'
+    };
+    
+    const notification = {
+      category: categoryNames[category] || category,
+      count,
+      timestamp: Date.now()
+    };
+    
+    setNearbyNotification(notification);
+    
+    // Auto-hide notification after 5 seconds
+    setTimeout(() => {
+      setNearbyNotification(null);
+    }, 5000);
+  };
 
   // Dynamic height calculation based on viewport
   const getMapHeight = () => {
@@ -37,7 +60,7 @@ const ApartmentMap = ({
     }
   };
 
-  // Calculate facility score (internal amenities)
+  // Calculate facility score
   const calculateFacilityScore = (apartment) => {
     const facilities = [
       'facility_wifi',
@@ -54,165 +77,6 @@ const ApartmentMap = ({
     
     const availableFacilities = facilities.filter(facility => apartment[facility]);
     return Math.round((availableFacilities.length / facilities.length) * 100);
-  };
-
-  // Category-specific queries with both nodes and ways
-  const buildQuery = (category, lat, lng, radius) => {
-    switch(category) {
-      case 'restaurant':
-        return `
-          [out:json][timeout:25];
-          (
-            node["amenity"~"^(restaurant|cafe|fast_food)$"](around:${radius},${lat},${lng});
-            way["amenity"~"^(restaurant|cafe|fast_food)$"](around:${radius},${lat},${lng});
-          );
-          out geom;
-        `;
-      case 'convenience':
-        return `
-          [out:json][timeout:25];
-          (
-            node["shop"~"^(convenience|supermarket)$"](around:${radius},${lat},${lng});
-            way["shop"~"^(convenience|supermarket)$"](around:${radius},${lat},${lng});
-          );
-          out geom;
-        `;
-      case 'school':
-        return `
-          [out:json][timeout:25];
-          (
-            node["amenity"="school"](around:${radius},${lat},${lng});
-            node["amenity"="university"](around:${radius},${lat},${lng});
-            node["amenity"="college"](around:${radius},${lat},${lng});
-            node["amenity"="kindergarten"](around:${radius},${lat},${lng});
-            way["amenity"="school"](around:${radius},${lat},${lng});
-            way["amenity"="university"](around:${radius},${lat},${lng});
-            way["amenity"="college"](around:${radius},${lat},${lng});
-            way["amenity"="kindergarten"](around:${radius},${lat},${lng});
-          );
-          out geom;
-        `;
-      case 'health':
-        return `
-          [out:json][timeout:25];
-          (
-            node["amenity"="hospital"](around:${radius},${lat},${lng});
-            node["amenity"="clinic"](around:${radius},${lat},${lng});
-            node["amenity"="doctors"](around:${radius},${lat},${lng});
-            node["amenity"="dentist"](around:${radius},${lat},${lng});
-            node["amenity"="pharmacy"](around:${radius},${lat},${lng});
-            node["healthcare"](around:${radius},${lat},${lng});
-            node["shop"="chemist"](around:${radius},${lat},${lng});
-            way["amenity"="hospital"](around:${radius},${lat},${lng});
-            way["amenity"="clinic"](around:${radius},${lat},${lng});
-            way["amenity"="doctors"](around:${radius},${lat},${lng});
-            way["amenity"="dentist"](around:${radius},${lat},${lng});
-            way["amenity"="pharmacy"](around:${radius},${lat},${lng});
-            way["healthcare"](around:${radius},${lat},${lng});
-            way["shop"="chemist"](around:${radius},${lat},${lng});
-          );
-          out geom;
-        `;
-      case 'transport':
-        return `
-          [out:json][timeout:25];
-          (
-            node["public_transport"="stop_position"](around:${radius},${lat},${lng});
-            node["public_transport"="platform"](around:${radius},${lat},${lng});
-            node["public_transport"="station"](around:${radius},${lat},${lng});
-            node["highway"="bus_stop"](around:${radius},${lat},${lng});
-            way["public_transport"="platform"](around:${radius},${lat},${lng});
-            way["public_transport"="station"](around:${radius},${lat},${lng});
-          );
-          out geom;
-        `;
-      default:
-        return `
-          [out:json][timeout:25];
-          (
-            node["amenity"~"^(restaurant|cafe|fast_food)$"](around:${radius},${lat},${lng});
-            way["amenity"~"^(restaurant|cafe|fast_food)$"](around:${radius},${lat},${lng});
-          );
-          out geom;
-        `;
-    }
-  };
-
-  // Calculate amenity score based on nearby facilities
-  const calculateAmenityScore = async (apartment) => {
-    if (!apartment.latitude || !apartment.longitude) return 0;
-    
-    const lat = apartment.latitude;
-    const lng = apartment.longitude;
-    const radius = 1000; // 1km radius for amenity scoring
-    
-    const scoreWeights = {
-      restaurant: 20,    // Max 20 points for food options
-      convenience: 20,   // Max 20 points for shopping
-      school: 20,        // Max 20 points for education
-      health: 25,        // Max 25 points for healthcare
-      transport: 15      // Max 15 points for transportation
-    };
-    
-    let totalScore = 0;
-    
-    try {
-      // Query all amenity types around the apartment
-      for (const [category, maxPoints] of Object.entries(scoreWeights)) {
-        const query = buildQuery(category, lat, lng, radius);
-        
-        const response = await fetch('https://overpass-api.de/api/interpreter', {
-          method: 'POST',
-          body: query,
-          headers: { 'Content-Type': 'text/plain' }
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          const count = data.elements ? data.elements.length : 0;
-          
-          // Calculate score based on count with diminishing returns
-          let categoryScore;
-          if (count === 0) {
-            categoryScore = 0;
-          } else if (count <= 2) {
-            categoryScore = (count / 2) * maxPoints * 0.6; // 60% for 1-2 items
-          } else if (count <= 5) {
-            categoryScore = maxPoints * 0.8; // 80% for 3-5 items
-          } else {
-            categoryScore = maxPoints; // 100% for 6+ items
-          }
-          
-          totalScore += categoryScore;
-        }
-      }
-      
-      return Math.round(totalScore);
-    } catch (error) {
-      console.error('Error calculating amenity score:', error);
-      return 0;
-    }
-  };
-
-  // Get or calculate amenity score for an apartment
-  const getAmenityScore = async (apartment) => {
-    if (!apartment.apartment_id) return 0;
-    
-    // Check if score is already calculated
-    if (amenityScores[apartment.apartment_id] !== undefined) {
-      return amenityScores[apartment.apartment_id];
-    }
-    
-    // Calculate new score
-    const score = await calculateAmenityScore(apartment);
-    
-    // Store the score
-    setAmenityScores(prev => ({
-      ...prev,
-      [apartment.apartment_id]: score
-    }));
-    
-    return score;
   };
 
   // Enhanced popup content generator for apartment markers
@@ -266,11 +130,7 @@ const ApartmentMap = ({
     if (apartment.facility_laundry) facilities.push({ key: 'laundry', label: 'ห้องซักรีด', icon: facilityIcons.laundry });
     if (apartment.facility_cctv) facilities.push({ key: 'cctv', label: 'กล้องวงจรปิด', icon: facilityIcons.cctv });
 
-    // Get cached amenity score or show loading
-    const amenityScore = amenityScores[apartment.apartment_id] || 0;
-    const isCalculating = amenityScores[apartment.apartment_id] === undefined;
-
-    // Score color functions
+    // Facility score color
     const getScoreColor = (score) => {
       if (score >= 80) return '#10b981'; // green
       if (score >= 60) return '#f59e0b'; // yellow
@@ -339,51 +199,26 @@ const ApartmentMap = ({
 
         <!-- Content Section -->
         <div style="padding: 16px;">
-          <!-- Dual Score Display -->
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
-            <!-- Internal Facilities Score -->
+          <!-- Facility Score -->
+          <div style="
+            background: linear-gradient(90deg, rgba(${getScoreColor(facilityScore).replace('#', '')}, 0.1) 0%, rgba(${getScoreColor(facilityScore).replace('#', '')}, 0.05) 100%);
+            border: 1px solid rgba(${getScoreColor(facilityScore).replace('#', '')}, 0.2);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 16px;
+            text-align: center;
+          ">
             <div style="
-              background: linear-gradient(90deg, rgba(${getScoreColor(facilityScore).replace('#', '')}, 0.1) 0%, rgba(${getScoreColor(facilityScore).replace('#', '')}, 0.05) 100%);
-              border: 1px solid rgba(${getScoreColor(facilityScore).replace('#', '')}, 0.2);
-              border-radius: 8px;
-              padding: 12px;
-              text-align: center;
-            ">
-              <div style="
-                font-size: 20px; 
-                font-weight: 800; 
-                color: ${getScoreColor(facilityScore)};
-                margin-bottom: 4px;
-              ">${facilityScore}%</div>
-              <div style="
-                font-size: 10px; 
-                color: #6b7280; 
-                font-weight: 500;
-                line-height: 1.2;
-              ">สิ่งอำนวยความสะดวก<br>ภายใน</div>
-            </div>
-
-            <!-- Nearby Amenities Score -->
+              font-size: 24px; 
+              font-weight: 800; 
+              color: ${getScoreColor(facilityScore)};
+              margin-bottom: 4px;
+            ">${facilityScore}%</div>
             <div style="
-              background: linear-gradient(90deg, rgba(${getScoreColor(amenityScore).replace('#', '')}, 0.1) 0%, rgba(${getScoreColor(amenityScore).replace('#', '')}, 0.05) 100%);
-              border: 1px solid rgba(${getScoreColor(amenityScore).replace('#', '')}, 0.2);
-              border-radius: 8px;
-              padding: 12px;
-              text-align: center;
-            ">
-              <div style="
-                font-size: 20px; 
-                font-weight: 800; 
-                color: ${getScoreColor(amenityScore)};
-                margin-bottom: 4px;
-              ">${isCalculating ? '...' : amenityScore + '%'}</div>
-              <div style="
-                font-size: 10px; 
-                color: #6b7280; 
-                font-weight: 500;
-                line-height: 1.2;
-              ">สถานที่<br>ใกล้เคียง</div>
-            </div>
+              font-size: 12px; 
+              color: #6b7280; 
+              font-weight: 500;
+            ">คะแนนสิ่งอำนวยความสะดวก</div>
           </div>
 
           <!-- Facilities Grid -->
@@ -398,8 +233,8 @@ const ApartmentMap = ({
                 align-items: center;
                 gap: 8px;
               ">
-                <span style="font-size: 16px;">🏢</span>
-                สิ่งอำนวยความสะดวกภายใน
+                <span style="font-size: 16px;">✨</span>
+                สิ่งอำนวยความสะดวก
               </h4>
               
               <div style="
@@ -618,30 +453,6 @@ const ApartmentMap = ({
     };
   };
 
-  // Show notification about nearby places
-  const showNearbyNotification = (category, count) => {
-    const categoryNames = {
-      restaurant: 'ร้านอาหาร',
-      convenience: 'ร้านสะดวกซื้อ',
-      school: 'สถานศึกษา',
-      health: 'สถานพยาบาล',
-      transport: 'ขนส่งสาธารณะ'
-    };
-    
-    const notification = {
-      category: categoryNames[category] || category,
-      count,
-      timestamp: Date.now()
-    };
-    
-    setNearbyNotification(notification);
-    
-    // Auto-hide notification after 5 seconds
-    setTimeout(() => {
-      setNearbyNotification(null);
-    }, 5000);
-  };
-
   // Show nearby places function
   const showNearbyPlaces = async (category = 'restaurant') => {
     if (!mapRef.current) return;
@@ -663,6 +474,88 @@ const ApartmentMap = ({
       }
 
       const radius = 1000; // Increased radius to 1000 meters (1km)
+
+      // Category-specific queries with both nodes and ways
+      const buildQuery = (category, lat, lng, radius) => {
+        switch(category) {
+          case 'restaurant':
+            return `
+              [out:json][timeout:25];
+              (
+                node["amenity"~"^(restaurant|cafe|fast_food)$"](around:${radius},${lat},${lng});
+                way["amenity"~"^(restaurant|cafe|fast_food)$"](around:${radius},${lat},${lng});
+              );
+              out geom;
+            `;
+          case 'convenience':
+            return `
+              [out:json][timeout:25];
+              (
+                node["shop"~"^(convenience|supermarket)$"](around:${radius},${lat},${lng});
+                way["shop"~"^(convenience|supermarket)$"](around:${radius},${lat},${lng});
+              );
+              out geom;
+            `;
+          case 'school':
+            return `
+              [out:json][timeout:25];
+              (
+                node["amenity"="school"](around:${radius},${lat},${lng});
+                node["amenity"="university"](around:${radius},${lat},${lng});
+                node["amenity"="college"](around:${radius},${lat},${lng});
+                node["amenity"="kindergarten"](around:${radius},${lat},${lng});
+                way["amenity"="school"](around:${radius},${lat},${lng});
+                way["amenity"="university"](around:${radius},${lat},${lng});
+                way["amenity"="college"](around:${radius},${lat},${lng});
+                way["amenity"="kindergarten"](around:${radius},${lat},${lng});
+              );
+              out geom;
+            `;
+          case 'health':
+            return `
+              [out:json][timeout:25];
+              (
+                node["amenity"="hospital"](around:${radius},${lat},${lng});
+                node["amenity"="clinic"](around:${radius},${lat},${lng});
+                node["amenity"="doctors"](around:${radius},${lat},${lng});
+                node["amenity"="dentist"](around:${radius},${lat},${lng});
+                node["amenity"="pharmacy"](around:${radius},${lat},${lng});
+                node["healthcare"](around:${radius},${lat},${lng});
+                node["shop"="chemist"](around:${radius},${lat},${lng});
+                way["amenity"="hospital"](around:${radius},${lat},${lng});
+                way["amenity"="clinic"](around:${radius},${lat},${lng});
+                way["amenity"="doctors"](around:${radius},${lat},${lng});
+                way["amenity"="dentist"](around:${radius},${lat},${lng});
+                way["amenity"="pharmacy"](around:${radius},${lat},${lng});
+                way["healthcare"](around:${radius},${lat},${lng});
+                way["shop"="chemist"](around:${radius},${lat},${lng});
+              );
+              out geom;
+            `;
+          case 'transport':
+            return `
+              [out:json][timeout:25];
+              (
+                node["public_transport"="stop_position"](around:${radius},${lat},${lng});
+                node["public_transport"="platform"](around:${radius},${lat},${lng});
+                node["public_transport"="station"](around:${radius},${lat},${lng});
+                node["highway"="bus_stop"](around:${radius},${lat},${lng});
+                way["public_transport"="platform"](around:${radius},${lat},${lng});
+                way["public_transport"="station"](around:${radius},${lat},${lng});
+              );
+              out geom;
+            `;
+          default:
+            return `
+              [out:json][timeout:25];
+              (
+                node["amenity"~"^(restaurant|cafe|fast_food)$"](around:${radius},${lat},${lng});
+                way["amenity"~"^(restaurant|cafe|fast_food)$"](around:${radius},${lat},${lng});
+              );
+              out geom;
+            `;
+        }
+      };
 
       const overpassQuery = buildQuery(category, searchCenter.lat, searchCenter.lng, radius);
 
@@ -994,13 +887,6 @@ const ApartmentMap = ({
 
       // Bind popup with enhanced content
       marker.bindPopup(generatePopupContent(apartment), popupOptions);
-
-      // Calculate amenity score in background and update popup
-      getAmenityScore(apartment).then(score => {
-        // Update the popup content with the calculated score
-        const updatedContent = generatePopupContent(apartment);
-        marker.setPopupContent(updatedContent);
-      });
 
       // CLICK HANDLER
       marker.on('click', (e) => {
