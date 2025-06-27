@@ -468,12 +468,12 @@ const ApartmentMap = ({
       const center = mapRef.current.getCenter();
       const radius = 500; // 500 meters
 
-      // Category-specific queries with proper Overpass syntax
+      // Category-specific queries with expanded health facility coverage
       const queries = {
         restaurant: 'node["amenity"~"^(restaurant|cafe|fast_food)$"]',
         convenience: 'node["shop"~"^(convenience|supermarket)$"]',
         school: 'node["amenity"~"^(school|university|college|kindergarten)$"]',
-        health: 'node["amenity"~"^(hospital|clinic|doctors|dentist|pharmacy)$"]',
+        health: '(node["amenity"~"^(hospital|clinic|doctors|dentist|pharmacy)$"]; node["healthcare"]; node["medical"]; node["building"~"^(hospital|clinic)$"]; node["shop"="chemist"];)',
         transport: 'node["public_transport"~"^(stop_position|platform|station)$"]'
       };
 
@@ -549,7 +549,22 @@ const ApartmentMap = ({
                 };
                 return typeMap[tags.amenity] || tags.amenity;
               }
+              if (tags.shop === 'chemist') return 'ร้านยา';
               if (tags.shop) return 'ร้านค้า';
+              if (tags.healthcare) {
+                const healthMap = {
+                  hospital: 'โรงพยาบาล',
+                  clinic: 'คลินิก',
+                  centre: 'ศูนย์สุขภาพ',
+                  doctor: 'คลินิกแพทย์',
+                  dentist: 'คลินิกทันตกรรม',
+                  pharmacy: 'ร้านยา'
+                };
+                return healthMap[tags.healthcare] || 'สถานพยาบาล';
+              }
+              if (tags.medical) return 'สถานพยาบาล';
+              if (tags.building === 'hospital') return 'อาคารโรงพยาบาล';
+              if (tags.building === 'clinic') return 'อาคารคลินิก';
               if (tags.public_transport) return 'ขนส่งสาธารณะ';
               return 'สถานที่';
             };
