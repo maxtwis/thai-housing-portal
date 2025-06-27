@@ -25,6 +25,29 @@ const ApartmentMap = ({
   const hasZoomedToMarker = useRef(false);
   
   const [loadingNearby, setLoadingNearby] = useState(false);
+  const [nearbyNotification, setNearbyNotification] = useState(null);
+
+  // Show notification about nearby places
+  const showNearbyNotification = (category, count) => {
+    const categoryNames = {
+      restaurant: 'ร้านอาหาร',
+      convenience: 'ร้านสะดวกซื้อ',
+      transport: 'ขนส่งสาธารณะ'
+    };
+    
+    const notification = {
+      category: categoryNames[category] || category,
+      count,
+      timestamp: Date.now()
+    };
+    
+    setNearbyNotification(notification);
+    
+    // Auto-hide notification after 5 seconds
+    setTimeout(() => {
+      setNearbyNotification(null);
+    }, 5000);
+  };
 
   // Dynamic height calculation based on viewport
   const getMapHeight = () => {
@@ -302,7 +325,8 @@ const ApartmentMap = ({
               transition: all 0.2s ease;
               box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
             " onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(59, 130, 246, 0.4)'"
-               onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(59, 130, 246, 0.3)'">
+               onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(59, 130, 246, 0.3)'"
+               title="ปิดป๊อปอัปนี้และแสดงร้านอาหารใกล้เคียง">
               🍴 ร้านอาหารใกล้เคียง
             </button>
             
@@ -319,7 +343,8 @@ const ApartmentMap = ({
               transition: all 0.2s ease;
               box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
             " onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(16, 185, 129, 0.4)'"
-               onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(16, 185, 129, 0.3)'">
+               onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(16, 185, 129, 0.3)'"
+               title="ปิดป๊อปอัปนี้และแสดงร้านสะดวกซื้อใกล้เคียง">
               🏪 ร้านสะดวกซื้อ
             </button>
           </div>
@@ -382,6 +407,9 @@ const ApartmentMap = ({
     setLoadingNearby(true);
     
     try {
+      // Close any open apartment popup to reveal amenity markers
+      mapRef.current.closePopup();
+      
       clearNearbyPlaces();
 
       const center = mapRef.current.getCenter();
@@ -416,31 +444,68 @@ const ApartmentMap = ({
         data.elements.forEach(place => {
           if (place.lat && place.lon) {
             const marker = L.circleMarker([place.lat, place.lon], {
-              radius: 6,
+              radius: 8,
               fillColor: category === 'restaurant' ? '#ef4444' : category === 'convenience' ? '#10b981' : '#3b82f6',
               color: '#ffffff',
               weight: 2,
               opacity: 1,
-              fillOpacity: 0.8
+              fillOpacity: 0.9
             });
 
+            // Enhanced amenity popup content
             const popupContent = `
-              <div style="padding: 8px; min-width: 200px;">
-                <h4 style="margin: 0 0 4px 0; font-size: 14px; font-weight: 600;">
-                  ${place.tags.name || place.tags.amenity || place.tags.shop || 'สถานที่'}
-                </h4>
-                ${place.tags.cuisine ? `<p style="font-size: 12px; color: #6b7280; margin: 4px 0 0 0;">Cuisine: ${place.tags.cuisine}</p>` : ''}
-                ${place.tags?.opening_hours ? `<p style="font-size: 12px; color: #6b7280; margin: 4px 0 0 0;">Hours: ${place.tags.opening_hours}</p>` : ''}
+              <div style="padding: 12px; min-width: 220px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                  <span style="font-size: 20px;">${category === 'restaurant' ? '🍽️' : category === 'convenience' ? '🏪' : '🚌'}</span>
+                  <h4 style="margin: 0; font-size: 15px; font-weight: 600; color: #1f2937;">
+                    ${place.tags.name || place.tags.amenity || place.tags.shop || 'สถานที่'}
+                  </h4>
+                </div>
+                ${place.tags.cuisine ? `
+                  <div style="background: #f3f4f6; padding: 4px 8px; border-radius: 4px; margin-bottom: 6px;">
+                    <span style="font-size: 12px; color: #6b7280;">ประเภทอาหาร: </span>
+                    <span style="font-size: 12px; color: #374151; font-weight: 500;">${place.tags.cuisine}</span>
+                  </div>
+                ` : ''}
+                ${place.tags?.opening_hours ? `
+                  <div style="background: #f3f4f6; padding: 4px 8px; border-radius: 4px;">
+                    <span style="font-size: 12px; color: #6b7280;">เวลาเปิด: </span>
+                    <span style="font-size: 12px; color: #374151; font-weight: 500;">${place.tags.opening_hours}</span>
+                  </div>
+                ` : ''}
               </div>
             `;
 
-            marker.bindPopup(popupContent);
+            marker.bindPopup(popupContent, {
+              className: 'poi-popup',
+              maxWidth: 250,
+              offset: [0, -10]
+            });
+            
+            // Add hover effects for amenity markers
+            marker.on('mouseover', function() {
+              this.setStyle({
+                radius: 10,
+                fillOpacity: 1
+              });
+            });
+            
+            marker.on('mouseout', function() {
+              this.setStyle({
+                radius: 8,
+                fillOpacity: 0.9
+              });
+            });
+            
             marker.addTo(layerGroup);
           }
         });
 
         nearbyLayersRef.current[category] = layerGroup;
         layerGroup.addTo(mapRef.current);
+        
+        // Show notification about the nearby places
+        showNearbyNotification(category, data.elements.length);
       }
 
     } catch (error) {
@@ -458,6 +523,7 @@ const ApartmentMap = ({
       mapRef.current.removeLayer(layer);
     });
     nearbyLayersRef.current = {};
+    setNearbyNotification(null);
   };
 
   // Initialize map
@@ -705,6 +771,35 @@ const ApartmentMap = ({
             <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-blue-500"></div>
             <span className="text-sm text-gray-600">กำลังค้นหาสถานที่ใกล้เคียง...</span>
           </div>
+        </div>
+      )}
+
+      {/* Nearby Places Notification */}
+      {nearbyNotification && (
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-white border border-gray-200 rounded-lg shadow-lg px-4 py-3 z-20 min-w-64">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              <span className="text-sm font-medium text-gray-800">
+                พบ {nearbyNotification.category} {nearbyNotification.count} แห่ง
+              </span>
+            </div>
+            <button 
+              onClick={() => setNearbyNotification(null)}
+              className="text-gray-400 hover:text-gray-600 ml-2"
+            >
+              ✕
+            </button>
+          </div>
+          <p className="text-xs text-gray-500 mt-1">คลิกที่เครื่องหมายบนแผนที่เพื่อดูรายละเอียด</p>
+          
+          {/* Clear Nearby Button */}
+          <button
+            onClick={clearNearbyPlaces}
+            className="mt-2 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded-md transition-colors"
+          >
+            ล้างข้อมูลสถานที่ใกล้เคียง
+          </button>
         </div>
       )}
       
