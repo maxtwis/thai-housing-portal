@@ -471,7 +471,9 @@ const ApartmentMap = ({
       maxZoom: 18,
       minZoom: 10,
       zoomControl: !isMobile,
-      attributionControl: true
+      attributionControl: true,
+      // Ensure popups don't get clipped
+      maxBoundsViscosity: 1.0
     });
 
     // Add tile layer
@@ -486,6 +488,25 @@ const ApartmentMap = ({
         position: 'topright'
       }).addTo(map);
     }
+
+    // Custom popup positioning to prevent clipping
+    map.on('popupopen', function(e) {
+      const popup = e.popup;
+      const popupLatLng = popup.getLatLng();
+      const popupPoint = map.latLngToContainerPoint(popupLatLng);
+      const mapSize = map.getSize();
+      
+      // Check if popup would be clipped at the top
+      if (popupPoint.y < 200) {
+        // Adjust the popup offset to open below the marker instead
+        popup.options.offset = [0, 25];
+        popup.update();
+      } else {
+        // Default offset (above the marker)
+        popup.options.offset = [0, -8];
+        popup.update();
+      }
+    });
 
     mapRef.current = map;
 
@@ -531,16 +552,20 @@ const ApartmentMap = ({
       marker.apartmentData = apartment;
       marker.isHovered = false;
 
-      // Enhanced popup binding options
+      // Enhanced popup binding options with auto-positioning
       const popupOptions = {
         closeButton: true,
         autoClose: true,
         closeOnEscapeKey: true,
         maxWidth: 340,
         minWidth: 300,
-        offset: [0, -12],
+        offset: [0, -8],
         className: 'custom-apartment-popup',
-        autoPanPadding: [10, 10]
+        autoPan: true,
+        autoPanPadding: [20, 20],
+        autoPanPaddingTopLeft: [20, 20],
+        autoPanPaddingBottomRight: [20, 20],
+        keepInView: true
       };
 
       // Bind popup with enhanced content
@@ -729,6 +754,8 @@ const ApartmentMap = ({
           box-shadow: 0 10px 25px rgba(0,0,0,0.15), 0 4px 8px rgba(0,0,0,0.1) !important;
           border: none !important;
           background: white !important;
+          max-height: 80vh !important;
+          overflow-y: auto !important;
         }
         
         :global(.custom-apartment-popup .leaflet-popup-content) {
