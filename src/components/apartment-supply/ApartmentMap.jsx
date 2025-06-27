@@ -468,30 +468,39 @@ const ApartmentMap = ({
       const center = mapRef.current.getCenter();
       const radius = 500; // 500 meters
 
-      // Category-specific queries
+      // Category-specific queries with proper Overpass syntax
       const queries = {
         restaurant: 'node["amenity"~"^(restaurant|cafe|fast_food)$"]',
         convenience: 'node["shop"~"^(convenience|supermarket)$"]',
-        school: '(node["amenity"~"^(school|university|college|kindergarten)$"];node["building"="school"];)',
-        health: '(node["amenity"~"^(hospital|clinic|doctors|dentist|pharmacy)$"];node["healthcare"~"^(hospital|clinic|centre|doctor)$"];)',
-        transport: '(node["public_transport"~"^(stop_position|platform|station)$"];node["highway"="bus_stop"];node["railway"~"^(station|halt|tram_stop)$"];)'
+        school: 'node["amenity"~"^(school|university|college|kindergarten)$"]',
+        health: 'node["amenity"~"^(hospital|clinic|doctors|dentist|pharmacy)$"]',
+        transport: 'node["public_transport"~"^(stop_position|platform|station)$"]'
       };
 
       const overpassQuery = `
         [out:json][timeout:25];
         (
-          ${queries[category] || queries.restaurant}
-          (around:${radius},${center.lat},${center.lng});
+          ${queries[category] || queries.restaurant}(around:${radius},${center.lat},${center.lng});
         );
         out geom;
       `;
 
+      console.log('Overpass query:', overpassQuery); // Debug log
+
       const response = await fetch('https://overpass-api.de/api/interpreter', {
         method: 'POST',
-        body: overpassQuery
+        body: overpassQuery,
+        headers: {
+          'Content-Type': 'text/plain'
+        }
       });
 
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const data = await response.json();
+      console.log('Overpass response:', data); // Debug log
       
       if (data.elements && data.elements.length > 0) {
         const layerGroup = L.layerGroup();
@@ -541,9 +550,7 @@ const ApartmentMap = ({
                 return typeMap[tags.amenity] || tags.amenity;
               }
               if (tags.shop) return 'ร้านค้า';
-              if (tags.building === 'school') return 'อาคารโรงเรียน';
-              if (tags.healthcare) return 'สถานพยาบาล';
-              if (tags.public_transport || tags.highway === 'bus_stop' || tags.railway) return 'ขนส่งสาธารณะ';
+              if (tags.public_transport) return 'ขนส่งสาธารณะ';
               return 'สถานที่';
             };
 
@@ -591,13 +598,6 @@ const ApartmentMap = ({
                       </a>
                     </div>
                   ` : ''}
-                  
-                  ${place.tags.addr ? `
-                    <div style="background: #f8fafc; padding: 6px 10px; border-radius: 6px; border-left: 3px solid ${style.color};">
-                      <span style="font-size: 12px; color: #64748b;">ที่อยู่: </span>
-                      <span style="font-size: 12px; color: #334155; font-weight: 500;">${place.tags.addr}</span>
-                    </div>
-                  ` : ''}
                 </div>
               </div>
             `;
@@ -632,10 +632,20 @@ const ApartmentMap = ({
         
         // Show notification about the nearby places
         showNearbyNotification(category, data.elements.length);
+      } else {
+        // Show notification even if no results found
+        showNearbyNotification(category, 0);
       }
 
     } catch (error) {
       console.error('Error showing nearby places:', error);
+      // Show error notification
+      setNearbyNotification({
+        category: 'Error',
+        count: 0,
+        error: true,
+        timestamp: Date.now()
+      });
     } finally {
       setLoadingNearby(false);
     }
@@ -905,10 +915,24 @@ const ApartmentMap = ({
         <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-white border border-gray-200 rounded-lg shadow-lg px-4 py-3 z-20 min-w-64">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <span className="text-sm font-medium text-gray-800">
-                พบ {nearbyNotification.category} {nearbyNotification.count} แห่ง
-              </span>
+              {nearbyNotification.error ? (
+                <>
+                  <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                  <span className="text-sm font-medium text-red-800">
+                    เกิดข้อผิดพลาดในการค้นหา
+                  </span>
+                </>
+              ) : (
+                <>
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <span className="text-sm font-medium text-gray-800">
+                    {nearbyNotification.count === 0 
+                      ? `ไม่พบ ${nearbyNotification.category} ในบริเวณใกล้เคียง`
+                      : `พบ ${nearbyNotification.category} ${nearbyNotification.count} แห่ง`
+                    }
+                  </span>
+                </>
+              )}
             </div>
             <button 
               onClick={() => setNearbyNotification(null)}
@@ -917,15 +941,24 @@ const ApartmentMap = ({
               ✕
             </button>
           </div>
-          <p className="text-xs text-gray-500 mt-1">คลิกที่เครื่องหมายบนแผนที่เพื่อดูรายละเอียด</p>
+          
+          {!nearbyNotification.error && nearbyNotification.count > 0 && (
+            <p className="text-xs text-gray-500 mt-1">คลิกที่เครื่องหมายบนแผนที่เพื่อดูรายละเอียด</p>
+          )}
+          
+          {nearbyNotification.error && (
+            <p className="text-xs text-gray-500 mt-1">กรุณาลองใหม่อีกครั้ง</p>
+          )}
           
           {/* Clear Nearby Button */}
-          <button
-            onClick={clearNearbyPlaces}
-            className="mt-2 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded-md transition-colors"
-          >
-            ล้างข้อมูลสถานที่ใกล้เคียง
-          </button>
+          {!nearbyNotification.error && (
+            <button
+              onClick={clearNearbyPlaces}
+              className="mt-2 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded-md transition-colors"
+            >
+              ล้างข้อมูลสถานที่ใกล้เคียง
+            </button>
+          )}
         </div>
       )}
       
