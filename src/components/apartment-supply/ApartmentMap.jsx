@@ -78,47 +78,340 @@ const ApartmentMap = ({
   };
 
   // Generate popup content for apartment markers
-  const generatePopupContent = (apartment) => {
-    const facilityScore = calculateFacilityScore(apartment);
-    
-    return `
-      <div style="max-width: 280px; padding: 0; font-family: system-ui, -apple-system, sans-serif;">
-        <div style="background: #f8fafc; padding: 12px; margin: -20px -20px 12px -20px; border-bottom: 1px solid #e2e8f0;">
-          <h3 style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600; color: #1e293b;">${apartment.apartment_name}</h3>
-          <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px;">
-            <span style="background: #dbeafe; color: #1e40af; font-size: 12px; padding: 2px 8px; border-radius: 4px;">${apartment.room_type || 'N/A'}</span>
-            <span style="background: #dcfce7; color: #166534; font-size: 12px; padding: 2px 8px; border-radius: 4px;">฿${apartment.price_min?.toLocaleString() || 'N/A'}/เดือน</span>
-            <span style="background: #fef3c7; color: #92400e; font-size: 12px; padding: 2px 8px; border-radius: 4px;">${apartment.size_max || apartment.size_min || 'N/A'} ตร.ม.</span>
+// Enhanced popup content generator for apartment markers
+const generatePopupContent = (apartment) => {
+  const facilityScore = calculateFacilityScore(apartment);
+  
+  // Helper function to format price range
+  const formatPriceRange = () => {
+    if (apartment.price_min && apartment.price_max && apartment.price_min !== apartment.price_max) {
+      return `฿${apartment.price_min?.toLocaleString()} - ฿${apartment.price_max?.toLocaleString()}`;
+    } else if (apartment.price_min) {
+      return `฿${apartment.price_min?.toLocaleString()}`;
+    }
+    return 'ราคาไม่ระบุ';
+  };
+
+  // Helper function to format size range
+  const formatSizeRange = () => {
+    if (apartment.size_min && apartment.size_max && apartment.size_min !== apartment.size_max) {
+      return `${apartment.size_min} - ${apartment.size_max} ตร.ม.`;
+    } else if (apartment.size_max || apartment.size_min) {
+      return `${apartment.size_max || apartment.size_min} ตร.ม.`;
+    }
+    return 'ขนาดไม่ระบุ';
+  };
+
+  // Facility icons mapping
+  const facilityIcons = {
+    wifi: '📶',
+    parking: '🚗',
+    aircondition: '❄️',
+    pool: '🏊‍♂️',
+    gym: '💪',
+    security: '🔒',
+    elevator: '🛗',
+    waterheater: '🚿',
+    laundry: '👕',
+    cctv: '📹'
+  };
+
+  // Get available facilities
+  const facilities = [];
+  if (apartment.facility_wifi) facilities.push({ key: 'wifi', label: 'WiFi', icon: facilityIcons.wifi });
+  if (apartment.facility_parking) facilities.push({ key: 'parking', label: 'ที่จอดรถ', icon: facilityIcons.parking });
+  if (apartment.facility_aircondition) facilities.push({ key: 'aircondition', label: 'เครื่องปรับอากาศ', icon: facilityIcons.aircondition });
+  if (apartment.facility_pool) facilities.push({ key: 'pool', label: 'สระว่ายน้ำ', icon: facilityIcons.pool });
+  if (apartment.facility_gym) facilities.push({ key: 'gym', label: 'ห้องออกกำลังกาย', icon: facilityIcons.gym });
+  if (apartment.facility_security) facilities.push({ key: 'security', label: 'รปภ. 24 ชั่วโมง', icon: facilityIcons.security });
+  if (apartment.facility_elevator) facilities.push({ key: 'elevator', label: 'ลิฟต์', icon: facilityIcons.elevator });
+  if (apartment.facility_waterheater) facilities.push({ key: 'waterheater', label: 'เครื่องทำน้ำอุ่น', icon: facilityIcons.waterheater });
+  if (apartment.facility_laundry) facilities.push({ key: 'laundry', label: 'ห้องซักรีด', icon: facilityIcons.laundry });
+  if (apartment.facility_cctv) facilities.push({ key: 'cctv', label: 'กล้องวงจรปิด', icon: facilityIcons.cctv });
+
+  // Facility score color
+  const getScoreColor = (score) => {
+    if (score >= 80) return '#10b981'; // green
+    if (score >= 60) return '#f59e0b'; // yellow
+    if (score >= 40) return '#ef4444'; // orange
+    return '#6b7280'; // gray
+  };
+
+  return `
+    <div style="
+      max-width: 320px; 
+      padding: 0; 
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    ">
+      <!-- Header Section -->
+      <div style="
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 16px;
+        color: white;
+        position: relative;
+        overflow: hidden;
+      ">
+        <div style="position: absolute; top: -50%; right: -50%; width: 100px; height: 100px; background: rgba(255,255,255,0.1); border-radius: 50%;"></div>
+        <div style="position: relative; z-index: 1;">
+          <h3 style="
+            margin: 0 0 8px 0; 
+            font-size: 18px; 
+            font-weight: 700; 
+            line-height: 1.3;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+          ">${apartment.apartment_name}</h3>
+          
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+            <div style="
+              background: rgba(255,255,255,0.2); 
+              backdrop-filter: blur(10px);
+              padding: 4px 10px; 
+              border-radius: 20px; 
+              font-size: 12px; 
+              font-weight: 600;
+              border: 1px solid rgba(255,255,255,0.3);
+            ">${apartment.room_type || 'ห้องพัก'}</div>
+            
+            <div style="
+              background: rgba(255,255,255,0.2); 
+              backdrop-filter: blur(10px);
+              padding: 4px 10px; 
+              border-radius: 20px; 
+              font-size: 12px; 
+              font-weight: 600;
+              border: 1px solid rgba(255,255,255,0.3);
+            ">${formatSizeRange()}</div>
           </div>
-          <div style="background: #e2e8f0; padding: 6px; border-radius: 4px;">
-            <p style="margin: 0; font-size: 12px; color: #475569;">คะแนนสิ่งอำนวยความสะดวก: <strong>${facilityScore}%</strong></p>
-          </div>
+
+          <div style="
+            font-size: 20px; 
+            font-weight: 800; 
+            color: #fff;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+          ">${formatPriceRange()}<span style="font-size: 14px; font-weight: 500;">/เดือน</span></div>
         </div>
-        
-        <div style="margin-bottom: 12px;">
-          <p style="font-size: 13px; font-weight: 500; color: #374151; margin: 0 0 6px 0;">สิ่งอำนวยความสะดวก:</p>
-          <div style="display: flex; flex-wrap: wrap; gap: 4px;">
-            ${apartment.facility_wifi ? '<span style="background: #ddd6fe; color: #5b21b6; font-size: 12px; padding: 2px 8px; border-radius: 4px;">WiFi</span>' : ''}
-            ${apartment.facility_parking ? '<span style="background: #e0e7ff; color: #3730a3; font-size: 12px; padding: 2px 8px; border-radius: 4px;">ที่จอดรถ</span>' : ''}
-            ${apartment.facility_aircondition ? '<span style="background: #f3e8ff; color: #7c2d12; font-size: 12px; padding: 2px 8px; border-radius: 4px;">AC</span>' : ''}
-            ${apartment.facility_pool ? '<span style="background: #ecfeff; color: #0891b2; font-size: 12px; padding: 2px 8px; border-radius: 4px;">Pool</span>' : ''}
-            ${apartment.facility_gym ? '<span style="background: #fed7aa; color: #ea580c; font-size: 12px; padding: 2px 8px; border-radius: 4px;">Gym</span>' : ''}
-            ${apartment.facility_security ? '<span style="background: #fecaca; color: #dc2626; font-size: 12px; padding: 2px 8px; border-radius: 4px;">Security</span>' : ''}
-          </div>
+      </div>
+
+      <!-- Content Section -->
+      <div style="padding: 16px;">
+        <!-- Facility Score -->
+        <div style="
+          background: linear-gradient(90deg, rgba(${getScoreColor(facilityScore)}, 0.1) 0%, rgba(${getScoreColor(facilityScore)}, 0.05) 100%);
+          border: 1px solid rgba(${getScoreColor(facilityScore)}, 0.2);
+          border-radius: 8px;
+          padding: 12px;
+          margin-bottom: 16px;
+          text-align: center;
+        ">
+          <div style="
+            font-size: 24px; 
+            font-weight: 800; 
+            color: ${getScoreColor(facilityScore)};
+            margin-bottom: 4px;
+          ">${facilityScore}%</div>
+          <div style="
+            font-size: 12px; 
+            color: #6b7280; 
+            font-weight: 500;
+          ">คะแนนสิ่งอำนวยความสะดวก</div>
         </div>
-        
-        <div style="border-top: 1px solid #e5e7eb; padding-top: 12px; margin-top: 12px;">
-          <p style="font-size: 12px; color: #6b7280; margin: 0 0 8px 0;">${apartment.address || 'Address not available'}</p>
-          <button 
-            onclick="window.apartmentMapInstance && window.apartmentMapInstance.showNearbyPlaces(${apartment.latitude}, ${apartment.longitude})" 
-            style="font-size: 12px; background: #2563eb; color: white; padding: 4px 8px; border: none; border-radius: 4px; cursor: pointer;"
-          >
-            Show What's Nearby
+
+        <!-- Facilities Grid -->
+        ${facilities.length > 0 ? `
+          <div style="margin-bottom: 16px;">
+            <h4 style="
+              margin: 0 0 12px 0; 
+              font-size: 14px; 
+              font-weight: 600; 
+              color: #374151;
+              display: flex;
+              align-items: center;
+              gap: 8px;
+            ">
+              <span style="font-size: 16px;">✨</span>
+              สิ่งอำนวยความสะดวก
+            </h4>
+            
+            <div style="
+              display: grid;
+              grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+              gap: 8px;
+            ">
+              ${facilities.map(facility => `
+                <div style="
+                  background: #f8fafc;
+                  border: 1px solid #e2e8f0;
+                  border-radius: 6px;
+                  padding: 8px 12px;
+                  display: flex;
+                  align-items: center;
+                  gap: 8px;
+                  transition: all 0.2s ease;
+                ">
+                  <span style="font-size: 16px;">${facility.icon}</span>
+                  <span style="
+                    font-size: 12px; 
+                    color: #475569; 
+                    font-weight: 500;
+                    line-height: 1.2;
+                  ">${facility.label}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        ` : `
+          <div style="
+            text-align: center;
+            padding: 20px;
+            color: #9ca3af;
+            font-size: 14px;
+          ">
+            <div style="font-size: 24px; margin-bottom: 8px;">🏢</div>
+            ไม่มีข้อมูลสิ่งอำนวยความสะดวก
+          </div>
+        `}
+
+        <!-- Address Section -->
+        ${apartment.address ? `
+          <div style="
+            background: #f1f5f9;
+            border-left: 4px solid #3b82f6;
+            padding: 12px;
+            border-radius: 0 8px 8px 0;
+            margin-bottom: 16px;
+          ">
+            <div style="
+              display: flex;
+              align-items: flex-start;
+              gap: 8px;
+            ">
+              <span style="font-size: 16px; margin-top: 2px;">📍</span>
+              <div>
+                <div style="
+                  font-size: 12px; 
+                  color: #475569; 
+                  font-weight: 500; 
+                  margin-bottom: 4px;
+                ">ที่อยู่</div>
+                <div style="
+                  font-size: 13px; 
+                  color: #1e293b; 
+                  line-height: 1.4;
+                ">${apartment.address}</div>
+              </div>
+            </div>
+          </div>
+        ` : ''}
+
+        <!-- Action Buttons -->
+        <div style="
+          display: flex;
+          gap: 8px;
+          margin-top: 16px;
+        ">
+          <button onclick="window.apartmentMapInstance && window.apartmentMapInstance.showNearbyPlaces && window.apartmentMapInstance.showNearbyPlaces('restaurant')" style="
+            flex: 1;
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+          " onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(59, 130, 246, 0.4)'"
+             onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(59, 130, 246, 0.3)'">
+            🍴 ร้านอาหารใกล้เคียง
+          </button>
+          
+          <button onclick="window.apartmentMapInstance && window.apartmentMapInstance.showNearbyPlaces && window.apartmentMapInstance.showNearbyPlaces('convenience')" style="
+            flex: 1;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
+          " onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(16, 185, 129, 0.4)'"
+             onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(16, 185, 129, 0.3)'">
+            🏪 ร้านสะดวกซื้อ
           </button>
         </div>
       </div>
-    `;
-  };
+    </div>
+  `;
+};
+
+// Enhanced popup binding options
+const popupOptions = {
+  closeButton: true,
+  autoClose: true,
+  closeOnEscapeKey: true,
+  maxWidth: 340,
+  minWidth: 300,
+  offset: [0, -12],
+  className: 'custom-apartment-popup',
+  autoPanPadding: [10, 10]
+};
+
+// Apply the popup to marker
+marker.bindPopup(generatePopupContent(apartment), popupOptions);
+
+// Additional CSS styles that should be added to your component
+const customPopupStyles = `
+  .custom-apartment-popup .leaflet-popup-content-wrapper {
+    border-radius: 12px !important;
+    padding: 0 !important;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15), 0 4px 8px rgba(0,0,0,0.1) !important;
+    border: none !important;
+    background: white !important;
+  }
+  
+  .custom-apartment-popup .leaflet-popup-content {
+    margin: 0 !important;
+    width: auto !important;
+  }
+  
+  .custom-apartment-popup .leaflet-popup-tip {
+    background: white !important;
+    border: none !important;
+    box-shadow: -2px 2px 4px rgba(0,0,0,0.1) !important;
+  }
+  
+  .custom-apartment-popup .leaflet-popup-close-button {
+    position: absolute !important;
+    top: 12px !important;
+    right: 12px !important;
+    color: white !important;
+    font-size: 20px !important;
+    font-weight: bold !important;
+    background: rgba(0,0,0,0.3) !important;
+    border-radius: 50% !important;
+    width: 28px !important;
+    height: 28px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-decoration: none !important;
+    z-index: 10 !important;
+    transition: all 0.2s ease !important;
+  }
+  
+  .custom-apartment-popup .leaflet-popup-close-button:hover {
+    background: rgba(0,0,0,0.5) !important;
+    transform: scale(1.1) !important;
+  }
+`;
 
   // Show nearby places function
   const showNearbyPlaces = async (lat, lng) => {
