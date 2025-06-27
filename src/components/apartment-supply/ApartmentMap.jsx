@@ -521,8 +521,6 @@ const ApartmentMap = ({
                 node["amenity"="dentist"](around:${radius},${lat},${lng});
                 node["amenity"="pharmacy"](around:${radius},${lat},${lng});
                 node["healthcare"](around:${radius},${lat},${lng});
-                node["building"="hospital"](around:${radius},${lat},${lng});
-                node["building"="clinic"](around:${radius},${lat},${lng});
                 node["shop"="chemist"](around:${radius},${lat},${lng});
                 way["amenity"="hospital"](around:${radius},${lat},${lng});
                 way["amenity"="clinic"](around:${radius},${lat},${lng});
@@ -530,8 +528,6 @@ const ApartmentMap = ({
                 way["amenity"="dentist"](around:${radius},${lat},${lng});
                 way["amenity"="pharmacy"](around:${radius},${lat},${lng});
                 way["healthcare"](around:${radius},${lat},${lng});
-                way["building"="hospital"](around:${radius},${lat},${lng});
-                way["building"="clinic"](around:${radius},${lat},${lng});
                 way["shop"="chemist"](around:${radius},${lat},${lng});
               );
               out geom;
@@ -663,8 +659,6 @@ const ApartmentMap = ({
                 return healthMap[tags.healthcare] || 'สถานพยาบาล';
               }
               if (tags.medical) return 'สถานพยาบาล';
-              if (tags.building === 'hospital') return 'อาคารโรงพยาบาล';
-              if (tags.building === 'clinic') return 'อาคารคลินิก';
               if (tags.public_transport) return 'ขนส่งสาธารณะ';
               if (tags.highway === 'bus_stop') return 'ป้ายรถเมล์';
               return 'สถานที่';
