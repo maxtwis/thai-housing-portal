@@ -602,26 +602,130 @@ const ApartmentMap = ({
               fillOpacity: place.type === 'way' ? 0.8 : 0.7
             });
 
-            // Simple and clean popup content - restored original version
+            // Enhanced and attractive popup content
             const name = place.tags?.name || place.tags?.brand || `${style.icon} สถานที่`;
             
             marker.bindPopup(`
-              <div style="min-width: 220px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-                <div style="display: flex; align-items: center; margin-bottom: 8px;">
-                  <span style="font-size: 20px; margin-right: 8px;">${style.icon}</span>
-                  <h3 style="margin: 0; font-size: 16px; font-weight: 600; color: ${style.color};">
-                    ${name}
-                  </h3>
+              <div style="
+                max-width: 280px; 
+                padding: 0; 
+                font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                background: white;
+                border-radius: 10px;
+                overflow: hidden;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+              ">
+                <!-- Header Section -->
+                <div style="
+                  background: linear-gradient(135deg, ${style.color} 0%, ${style.color}dd 100%);
+                  padding: 12px 16px;
+                  color: white;
+                  position: relative;
+                  overflow: hidden;
+                ">
+                  <div style="position: absolute; top: -30%; right: -30%; width: 60px; height: 60px; background: rgba(255,255,255,0.1); border-radius: 50%;"></div>
+                  <div style="position: relative; z-index: 1;">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+                      <span style="font-size: 20px;">${style.icon}</span>
+                      <h3 style="
+                        margin: 0; 
+                        font-size: 16px; 
+                        font-weight: 700; 
+                        line-height: 1.3;
+                        text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+                      ">${name}</h3>
+                    </div>
+                    <div style="
+                      background: rgba(255,255,255,0.2); 
+                      backdrop-filter: blur(10px);
+                      padding: 3px 8px; 
+                      border-radius: 12px; 
+                      font-size: 11px; 
+                      font-weight: 600;
+                      border: 1px solid rgba(255,255,255,0.3);
+                      display: inline-block;
+                    ">${getCategoryName(category)}</div>
+                  </div>
                 </div>
-                <p style="margin: 0 0 4px 0; font-size: 12px; color: #666; font-weight: 500;">
-                  ${getCategoryName(category)}
-                </p>
-                ${place.tags?.phone ? `<p style="margin: 4px 0 0 0; font-size: 11px; color: #666;">📞 ${place.tags.phone}</p>` : ''}
-                ${place.tags?.website ? `<p style="margin: 4px 0 0 0; font-size: 11px;"><a href="${place.tags.website}" target="_blank" style="color: ${style.color};">🌐 Website</a></p>` : ''}
+
+                <!-- Content Section -->
+                <div style="padding: 12px 16px;">
+                  ${place.tags?.cuisine ? `
+                    <div style="
+                      background: #f8fafc; 
+                      padding: 6px 10px; 
+                      border-radius: 6px; 
+                      margin-bottom: 8px; 
+                      border-left: 3px solid ${style.color};
+                      font-size: 12px;
+                    ">
+                      <span style="color: #64748b;">ประเภทอาหาร: </span>
+                      <span style="color: #334155; font-weight: 500;">${place.tags.cuisine}</span>
+                    </div>
+                  ` : ''}
+                  
+                  ${place.tags?.opening_hours ? `
+                    <div style="
+                      background: #f8fafc; 
+                      padding: 6px 10px; 
+                      border-radius: 6px; 
+                      margin-bottom: 8px; 
+                      border-left: 3px solid ${style.color};
+                      font-size: 12px;
+                    ">
+                      <span style="color: #64748b;">เวลาเปิด: </span>
+                      <span style="color: #334155; font-weight: 500;">${place.tags.opening_hours}</span>
+                    </div>
+                  ` : ''}
+                  
+                  ${place.tags?.phone ? `
+                    <div style="
+                      background: #f8fafc; 
+                      padding: 6px 10px; 
+                      border-radius: 6px; 
+                      margin-bottom: 8px; 
+                      border-left: 3px solid ${style.color};
+                      font-size: 12px;
+                    ">
+                      <span style="color: #64748b;">📞 </span>
+                      <span style="color: #334155; font-weight: 500;">${place.tags.phone}</span>
+                    </div>
+                  ` : ''}
+                  
+                  ${place.tags?.website ? `
+                    <div style="
+                      background: #f8fafc; 
+                      padding: 6px 10px; 
+                      border-radius: 6px; 
+                      margin-bottom: 8px; 
+                      border-left: 3px solid ${style.color};
+                      font-size: 12px;
+                    ">
+                      <span style="color: #64748b;">🌐 </span>
+                      <a href="${place.tags.website}" target="_blank" style="color: ${style.color}; font-weight: 500; text-decoration: none;">
+                        เว็บไซต์
+                      </a>
+                    </div>
+                  ` : ''}
+
+                  <!-- Location Info -->
+                  <div style="
+                    background: linear-gradient(90deg, rgba(${style.color.replace('#', '')}, 0.1) 0%, rgba(${style.color.replace('#', '')}, 0.05) 100%);
+                    border: 1px solid rgba(${style.color.replace('#', '')}, 0.2);
+                    border-radius: 6px;
+                    padding: 8px 10px;
+                    text-align: center;
+                    font-size: 11px;
+                    color: #6b7280;
+                    margin-top: 8px;
+                  ">
+                    📍 สถานที่ใกล้เคียง
+                  </div>
+                </div>
               </div>
             `, {
               className: 'poi-popup',
-              maxWidth: 280,
+              maxWidth: 300,
               offset: [0, -10]
             });
 
