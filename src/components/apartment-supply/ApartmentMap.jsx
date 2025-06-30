@@ -64,20 +64,18 @@ const ApartmentMap = ({
       }).addTo(map);
     }
 
-    // Restore normal popup behavior - remove all the zoom prevention code
+    // Simplified popup positioning - remove complex logic that might block popups
     map.on('popupopen', function(e) {
       const popup = e.popup;
+      console.log('Popup opened successfully');
+      
+      // Simple positioning - just check if popup would be clipped at the top
       const popupLatLng = popup.getLatLng();
       const popupPoint = map.latLngToContainerPoint(popupLatLng);
       
-      // Check if popup would be clipped at the top
-      if (popupPoint.y < 200) {
-        // Adjust the popup offset to open below the marker instead
+      if (popupPoint.y < 150) {
+        // Show popup below marker if too close to top
         popup.options.offset = [0, 25];
-        popup.update();
-      } else {
-        // Default offset (above the marker)
-        popup.options.offset = [0, -8];
         popup.update();
       }
     });
@@ -942,26 +940,25 @@ const ApartmentMap = ({
       marker.apartmentData = apartment;
       marker.isHovered = false;
 
-      // Enhanced popup binding options
+      // Enhanced popup binding options - simplified to avoid conflicts
       const popupOptions = {
         closeButton: true,
-        autoClose: true,
+        autoClose: false, // Don't auto-close when clicking elsewhere
         closeOnEscapeKey: true,
         maxWidth: 340,
         minWidth: 300,
         offset: [0, -8],
         className: 'custom-apartment-popup',
-        autoPan: true, // Will be overridden by popupopen event handler for high zoom
-        autoPanPadding: [20, 20],
-        autoPanPaddingTopLeft: [20, 20],
-        autoPanPaddingBottomRight: [20, 20],
-        keepInView: true // Will be overridden by popupopen event handler for high zoom
+        autoPan: true,
+        autoPanPadding: [50, 50], // More padding to ensure popup fits
+        keepInView: true,
+        maxHeight: 500 // Limit height to prevent overflow
       };
 
       // Bind popup with enhanced content
       marker.bindPopup(generatePopupContent(apartment), popupOptions);
 
-      // CLICK HANDLER - Modified to pin marker when popup opens
+      // CLICK HANDLER - Simplified to focus on popup display
       marker.on('click', (e) => {
         console.log('Marker clicked!', apartment.apartment_name);
         
@@ -969,7 +966,7 @@ const ApartmentMap = ({
         L.DomEvent.stopPropagation(e);
         
         // If there's already a pinned marker, restore it to cluster first
-        if (pinnedMarkerRef.current) {
+        if (pinnedMarkerRef.current && pinnedMarkerRef.current !== marker) {
           mapRef.current.removeLayer(pinnedMarkerRef.current);
           markerClusterRef.current.addLayer(pinnedMarkerRef.current);
         }
@@ -987,21 +984,44 @@ const ApartmentMap = ({
         // Set flag to prevent fitBounds
         hasZoomedToMarker.current = true;
         
-        // Open popup FIRST, before setting selected apartment to avoid state conflicts
-        marker.openPopup();
+        // Force popup to open with explicit positioning
+        setTimeout(() => {
+          try {
+            // Ensure marker is still on map before opening popup
+            if (mapRef.current.hasLayer(marker)) {
+              console.log('Opening popup for:', apartment.apartment_name);
+              marker.openPopup();
+              
+              // Verify popup opened
+              setTimeout(() => {
+                if (marker.isPopupOpen()) {
+                  console.log('Popup successfully opened');
+                } else {
+                  console.log('Popup failed to open, retrying...');
+                  // Retry with different approach
+                  const popup = L.popup(popupOptions)
+                    .setLatLng([apartment.latitude, apartment.longitude])
+                    .setContent(generatePopupContent(apartment))
+                    .openOn(mapRef.current);
+                }
+              }, 100);
+            }
+          } catch (error) {
+            console.error('Error opening popup:', error);
+          }
+        }, 10);
         
-        // Set selected apartment with a small delay to avoid interfering with popup
+        // Set selected apartment with delay
         setTimeout(() => {
           if (onApartmentSelect) {
             onApartmentSelect(apartment);
           }
-        }, 50);
+        }, 100);
         
-        // Optionally zoom to the selected apartment
-        console.log('Zooming to:', apartment.latitude, apartment.longitude);
+        // Pan to location
         setTimeout(() => {
           mapRef.current.panTo([apartment.latitude, apartment.longitude]);
-        }, 100);
+        }, 200);
       });
 
       // HOVER EFFECTS - only changes size, keeps color
