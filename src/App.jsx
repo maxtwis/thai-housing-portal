@@ -21,7 +21,6 @@ function App() {
           <Route path="/housing-profile" element={<Dashboard />} />
           <Route path="/about" element={<About />} />
           <Route path="/report/:provinceId" element={<Report />} />
-          <Route path="/housing-stock" element={<HousingStock />} />
           <Route path="/apartment-supply" element={<ApartmentSupply />} />
           <Route path="/organization/:orgId" element={<OrganizationPage />} />
           <Route path="/housing-delivery-system" element={<HousingDeliverySystem />} />
