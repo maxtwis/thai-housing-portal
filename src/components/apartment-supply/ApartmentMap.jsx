@@ -602,13 +602,43 @@ const ApartmentMap = ({
               fillOpacity: place.type === 'way' ? 0.8 : 0.7
             });
 
+            // Simple and clean popup content - restored original version
             const name = place.tags?.name || place.tags?.brand || `${style.icon} สถานที่`;
+            
             marker.bindPopup(`
-              <div class="p-2">
-                <strong>${style.icon} ${name}</strong>
-                <br><small class="text-gray-600">ประเภท: ${category}</small>
+              <div style="min-width: 220px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                  <span style="font-size: 20px; margin-right: 8px;">${style.icon}</span>
+                  <h3 style="margin: 0; font-size: 16px; font-weight: 600; color: ${style.color};">
+                    ${name}
+                  </h3>
+                </div>
+                <p style="margin: 0 0 4px 0; font-size: 12px; color: #666; font-weight: 500;">
+                  ${getCategoryName(category)}
+                </p>
+                ${place.tags?.phone ? `<p style="margin: 4px 0 0 0; font-size: 11px; color: #666;">📞 ${place.tags.phone}</p>` : ''}
+                ${place.tags?.website ? `<p style="margin: 4px 0 0 0; font-size: 11px;"><a href="${place.tags.website}" target="_blank" style="color: ${style.color};">🌐 Website</a></p>` : ''}
               </div>
-            `);
+            `, {
+              className: 'poi-popup',
+              maxWidth: 280,
+              offset: [0, -10]
+            });
+
+            // Add hover effects for amenity markers
+            marker.on('mouseover', function() {
+              this.setStyle({
+                radius: place.type === 'way' ? 12 : 10,
+                fillOpacity: 1
+              });
+            });
+            
+            marker.on('mouseout', function() {
+              this.setStyle({
+                radius: place.type === 'way' ? 10 : 8,
+                fillOpacity: place.type === 'way' ? 0.8 : 0.7
+              });
+            });
 
             layerGroup.addLayer(marker);
           }
@@ -662,6 +692,18 @@ const ApartmentMap = ({
     setTimeout(() => {
       setNearbyNotification(null);
     }, 5000);
+  };
+
+  // Helper function to get category display name
+  const getCategoryName = (category) => {
+    const categoryNames = {
+      restaurant: 'ร้านอาหาร',
+      convenience: 'ร้านสะดวกซื้อ',
+      school: 'สถานศึกษา',
+      health: 'สถานพยาบาล',
+      transport: 'ขนส่งสาธารณะ'
+    };
+    return categoryNames[category] || category;
   };
 
   // Update apartment markers when data or filters change
