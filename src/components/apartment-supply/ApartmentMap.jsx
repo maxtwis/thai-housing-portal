@@ -210,65 +210,230 @@ const ApartmentMap = ({
       } else if (apartment.price_min) {
         return `฿${apartment.price_min?.toLocaleString()}`;
       }
-      return 'ไม่ระบุราคา';
+      return 'ราคาไม่ระบุ';
+    };
+
+    // Helper function to format size range
+    const formatSizeRange = () => {
+      if (apartment.size_min && apartment.size_max && apartment.size_min !== apartment.size_max) {
+        return `${apartment.size_min} - ${apartment.size_max} ตร.ม.`;
+      } else if (apartment.size_max || apartment.size_min) {
+        return `${apartment.size_max || apartment.size_min} ตร.ม.`;
+      }
+      return 'ขนาดไม่ระบุ';
+    };
+
+    // Facility icons mapping
+    const facilityIcons = {
+      wifi: '📶',
+      parking: '🚗',
+      aircondition: '❄️',
+      pool: '🏊‍♂️',
+      gym: '💪',
+      security: '🔒',
+      elevator: '🛗',
+      waterheater: '🚿',
+      laundry: '👕',
+      cctv: '📹'
+    };
+
+    // Get available facilities
+    const facilities = [];
+    if (apartment.facility_wifi) facilities.push({ key: 'wifi', label: 'WiFi', icon: facilityIcons.wifi });
+    if (apartment.facility_parking) facilities.push({ key: 'parking', label: 'ที่จอดรถ', icon: facilityIcons.parking });
+    if (apartment.facility_aircondition) facilities.push({ key: 'aircondition', label: 'เครื่องปรับอากาศ', icon: facilityIcons.aircondition });
+    if (apartment.facility_pool) facilities.push({ key: 'pool', label: 'สระว่ายน้ำ', icon: facilityIcons.pool });
+    if (apartment.facility_gym) facilities.push({ key: 'gym', label: 'ห้องออกกำลังกาย', icon: facilityIcons.gym });
+    if (apartment.facility_security) facilities.push({ key: 'security', label: 'รปภ. 24 ชั่วโมง', icon: facilityIcons.security });
+    if (apartment.facility_elevator) facilities.push({ key: 'elevator', label: 'ลิฟต์', icon: facilityIcons.elevator });
+    if (apartment.facility_waterheater) facilities.push({ key: 'waterheater', label: 'เครื่องทำน้ำอุ่น', icon: facilityIcons.waterheater });
+    if (apartment.facility_laundry) facilities.push({ key: 'laundry', label: 'ห้องซักรีด', icon: facilityIcons.laundry });
+    if (apartment.facility_cctv) facilities.push({ key: 'cctv', label: 'กล้องวงจรปิด', icon: facilityIcons.cctv });
+
+    // Facility score color
+    const getScoreColor = (score) => {
+      if (score >= 80) return '#10b981'; // green
+      if (score >= 60) return '#f59e0b'; // yellow
+      if (score >= 40) return '#ef4444'; // orange
+      return '#6b7280'; // gray
     };
 
     return `
-      <div class="p-4 min-w-[300px] max-w-[340px]">
-        <div class="bg-blue-50 -m-4 p-4 mb-4 border-b">
-          <h3 class="font-bold text-blue-900 text-lg">${apartment.apartment_name || 'ไม่ระบุชื่อ'}</h3>
-          <p class="text-blue-700 text-sm mt-1">${apartment.location || 'ไม่ระบุที่ตั้ง'}</p>
-        </div>
-        
-        <div class="space-y-3">
-          <div class="grid grid-cols-2 gap-3 text-sm">
-            <div class="space-y-1">
-              <div class="flex justify-between">
-                <span class="text-gray-600">ราคา/เดือน:</span>
-                <span class="font-medium text-gray-800">${formatPriceRange()}</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-gray-600">ประเภทห้อง:</span>
-                <span class="font-medium text-gray-800">${apartment.room_type || 'ไม่ระบุ'}</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-gray-600">ขนาด:</span>
-                <span class="font-medium text-gray-800">${apartment.size_sqm ? apartment.size_sqm + ' ตร.ม.' : 'ไม่ระบุ'}</span>
-              </div>
-            </div>
+      <div style="
+        max-width: 320px; 
+        padding: 0; 
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: white;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      ">
+        <!-- Header Section -->
+        <div style="
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          padding: 16px;
+          color: white;
+          position: relative;
+          overflow: hidden;
+        ">
+          <div style="position: absolute; top: -50%; right: -50%; width: 100px; height: 100px; background: rgba(255,255,255,0.1); border-radius: 50%;"></div>
+          <div style="position: relative; z-index: 1;">
+            <h3 style="
+              margin: 0 0 8px 0; 
+              font-size: 18px; 
+              font-weight: 700; 
+              line-height: 1.3;
+              text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            ">${apartment.apartment_name || 'ไม่ระบุชื่อ'}</h3>
             
-            <div class="space-y-1">
-              <div class="flex justify-between">
-                <span class="text-gray-600">สิ่งอำนวยความสะดวก:</span>
-                <span class="font-medium text-gray-800">${facilityScore}%</span>
-              </div>
-              <div class="text-xs text-gray-500 mt-2">
-                ${apartment.facility_wifi ? '✓ WiFi ' : ''}
-                ${apartment.facility_parking ? '✓ ที่จอดรถ ' : ''}
-                ${apartment.facility_pool ? '✓ สระว่ายน้ำ ' : ''}
-                ${apartment.facility_gym ? '✓ ฟิตเนส ' : ''}
-              </div>
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+              <div style="
+                background: rgba(255,255,255,0.2); 
+                backdrop-filter: blur(10px);
+                padding: 4px 10px; 
+                border-radius: 20px; 
+                font-size: 12px; 
+                font-weight: 600;
+                border: 1px solid rgba(255,255,255,0.3);
+              ">${apartment.room_type || 'ห้องพัก'}</div>
+              
+              <div style="
+                background: rgba(255,255,255,0.2); 
+                backdrop-filter: blur(10px);
+                padding: 4px 10px; 
+                border-radius: 20px; 
+                font-size: 12px; 
+                font-weight: 600;
+                border: 1px solid rgba(255,255,255,0.3);
+              ">${formatSizeRange()}</div>
             </div>
+
+            <div style="
+              font-size: 20px; 
+              font-weight: 800; 
+              color: #fff;
+              text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            ">${formatPriceRange()}<span style="font-size: 14px; font-weight: 500;">/เดือน</span></div>
           </div>
-          
-          <div class="border-t pt-3 flex gap-2">
+        </div>
+
+        <!-- Content Section -->
+        <div style="padding: 16px;">
+          <!-- Facility Score -->
+          <div style="
+            background: linear-gradient(90deg, rgba(${getScoreColor(facilityScore).replace('#', '')}, 0.1) 0%, rgba(${getScoreColor(facilityScore).replace('#', '')}, 0.05) 100%);
+            border: 1px solid rgba(${getScoreColor(facilityScore).replace('#', '')}, 0.2);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 16px;
+            text-align: center;
+          ">
+            <div style="
+              font-size: 24px; 
+              font-weight: 800; 
+              color: ${getScoreColor(facilityScore)};
+              margin-bottom: 4px;
+            ">${facilityScore}%</div>
+            <div style="
+              font-size: 12px; 
+              color: #6b7280; 
+              font-weight: 500;
+            ">คะแนนสิ่งอำนวยความสะดวก</div>
+          </div>
+
+          <!-- Facilities Grid -->
+          ${facilities.length > 0 ? `
+            <div style="
+              display: grid; 
+              grid-template-columns: repeat(3, 1fr); 
+              gap: 8px;
+              margin-bottom: 16px;
+            ">
+              ${facilities.slice(0, 6).map(facility => `
+                <div style="
+                  display: flex; 
+                  flex-direction: column; 
+                  align-items: center; 
+                  text-align: center;
+                  padding: 8px;
+                  background: #f8fafc;
+                  border-radius: 6px;
+                  border: 1px solid #e2e8f0;
+                ">
+                  <div style="font-size: 16px; margin-bottom: 4px;">${facility.icon}</div>
+                  <div style="font-size: 10px; color: #64748b; font-weight: 500;">${facility.label}</div>
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
+
+          <!-- Action Buttons -->
+          <div style="
+            display: grid; 
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 6px;
+            margin-bottom: 12px;
+          ">
             <button onclick="window.apartmentMapInstance?.showNearbyPlaces('restaurant')" 
-                    class="bg-red-500 hover:bg-red-600 text-white text-xs px-3 py-1.5 rounded transition-colors">
+                    style="
+                      background: #ef4444; 
+                      color: white; 
+                      border: none;
+                      padding: 8px 4px; 
+                      border-radius: 6px; 
+                      font-size: 11px; 
+                      font-weight: 600;
+                      cursor: pointer;
+                      transition: all 0.2s;
+                    ">
               🍽️ ร้านอาหาร
             </button>
             <button onclick="window.apartmentMapInstance?.showNearbyPlaces('convenience')" 
-                    class="bg-green-500 hover:bg-green-600 text-white text-xs px-3 py-1.5 rounded transition-colors">
+                    style="
+                      background: #10b981; 
+                      color: white; 
+                      border: none;
+                      padding: 8px 4px; 
+                      border-radius: 6px; 
+                      font-size: 11px; 
+                      font-weight: 600;
+                      cursor: pointer;
+                      transition: all 0.2s;
+                    ">
               🏪 ร้านสะดวกซื้อ
             </button>
             <button onclick="window.apartmentMapInstance?.showNearbyPlaces('school')" 
-                    class="bg-purple-500 hover:bg-purple-600 text-white text-xs px-3 py-1.5 rounded transition-colors">
+                    style="
+                      background: #8b5cf6; 
+                      color: white; 
+                      border: none;
+                      padding: 8px 4px; 
+                      border-radius: 6px; 
+                      font-size: 11px; 
+                      font-weight: 600;
+                      cursor: pointer;
+                      transition: all 0.2s;
+                    ">
               🎓 โรงเรียน
             </button>
-            <button onclick="window.apartmentMapInstance?.clearNearbyPlaces()" 
-                    class="bg-gray-500 hover:bg-gray-600 text-white text-xs px-2 py-1.5 rounded transition-colors">
-              ✕
-            </button>
           </div>
+
+          <!-- Clear button -->
+          <button onclick="window.apartmentMapInstance?.clearNearbyPlaces()" 
+                  style="
+                    background: #6b7280; 
+                    color: white; 
+                    border: none;
+                    padding: 6px 12px; 
+                    border-radius: 6px; 
+                    font-size: 10px; 
+                    font-weight: 500;
+                    cursor: pointer;
+                    width: 100%;
+                    transition: all 0.2s;
+                  ">
+            ✕ ล้างสถานที่ใกล้เคียง
+          </button>
         </div>
       </div>
     `;
