@@ -108,28 +108,30 @@ const ApartmentMap = ({
         popup.options.autoPanPaddingTopLeft = [0, 0];
         popup.options.autoPanPaddingBottomRight = [0, 0];
         
-        // Calculate smart popup positioning
+        // Calculate smart popup positioning with smaller, more reasonable offsets
         let offsetX = 0;
-        let offsetY = -20;
+        let offsetY = -8; // Default: slightly above marker
         
-        // Determine popup position based on marker location
-        const centerX = mapSize.x / 2;
-        const centerY = mapSize.y / 2;
+        // Check if popup would go off screen and adjust accordingly
+        const popupWidth = 320; // Approximate popup width
+        const popupHeight = 400; // Approximate popup height
         
-        if (popupPoint.x > centerX + 100) {
-          // Right side - show popup to the left
-          offsetX = -200;
-        } else if (popupPoint.x < centerX - 100) {
-          // Left side - show popup to the right  
-          offsetX = 200;
+        // Horizontal positioning
+        if (popupPoint.x + popupWidth/2 > mapSize.x - 20) {
+          // Too far right - offset left
+          offsetX = -80;
+        } else if (popupPoint.x - popupWidth/2 < 20) {
+          // Too far left - offset right
+          offsetX = 80;
         }
         
-        if (popupPoint.y < centerY - 50) {
-          // Top - show popup below
-          offsetY = 30;
-        } else if (popupPoint.y > centerY + 50) {
-          // Bottom - show popup above
-          offsetY = -250;
+        // Vertical positioning  
+        if (popupPoint.y - popupHeight < 20) {
+          // Too close to top - show below marker
+          offsetY = 25;
+        } else if (popupPoint.y + popupHeight/2 > mapSize.y - 20) {
+          // Too close to bottom - show above with more offset
+          offsetY = -120;
         }
         
         popup.options.offset = [offsetX, offsetY];
