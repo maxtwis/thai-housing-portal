@@ -26,6 +26,7 @@ const ApartmentMap = ({
   const mapRef = useRef(null);
   const markersRef = useRef([]);
   const markerClusterRef = useRef(null);
+  const pinnedMarkerRef = useRef(null); // For temporarily pinned marker
   const nearbyLayersRef = useRef({});
   const isInitialLoad = useRef(true);
   const hasZoomedToMarker = useRef(false);
@@ -63,109 +64,36 @@ const ApartmentMap = ({
       }).addTo(map);
     }
 
-    // Prevent popup from causing zoom changes at high zoom levels
-    const originalSetView = map.setView;
-    const originalPanTo = map.panTo;
-    const originalFitBounds = map.fitBounds;
-    let preventZoomChange = false;
-
-    // Override setView to prevent zoom changes when popup opens
-    map.setView = function(center, zoom, options) {
-      if (preventZoomChange && map.getZoom() >= 17) {
-        // Only allow panning, not zooming at high zoom levels
-        return originalPanTo.call(this, center, options);
-      }
-      return originalSetView.call(this, center, zoom, options);
-    };
-
-    // Override fitBounds to prevent zoom changes when popup opens  
-    map.fitBounds = function(bounds, options) {
-      if (preventZoomChange && map.getZoom() >= 17) {
-        // Don't fit bounds at high zoom levels when popup is opening
-        return this;
-      }
-      return originalFitBounds.call(this, bounds, options);
-    };
-
-    // Custom popup positioning to prevent clipping and zoom bouncing
+    // Restore normal popup behavior - remove all the zoom prevention code
     map.on('popupopen', function(e) {
       const popup = e.popup;
       const popupLatLng = popup.getLatLng();
       const popupPoint = map.latLngToContainerPoint(popupLatLng);
-      const mapSize = map.getSize();
       
-      // Get current zoom level
-      const currentZoom = map.getZoom();
-      
-      // If we're at high zoom levels (17+), prevent any zoom changes
-      if (currentZoom >= 17) {
-        preventZoomChange = true;
-        
-        // Completely disable auto-pan and keepInView
-        popup.options.autoPan = false;
-        popup.options.keepInView = false;
-        popup.options.autoPanPadding = [0, 0];
-        popup.options.autoPanPaddingTopLeft = [0, 0];
-        popup.options.autoPanPaddingBottomRight = [0, 0];
-        
-        // Calculate smart popup positioning with smaller, more reasonable offsets
-        let offsetX = 0;
-        let offsetY = -8; // Default: slightly above marker
-        
-        // Check if popup would go off screen and adjust accordingly
-        const popupWidth = 320; // Approximate popup width
-        const popupHeight = 400; // Approximate popup height
-        
-        // Horizontal positioning
-        if (popupPoint.x + popupWidth/2 > mapSize.x - 20) {
-          // Too far right - offset left
-          offsetX = -80;
-        } else if (popupPoint.x - popupWidth/2 < 20) {
-          // Too far left - offset right
-          offsetX = 80;
-        }
-        
-        // Vertical positioning  
-        if (popupPoint.y - popupHeight < 20) {
-          // Too close to top - show below marker
-          offsetY = 25;
-        } else if (popupPoint.y + popupHeight/2 > mapSize.y - 20) {
-          // Too close to bottom - show above with more offset
-          offsetY = -120;
-        }
-        
-        popup.options.offset = [offsetX, offsetY];
+      // Check if popup would be clipped at the top
+      if (popupPoint.y < 200) {
+        // Adjust the popup offset to open below the marker instead
+        popup.options.offset = [0, 25];
         popup.update();
-        
-        // Reset flag after a short delay
-        setTimeout(() => {
-          preventZoomChange = false;
-        }, 100);
-        
       } else {
-        preventZoomChange = false;
-        
-        // For lower zoom levels, use normal behavior
-        popup.options.autoPan = true;
-        popup.options.keepInView = true;
-        popup.options.autoPanPadding = [20, 20];
-        popup.options.autoPanPaddingTopLeft = [20, 20];
-        popup.options.autoPanPaddingBottomRight = [20, 20];
-        
-        // Check if popup would be clipped at the top
-        if (popupPoint.y < 200) {
-          popup.options.offset = [0, 25];
-          popup.update();
-        } else {
-          popup.options.offset = [0, -8];
-          popup.update();
-        }
+        // Default offset (above the marker)
+        popup.options.offset = [0, -8];
+        popup.update();
       }
     });
 
-    // Reset flag when popup closes
-    map.on('popupclose', function() {
-      preventZoomChange = false;
+    // Handle popup close - restore marker to cluster if needed
+    map.on('popupclose', function(e) {
+      if (pinnedMarkerRef.current) {
+        // Remove the pinned marker from map
+        mapRef.current.removeLayer(pinnedMarkerRef.current);
+        
+        // Add it back to the cluster
+        markerClusterRef.current.addLayer(pinnedMarkerRef.current);
+        
+        // Clear the reference
+        pinnedMarkerRef.current = null;
+      }
     });
 
     // Initialize marker cluster group with custom options
@@ -177,7 +105,6 @@ const ApartmentMap = ({
       zoomToBoundsOnClick: true, // Zoom to cluster bounds when clicked
       spiderfyDistanceMultiplier: 1.2, // Distance multiplier for spider
       removeOutsideVisibleBounds: true, // Remove markers outside visible bounds for performance
-      disableClusteringAtZoom: 18, // Disable clustering at zoom level 18 and above
       
       // Custom cluster icon creation
       iconCreateFunction: function(cluster) {
@@ -1008,12 +935,25 @@ const ApartmentMap = ({
       // Bind popup with enhanced content
       marker.bindPopup(generatePopupContent(apartment), popupOptions);
 
-      // CLICK HANDLER
+      // CLICK HANDLER - Modified to pin marker when popup opens
       marker.on('click', (e) => {
         console.log('Marker clicked!', apartment.apartment_name);
         
         // Prevent event bubbling
         L.DomEvent.stopPropagation(e);
+        
+        // If there's already a pinned marker, restore it to cluster first
+        if (pinnedMarkerRef.current) {
+          mapRef.current.removeLayer(pinnedMarkerRef.current);
+          markerClusterRef.current.addLayer(pinnedMarkerRef.current);
+        }
+        
+        // Remove this marker from cluster and add directly to map
+        markerClusterRef.current.removeLayer(marker);
+        marker.addTo(mapRef.current);
+        
+        // Store reference to pinned marker
+        pinnedMarkerRef.current = marker;
         
         // Set flag to prevent fitBounds
         hasZoomedToMarker.current = true;
@@ -1023,14 +963,14 @@ const ApartmentMap = ({
           onApartmentSelect(apartment);
         }
         
-        // Zoom to the selected apartment marker
-        console.log('Zooming to:', apartment.latitude, apartment.longitude);
+        // Open popup - this can now zoom out freely without losing the marker
+        marker.openPopup();
         
-        // Use panTo + setZoom for more reliable zooming
-        mapRef.current.panTo([apartment.latitude, apartment.longitude]);
+        // Optionally zoom to the selected apartment
+        console.log('Zooming to:', apartment.latitude, apartment.longitude);
         setTimeout(() => {
-          mapRef.current.setZoom(16);
-        }, 300);
+          mapRef.current.panTo([apartment.latitude, apartment.longitude]);
+        }, 100);
       });
 
       // HOVER EFFECTS - only changes size, keeps color
