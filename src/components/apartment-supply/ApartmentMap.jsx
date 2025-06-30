@@ -370,18 +370,18 @@ const ApartmentMap = ({
           <!-- Action Buttons -->
           <div style="
             display: grid; 
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 6px;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
             margin-bottom: 12px;
           ">
             <button onclick="window.apartmentMapInstance?.showNearbyPlaces('restaurant')" 
                     style="
-                      background: #ef4444; 
+                      background: #3b82f6; 
                       color: white; 
                       border: none;
-                      padding: 8px 4px; 
-                      border-radius: 6px; 
-                      font-size: 11px; 
+                      padding: 10px 8px; 
+                      border-radius: 8px; 
+                      font-size: 12px; 
                       font-weight: 600;
                       cursor: pointer;
                       transition: all 0.2s;
@@ -393,9 +393,9 @@ const ApartmentMap = ({
                       background: #10b981; 
                       color: white; 
                       border: none;
-                      padding: 8px 4px; 
-                      border-radius: 6px; 
-                      font-size: 11px; 
+                      padding: 10px 8px; 
+                      border-radius: 8px; 
+                      font-size: 12px; 
                       font-weight: 600;
                       cursor: pointer;
                       transition: all 0.2s;
@@ -407,14 +407,43 @@ const ApartmentMap = ({
                       background: #8b5cf6; 
                       color: white; 
                       border: none;
-                      padding: 8px 4px; 
-                      border-radius: 6px; 
-                      font-size: 11px; 
+                      padding: 10px 8px; 
+                      border-radius: 8px; 
+                      font-size: 12px; 
                       font-weight: 600;
                       cursor: pointer;
                       transition: all 0.2s;
                     ">
-              🎓 โรงเรียน
+              🎓 สถานศึกษา
+            </button>
+            <button onclick="window.apartmentMapInstance?.showNearbyPlaces('health')" 
+                    style="
+                      background: #ec4899; 
+                      color: white; 
+                      border: none;
+                      padding: 10px 8px; 
+                      border-radius: 8px; 
+                      font-size: 12px; 
+                      font-weight: 600;
+                      cursor: pointer;
+                      transition: all 0.2s;
+                    ">
+              🏥 สถานพยาบาล
+            </button>
+            <button onclick="window.apartmentMapInstance?.showNearbyPlaces('transport')" 
+                    style="
+                      background: #f59e0b; 
+                      color: white; 
+                      border: none;
+                      padding: 10px 8px; 
+                      border-radius: 8px; 
+                      font-size: 12px; 
+                      font-weight: 600;
+                      cursor: pointer;
+                      transition: all 0.2s;
+                      grid-column: span 2;
+                    ">
+              🚌 ขนส่งสาธารณะ
             </button>
           </div>
 
@@ -424,16 +453,16 @@ const ApartmentMap = ({
                     background: #6b7280; 
                     color: white; 
                     border: none;
-                    padding: 6px 12px; 
-                    border-radius: 6px; 
-                    font-size: 10px; 
+                    padding: 8px 12px; 
+                    border-radius: 8px; 
+                    font-size: 11px; 
                     font-weight: 500;
                     cursor: pointer;
                     width: 100%;
                     transition: all 0.2s;
                   ">
-            ✕ ล้างสถานที่ใกล้เคียง
-          </button>
+              ✕ ล้างสถานที่ใกล้เคียง
+            </button>
         </div>
       </div>
     `;
@@ -488,6 +517,31 @@ const ApartmentMap = ({
               (
                 node["amenity"~"^(school|university|kindergarten)$"](around:${radius},${lat},${lng});
                 way["amenity"~"^(school|university|kindergarten)$"](around:${radius},${lat},${lng});
+              );
+              out geom;
+            `;
+          case 'health':
+            return `
+              [out:json][timeout:25];
+              (
+                node["amenity"~"^(hospital|clinic|doctors|dentist|pharmacy)$"](around:${radius},${lat},${lng});
+                node["healthcare"](around:${radius},${lat},${lng});
+                node["shop"="chemist"](around:${radius},${lat},${lng});
+                way["amenity"~"^(hospital|clinic|doctors|dentist|pharmacy)$"](around:${radius},${lat},${lng});
+                way["healthcare"](around:${radius},${lat},${lng});
+              );
+              out geom;
+            `;
+          case 'transport':
+            return `
+              [out:json][timeout:25];
+              (
+                node["public_transport"](around:${radius},${lat},${lng});
+                node["highway"="bus_stop"](around:${radius},${lat},${lng});
+                node["amenity"="bus_station"](around:${radius},${lat},${lng});
+                node["railway"="station"](around:${radius},${lat},${lng});
+                way["public_transport"](around:${radius},${lat},${lng});
+                way["amenity"="bus_station"](around:${radius},${lat},${lng});
               );
               out geom;
             `;
