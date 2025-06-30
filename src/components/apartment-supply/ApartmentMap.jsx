@@ -63,22 +63,61 @@ const ApartmentMap = ({
       }).addTo(map);
     }
 
-    // Custom popup positioning to prevent clipping
+    // Custom popup positioning to prevent clipping and zoom bouncing
     map.on('popupopen', function(e) {
       const popup = e.popup;
       const popupLatLng = popup.getLatLng();
       const popupPoint = map.latLngToContainerPoint(popupLatLng);
       const mapSize = map.getSize();
       
-      // Check if popup would be clipped at the top
-      if (popupPoint.y < 200) {
-        // Adjust the popup offset to open below the marker instead
-        popup.options.offset = [0, 25];
+      // Get current zoom level
+      const currentZoom = map.getZoom();
+      const maxZoom = map.getMaxZoom();
+      
+      // If we're at high zoom levels (17+), don't auto-pan to prevent zoom bouncing
+      if (currentZoom >= 17) {
+        // Disable auto-pan for apartment popups at high zoom to prevent clustering bounce
+        popup.options.autoPan = false;
+        popup.options.keepInView = false;
+        
+        // Instead, manually position the popup to fit on screen
+        let offsetX = 0;
+        let offsetY = -20;
+        
+        // Adjust popup position based on where the marker is on screen
+        if (popupPoint.x > mapSize.x * 0.7) {
+          // Marker is on the right side, show popup to the left
+          offsetX = -160;
+        } else if (popupPoint.x < mapSize.x * 0.3) {
+          // Marker is on the left side, show popup to the right
+          offsetX = 160;
+        }
+        
+        if (popupPoint.y < mapSize.y * 0.3) {
+          // Marker is at the top, show popup below
+          offsetY = 25;
+        } else if (popupPoint.y > mapSize.y * 0.7) {
+          // Marker is at the bottom, show popup above
+          offsetY = -200;
+        }
+        
+        popup.options.offset = [offsetX, offsetY];
         popup.update();
       } else {
-        // Default offset (above the marker)
-        popup.options.offset = [0, -8];
-        popup.update();
+        // For lower zoom levels, use normal behavior
+        popup.options.autoPan = true;
+        popup.options.keepInView = true;
+        
+        // Check if popup would be clipped at the top
+        if (popupPoint.y < 200) {
+          // Adjust the popup offset to open below the marker instead
+          popup.options.offset = [0, 25];
+          popup.update();
+        } else {
+          // Default offset (above the marker)
+          popup.options.offset = [0, -8];
+          popup.update();
+        }
       }
     });
 
@@ -911,9 +950,11 @@ const ApartmentMap = ({
         minWidth: 300,
         offset: [0, -8],
         className: 'custom-apartment-popup',
-        autoPan: true,
+        autoPan: true, // Will be overridden by popupopen event handler for high zoom
         autoPanPadding: [20, 20],
-        keepInView: true
+        autoPanPaddingTopLeft: [20, 20],
+        autoPanPaddingBottomRight: [20, 20],
+        keepInView: true // Will be overridden by popupopen event handler for high zoom
       };
 
       // Bind popup with enhanced content
