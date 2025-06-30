@@ -963,7 +963,7 @@ const ApartmentMap = ({
       // Bind popup with enhanced content
       marker.bindPopup(generatePopupContent(apartment), popupOptions);
 
-      // CLICK HANDLER - Simplified to focus on popup display
+      // CLICK HANDLER - Smooth zooming with optimal positioning
       marker.on('click', (e) => {
         console.log('Marker clicked!', apartment.apartment_name);
         
@@ -989,31 +989,66 @@ const ApartmentMap = ({
         // Set flag to prevent fitBounds
         hasZoomedToMarker.current = true;
         
-        // Force popup to open with explicit positioning
+        // Calculate optimal position for popup before moving
+        const currentZoom = mapRef.current.getZoom();
+        const mapSize = mapRef.current.getSize();
+        const popupHeight = 400; // Approximate popup height
+        
+        // Calculate offset to position marker optimally for popup display
+        let targetLatLng = [apartment.latitude, apartment.longitude];
+        
+        // If we need to make room for popup, offset the center point
+        if (popupHeight > mapSize.y * 0.4) {
+          // For tall popups, offset the target to show popup above marker
+          const offsetPixels = popupHeight / 3; // Offset by 1/3 of popup height
+          const offsetLat = offsetPixels * (mapRef.current.getBounds().getNorth() - mapRef.current.getBounds().getSouth()) / mapSize.y;
+          targetLatLng = [apartment.latitude - offsetLat, apartment.longitude];
+        }
+        
+        // Smooth pan to optimal position first
         setTimeout(() => {
-          try {
-            // Ensure marker is still on map before opening popup
-            if (mapRef.current.hasLayer(marker)) {
-              console.log('Opening popup for:', apartment.apartment_name);
-              marker.openPopup();
-              
-              // Verify popup opened
-              setTimeout(() => {
-                if (marker.isPopupOpen()) {
-                  console.log('Popup successfully opened');
-                } else {
-                  console.log('Popup failed to open, retrying...');
-                  // Retry with different approach
-                  const popup = L.popup(popupOptions)
-                    .setLatLng([apartment.latitude, apartment.longitude])
-                    .setContent(generatePopupContent(apartment))
-                    .openOn(mapRef.current);
-                }
-              }, 100);
+          // Move to optimal position in one smooth motion
+          mapRef.current.setView(targetLatLng, Math.max(currentZoom, 16), {
+            animate: true,
+            duration: 0.8, // Smooth 0.8 second animation
+            easeLinearity: 0.25 // Smooth easing
+          });
+          
+          // Open popup after smooth pan completes
+          setTimeout(() => {
+            try {
+              if (mapRef.current.hasLayer(marker)) {
+                console.log('Opening popup for:', apartment.apartment_name);
+                marker.openPopup();
+                
+                // Verify popup opened
+                setTimeout(() => {
+                  if (marker.isPopupOpen()) {
+                    console.log('Popup successfully opened');
+                  } else {
+                    console.log('Popup failed to open, retrying...');
+                    const popup = L.popup({
+                      closeButton: true,
+                      autoClose: false,
+                      closeOnEscapeKey: true,
+                      maxWidth: 340,
+                      minWidth: 300,
+                      offset: [0, -8],
+                      className: 'custom-apartment-popup',
+                      autoPan: false, // Don't auto-pan since we already positioned optimally
+                      maxHeight: 500
+                    })
+                      .setLatLng([apartment.latitude, apartment.longitude])
+                      .setContent(generatePopupContent(apartment))
+                      .openOn(mapRef.current);
+                  }
+                }, 50);
+              }
+            } catch (error) {
+              console.error('Error opening popup:', error);
             }
-          } catch (error) {
-            console.error('Error opening popup:', error);
-          }
+          }, 900); // Wait for pan animation to complete
+          
         }, 10);
         
         // Set selected apartment with delay
@@ -1021,11 +1056,6 @@ const ApartmentMap = ({
           if (onApartmentSelect) {
             onApartmentSelect(apartment);
           }
-        }, 100);
-        
-        // Pan to location
-        setTimeout(() => {
-          mapRef.current.panTo([apartment.latitude, apartment.longitude]);
         }, 200);
       });
 
