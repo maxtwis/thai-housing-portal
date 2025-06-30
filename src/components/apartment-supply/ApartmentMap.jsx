@@ -84,16 +84,25 @@ const ApartmentMap = ({
 
     // Handle popup close - restore marker to cluster if needed
     map.on('popupclose', function(e) {
-      if (pinnedMarkerRef.current) {
-        // Remove the pinned marker from map
-        mapRef.current.removeLayer(pinnedMarkerRef.current);
-        
-        // Add it back to the cluster
-        markerClusterRef.current.addLayer(pinnedMarkerRef.current);
-        
-        // Clear the reference
-        pinnedMarkerRef.current = null;
-      }
+      // Add a small delay to prevent conflicts with other operations
+      setTimeout(() => {
+        if (pinnedMarkerRef.current && mapRef.current.hasLayer(pinnedMarkerRef.current)) {
+          try {
+            // Remove the pinned marker from map
+            mapRef.current.removeLayer(pinnedMarkerRef.current);
+            
+            // Add it back to the cluster
+            markerClusterRef.current.addLayer(pinnedMarkerRef.current);
+            
+            // Clear the reference
+            pinnedMarkerRef.current = null;
+          } catch (error) {
+            console.warn('Error restoring marker to cluster:', error);
+            // Clear the reference anyway to prevent further issues
+            pinnedMarkerRef.current = null;
+          }
+        }
+      }, 50);
     });
 
     // Initialize marker cluster group with custom options
@@ -489,19 +498,17 @@ const ApartmentMap = ({
     setLoadingNearby(true);
     
     try {
-      // Close any open apartment popup to reveal amenity markers
-      mapRef.current.closePopup();
-      
+      // Don't close popup immediately, just clear existing nearby places first
       clearNearbyPlaces();
 
       // Use selected apartment coordinates if available, otherwise use map center
       let searchCenter;
       if (selectedApartment && selectedApartment.latitude && selectedApartment.longitude) {
         searchCenter = { lat: selectedApartment.latitude, lng: selectedApartment.longitude };
-      } else if (pinnedMarkerRef.current) {
-        // If we have a pinned marker, use its coordinates
-        const latlng = pinnedMarkerRef.current.getLatLng();
-        searchCenter = { lat: latlng.lat, lng: latlng.lng };
+      } else if (pinnedMarkerRef.current && pinnedMarkerRef.current.apartmentData) {
+        // If we have a pinned marker with apartment data, use its coordinates
+        const apartment = pinnedMarkerRef.current.apartmentData;
+        searchCenter = { lat: apartment.latitude, lng: apartment.longitude };
       } else {
         // Fallback to map center
         const center = mapRef.current.getCenter();
@@ -771,6 +778,13 @@ const ApartmentMap = ({
         
         nearbyLayersRef.current[category] = layerGroup;
         layerGroup.addTo(mapRef.current);
+        
+        // Now that nearby places are loaded, we can safely close the popup
+        setTimeout(() => {
+          if (mapRef.current) {
+            mapRef.current.closePopup();
+          }
+        }, 100);
         
         showNearbyNotification(category, data.elements.length);
       } else {
