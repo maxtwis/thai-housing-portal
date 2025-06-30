@@ -5,7 +5,6 @@ import Footer from './components/Footer';
 import Dashboard from './pages/Dashboard';
 import About from './pages/About';
 import Report from './pages/Report';
-import HousingStock from './pages/HousingStock';
 import Homepage from './pages/Homepage';
 import OrganizationPage from './pages/OrganizationPage';
 import HousingDeliverySystem from './pages/HousingDeliverySystem';
