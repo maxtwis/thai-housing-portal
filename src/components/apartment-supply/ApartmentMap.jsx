@@ -604,6 +604,7 @@ const ApartmentMap = ({
 
             // Enhanced and attractive popup content
             const name = place.tags?.name || place.tags?.brand || `${style.icon} สถานที่`;
+            const detailedType = getDetailedPlaceType(place, category);
             
             marker.bindPopup(`
               <div style="
@@ -644,7 +645,7 @@ const ApartmentMap = ({
                       font-weight: 600;
                       border: 1px solid rgba(255,255,255,0.3);
                       display: inline-block;
-                    ">${getCategoryName(category)}</div>
+                    ">${detailedType}</div>
                   </div>
                 </div>
 
@@ -796,6 +797,74 @@ const ApartmentMap = ({
     setTimeout(() => {
       setNearbyNotification(null);
     }, 5000);
+  };
+
+  // Helper function to get detailed place type classification
+  const getDetailedPlaceType = (place, category) => {
+    const tags = place.tags || {};
+    
+    // For healthcare/medical facilities
+    if (category === 'health') {
+      if (tags.amenity === 'hospital') return 'โรงพยาบาล';
+      if (tags.amenity === 'clinic') return 'คลินิก';
+      if (tags.amenity === 'doctors') return 'คลินิกแพทย์';
+      if (tags.amenity === 'dentist') return 'คลินิกทันตกรรม';
+      if (tags.amenity === 'pharmacy' || tags.shop === 'chemist') return 'ร้านขายยา';
+      if (tags.healthcare === 'hospital') return 'โรงพยาบาล';
+      if (tags.healthcare === 'clinic') return 'คลินิก';
+      if (tags.healthcare === 'centre') return 'ศูนย์สุขภาพ';
+      if (tags.healthcare === 'doctor') return 'คลินิกแพทย์';
+      if (tags.healthcare === 'dentist') return 'คลินิกทันตกรรม';
+      if (tags.healthcare === 'pharmacy') return 'ร้านขายยา';
+      if (tags.medical) return 'สถานพยาบาล';
+      return 'สถานพยาบาล';
+    }
+    
+    // For restaurants
+    if (category === 'restaurant') {
+      if (tags.amenity === 'restaurant') return 'ร้านอาหาร';
+      if (tags.amenity === 'cafe') return 'ร้านกาแฟ';
+      if (tags.amenity === 'fast_food') return 'ฟาสต์ฟูด';
+      if (tags.amenity === 'bar') return 'บาร์';
+      if (tags.amenity === 'pub') return 'ผับ';
+      return 'ร้านอาหาร';
+    }
+    
+    // For convenience stores
+    if (category === 'convenience') {
+      if (tags.shop === 'convenience') return 'ร้านสะดวกซื้อ';
+      if (tags.shop === 'supermarket') return 'ซูเปอร์มาร์เก็ต';
+      if (tags.shop === 'mall') return 'ห้างสรรพสินค้า';
+      if (tags.shop === 'department_store') return 'ห้างสรรพสินค้า';
+      if (tags.brand === '7-Eleven') return 'เซเว่น อีเลฟเว่น';
+      if (tags.brand === 'Family Mart') return 'แฟมิลี่มาร์ท';
+      if (tags.brand === 'Lotus') return 'โลตัส';
+      if (tags.brand === 'Big C') return 'บิ๊กซี';
+      if (tags.brand === 'Tesco Lotus') return 'เทสโก้ โลตัส';
+      return 'ร้านสะดวกซื้อ';
+    }
+    
+    // For schools
+    if (category === 'school') {
+      if (tags.amenity === 'school') return 'โรงเรียน';
+      if (tags.amenity === 'university') return 'มหาวิทยาลัย';
+      if (tags.amenity === 'college') return 'วิทยาลัย';
+      if (tags.amenity === 'kindergarten') return 'โรงเรียนอนุบาล';
+      return 'สถานศึกษา';
+    }
+    
+    // For transport
+    if (category === 'transport') {
+      if (tags.highway === 'bus_stop') return 'ป้ายรถเมล์';
+      if (tags.amenity === 'bus_station') return 'สถานีขนส่ง';
+      if (tags.railway === 'station') return 'สถานีรถไฟ';
+      if (tags.public_transport === 'platform') return 'ชานชาลา';
+      if (tags.public_transport === 'station') return 'สถานีขนส่งสาธารณะ';
+      return 'ขนส่งสาธารณะ';
+    }
+    
+    // Fallback to general category
+    return getCategoryName(category);
   };
 
   // Helper function to get category display name
