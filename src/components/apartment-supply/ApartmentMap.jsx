@@ -603,8 +603,8 @@ const ApartmentMap = ({
             });
 
             // Enhanced and attractive popup content
-            const name = place.tags?.name || place.tags?.brand || `${style.icon} สถานที่`;
             const detailedType = getDetailedPlaceType(place, category);
+            const name = place.tags?.name || place.tags?.brand || detailedType;
             
             marker.bindPopup(`
               <div style="
