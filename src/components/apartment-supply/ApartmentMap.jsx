@@ -498,8 +498,14 @@ const ApartmentMap = ({
       let searchCenter;
       if (selectedApartment && selectedApartment.latitude && selectedApartment.longitude) {
         searchCenter = { lat: selectedApartment.latitude, lng: selectedApartment.longitude };
+      } else if (pinnedMarkerRef.current) {
+        // If we have a pinned marker, use its coordinates
+        const latlng = pinnedMarkerRef.current.getLatLng();
+        searchCenter = { lat: latlng.lat, lng: latlng.lng };
       } else {
-        searchCenter = mapRef.current.getCenter();
+        // Fallback to map center
+        const center = mapRef.current.getCenter();
+        searchCenter = { lat: center.lat, lng: center.lng };
       }
 
       const radius = 1000; // 1km radius
@@ -955,10 +961,13 @@ const ApartmentMap = ({
         // Store reference to pinned marker
         pinnedMarkerRef.current = marker;
         
+        // Ensure the marker retains its apartment data
+        pinnedMarkerRef.current.apartmentData = apartment;
+        
         // Set flag to prevent fitBounds
         hasZoomedToMarker.current = true;
         
-        // Set selected apartment
+        // Set selected apartment - this ensures selectedApartment is properly set
         if (onApartmentSelect) {
           onApartmentSelect(apartment);
         }
