@@ -987,13 +987,15 @@ const ApartmentMap = ({
         // Set flag to prevent fitBounds
         hasZoomedToMarker.current = true;
         
-        // Set selected apartment - this ensures selectedApartment is properly set
-        if (onApartmentSelect) {
-          onApartmentSelect(apartment);
-        }
-        
-        // Open popup - this can now zoom out freely without losing the marker
+        // Open popup FIRST, before setting selected apartment to avoid state conflicts
         marker.openPopup();
+        
+        // Set selected apartment with a small delay to avoid interfering with popup
+        setTimeout(() => {
+          if (onApartmentSelect) {
+            onApartmentSelect(apartment);
+          }
+        }, 50);
         
         // Optionally zoom to the selected apartment
         console.log('Zooming to:', apartment.latitude, apartment.longitude);
@@ -1040,30 +1042,33 @@ const ApartmentMap = ({
 
     console.log('Updating marker styles for selected apartment:', selectedApartment.apartment_name);
 
-    // If we have a pinned marker, update its style
-    if (pinnedMarkerRef.current && pinnedMarkerRef.current.apartmentData) {
-      const apartment = pinnedMarkerRef.current.apartmentData;
-      const isSelected = apartment.apartment_id === selectedApartment.apartment_id;
-      const isHovered = pinnedMarkerRef.current.isHovered || false;
-      const updatedOptions = createSimpleMarker(apartment, isSelected, isHovered);
-      pinnedMarkerRef.current.setStyle(updatedOptions);
-      return; // Don't update cluster markers if we have a pinned marker
-    }
-
-    // Update marker styles without recreating them
-    markersRef.current.forEach(marker => {
-      const apartment = apartmentData.find(apt => 
-        Math.abs(apt.latitude - marker.getLatLng().lat) < 0.0001 && 
-        Math.abs(apt.longitude - marker.getLatLng().lng) < 0.0001
-      );
-      
-      if (apartment) {
+    // Add a small delay to avoid interfering with popup opening
+    setTimeout(() => {
+      // If we have a pinned marker, update its style
+      if (pinnedMarkerRef.current && pinnedMarkerRef.current.apartmentData) {
+        const apartment = pinnedMarkerRef.current.apartmentData;
         const isSelected = apartment.apartment_id === selectedApartment.apartment_id;
-        const isHovered = marker.isHovered || false;
+        const isHovered = pinnedMarkerRef.current.isHovered || false;
         const updatedOptions = createSimpleMarker(apartment, isSelected, isHovered);
-        marker.setStyle(updatedOptions);
+        pinnedMarkerRef.current.setStyle(updatedOptions);
+        return; // Don't update cluster markers if we have a pinned marker
       }
-    });
+
+      // Update marker styles without recreating them
+      markersRef.current.forEach(marker => {
+        const apartment = apartmentData.find(apt => 
+          Math.abs(apt.latitude - marker.getLatLng().lat) < 0.0001 && 
+          Math.abs(apt.longitude - marker.getLatLng().lng) < 0.0001
+        );
+        
+        if (apartment) {
+          const isSelected = apartment.apartment_id === selectedApartment.apartment_id;
+          const isHovered = marker.isHovered || false;
+          const updatedOptions = createSimpleMarker(apartment, isSelected, isHovered);
+          marker.setStyle(updatedOptions);
+        }
+      });
+    }, 100);
 
   }, [selectedApartment, apartmentData]);
 
