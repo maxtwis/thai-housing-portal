@@ -499,21 +499,26 @@ const ApartmentMap = ({
       // Don't close popup immediately, just clear existing nearby places first
       clearNearbyPlaces();
 
-      // Use selected apartment coordinates if available, otherwise use map center
+      // Always use the pinned apartment's coordinates for consistent search radius
       let searchCenter;
-      if (selectedApartment && selectedApartment.latitude && selectedApartment.longitude) {
-        searchCenter = { lat: selectedApartment.latitude, lng: selectedApartment.longitude };
-      } else if (pinnedMarkerRef.current && pinnedMarkerRef.current.apartmentData) {
-        // If we have a pinned marker with apartment data, use its coordinates
+      if (pinnedMarkerRef.current && pinnedMarkerRef.current.apartmentData) {
+        // Use pinned apartment's coordinates - this is the most reliable method
         const apartment = pinnedMarkerRef.current.apartmentData;
         searchCenter = { lat: apartment.latitude, lng: apartment.longitude };
+        console.log('Using pinned apartment coordinates:', searchCenter);
+      } else if (selectedApartment && selectedApartment.latitude && selectedApartment.longitude) {
+        // Fallback to selected apartment coordinates
+        searchCenter = { lat: selectedApartment.latitude, lng: selectedApartment.longitude };
+        console.log('Using selected apartment coordinates:', searchCenter);
       } else {
-        // Fallback to map center
+        // Last resort - use map center (but log this as it may cause inconsistent results)
         const center = mapRef.current.getCenter();
         searchCenter = { lat: center.lat, lng: center.lng };
+        console.warn('Using map center coordinates (may be inconsistent):', searchCenter);
       }
 
-      const radius = 1000; // 1km radius
+      const radius = 1000; // Fixed 1km radius for consistency
+      console.log(`Searching for ${category} within ${radius}m of:`, searchCenter);
 
       // Category-specific queries
       const buildQuery = (category, lat, lng, radius) => {
