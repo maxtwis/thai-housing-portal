@@ -919,6 +919,12 @@ const ApartmentMap = ({
 
     console.log('Updating clustered markers, selectedApartment:', selectedApartment?.apartment_name);
 
+    // Don't clear markers if we have a pinned marker - this prevents popup issues
+    if (pinnedMarkerRef.current) {
+      console.log('Skipping marker update - pinned marker active');
+      return;
+    }
+
     // Clear existing markers from cluster
     markerClusterRef.current.clearLayers();
     markersRef.current = [];
@@ -1033,6 +1039,16 @@ const ApartmentMap = ({
     if (!mapRef.current || !selectedApartment) return;
 
     console.log('Updating marker styles for selected apartment:', selectedApartment.apartment_name);
+
+    // If we have a pinned marker, update its style
+    if (pinnedMarkerRef.current && pinnedMarkerRef.current.apartmentData) {
+      const apartment = pinnedMarkerRef.current.apartmentData;
+      const isSelected = apartment.apartment_id === selectedApartment.apartment_id;
+      const isHovered = pinnedMarkerRef.current.isHovered || false;
+      const updatedOptions = createSimpleMarker(apartment, isSelected, isHovered);
+      pinnedMarkerRef.current.setStyle(updatedOptions);
+      return; // Don't update cluster markers if we have a pinned marker
+    }
 
     // Update marker styles without recreating them
     markersRef.current.forEach(marker => {
