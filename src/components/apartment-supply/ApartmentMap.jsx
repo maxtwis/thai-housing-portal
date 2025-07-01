@@ -389,7 +389,7 @@ const ApartmentMap = ({
             ">คะแนนสิ่งอำนวยความสะดวก</div>
           </div>
 
-          <!-- Proximity Score (new - on-demand) -->
+          <!-- Proximity Score (new - on-demand with better messaging) -->
           ${property.proximityScore !== undefined ? `
             <div style="
               background: linear-gradient(90deg, rgba(59, 130, 246, 0.1) 0%, rgba(59, 130, 246, 0.05) 100%);
@@ -404,12 +404,17 @@ const ApartmentMap = ({
                 font-weight: 800; 
                 color: #3b82f6;
                 margin-bottom: 4px;
-              ">${property.proximityScore || 0}%</div>
+              ">${property.proximityScore}%</div>
               <div style="
                 font-size: 12px; 
                 color: #6b7280; 
                 font-weight: 500;
               ">คะแนนความใกล้สถานที่สำคัญ</div>
+              <div style="
+                font-size: 10px; 
+                color: #9ca3af; 
+                margin-top: 4px;
+              ">รัศมี 1 กม. • ขนส่ง ร้านค้า โรงพยาบาล</div>
             </div>
           ` : `
             <div style="
@@ -420,18 +425,23 @@ const ApartmentMap = ({
               margin-bottom: 16px;
               text-align: center;
               cursor: pointer;
-            " onclick="console.log('Calculating proximity for this property...')">
+            " onclick="console.log('Click on property marker to calculate proximity score')">
               <div style="
                 font-size: 16px; 
                 font-weight: 600; 
                 color: #6b7280;
                 margin-bottom: 4px;
-              ">คลิกเพื่อคำนวณ</div>
+              ">🎯 คลิกเพื่อคำนวณ</div>
               <div style="
                 font-size: 12px; 
                 color: #6b7280; 
                 font-weight: 500;
               ">คะแนนความใกล้สถานที่สำคัญ</div>
+              <div style="
+                font-size: 10px; 
+                color: #9ca3af; 
+                margin-top: 4px;
+              ">ประเมินจากสถานที่ใกล้เคียง</div>
             </div>
           `}
 

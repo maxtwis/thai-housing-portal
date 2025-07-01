@@ -84,36 +84,49 @@ const ApartmentSupply = () => {
     return Math.round((availableAmenities / totalAmenities) * 100);
   };
 
-  // Calculate proximity score on-demand for selected property
+  // Calculate proximity score on-demand for selected property (improved)
   const calculateProximityScoreOnDemand = async (property) => {
     if (!property || proximityCache.has(property.id)) {
       return proximityCache.get(property.id) || null;
     }
 
+    console.log('Starting proximity calculation for:', property.name, 'at', property.latitude, property.longitude);
+
     try {
       const lat = property.latitude;
       const lng = property.longitude;
-      const searchRadius = 500;
+      const searchRadius = 1000; // Increased to 1km for better coverage
       
-      // Single combined query to reduce API calls
+      // Improved combined query with better coverage
       const combinedQuery = `
-        [out:json][timeout:30];
+        [out:json][timeout:60];
         (
-          // Restaurants and food
-          node["amenity"~"^(restaurant|cafe|fast_food)$"](around:${searchRadius},${lat},${lng});
-          // Convenience stores
-          node["shop"~"^(convenience|supermarket)$"](around:${searchRadius},${lat},${lng});
-          // Transport
+          // Restaurants and food - broader search
+          node["amenity"~"^(restaurant|cafe|fast_food|food_court)$"](around:${searchRadius},${lat},${lng});
+          way["amenity"~"^(restaurant|cafe|fast_food|food_court)$"](around:${searchRadius},${lat},${lng});
+          // Convenience stores - include more types
+          node["shop"~"^(convenience|supermarket|department_store)$"](around:${searchRadius},${lat},${lng});
+          way["shop"~"^(convenience|supermarket|department_store)$"](around:${searchRadius},${lat},${lng});
+          // Transport - comprehensive
           node["public_transport"](around:${searchRadius},${lat},${lng});
           node["highway"="bus_stop"](around:${searchRadius},${lat},${lng});
-          node["railway"="station"](around:${searchRadius},${lat},${lng});
-          // Healthcare
-          node["amenity"~"^(hospital|clinic|pharmacy)$"](around:${searchRadius},${lat},${lng});
+          node["railway"~"^(station|halt)$"](around:${searchRadius},${lat},${lng});
+          node["amenity"="bus_station"](around:${searchRadius},${lat},${lng});
+          way["public_transport"](around:${searchRadius},${lat},${lng});
+          way["railway"~"^(station|halt)$"](around:${searchRadius},${lat},${lng});
+          // Healthcare - expanded
+          node["amenity"~"^(hospital|clinic|doctors|dentist|pharmacy)$"](around:${searchRadius},${lat},${lng});
+          node["healthcare"](around:${searchRadius},${lat},${lng});
+          way["amenity"~"^(hospital|clinic|doctors|dentist|pharmacy)$"](around:${searchRadius},${lat},${lng});
+          way["healthcare"](around:${searchRadius},${lat},${lng});
           // Education
-          node["amenity"~"^(school|university)$"](around:${searchRadius},${lat},${lng});
+          node["amenity"~"^(school|university|college|kindergarten)$"](around:${searchRadius},${lat},${lng});
+          way["amenity"~"^(school|university|college|kindergarten)$"](around:${searchRadius},${lat},${lng});
         );
-        out count;
+        out geom;
       `;
+
+      console.log('Sending query to Overpass API...');
 
       const response = await fetch('https://overpass-api.de/api/interpreter', {
         method: 'POST',
@@ -126,16 +139,29 @@ const ApartmentSupply = () => {
       if (!response.ok) {
         if (response.status === 429) {
           console.warn('Rate limited by Overpass API, using fallback score');
-          const fallbackScore = 50; // Neutral fallback score
+          const fallbackScore = 50;
           proximityCache.set(property.id, fallbackScore);
+          
+          // Update property immediately
+          setApartmentData(prevData => {
+            const newData = prevData.map(prop => 
+              prop.id === property.id 
+                ? { ...prop, proximityScore: fallbackScore }
+                : prop
+            );
+            calculateStatistics(newData);
+            return newData;
+          });
+          
           return fallbackScore;
         }
         throw new Error(`API error: ${response.status}`);
       }
 
       const data = await response.json();
+      console.log('Received data from Overpass API:', data);
       
-      // Count different types of amenities
+      // Count different types of amenities with detailed logging
       const counts = {
         restaurant: 0,
         convenience: 0,
@@ -144,26 +170,46 @@ const ApartmentSupply = () => {
         education: 0
       };
 
-      if (data.elements) {
-        data.elements.forEach(element => {
+      console.log('Total elements found:', data.elements?.length || 0);
+
+      if (data.elements && data.elements.length > 0) {
+        data.elements.forEach((element, index) => {
           const tags = element.tags || {};
           
-          // Categorize amenities
-          if (tags.amenity === 'restaurant' || tags.amenity === 'cafe' || tags.amenity === 'fast_food') {
+          // Debug: log first few elements
+          if (index < 5) {
+            console.log(`Element ${index}:`, tags);
+          }
+          
+          // Categorize amenities with more detailed matching
+          if (tags.amenity && ['restaurant', 'cafe', 'fast_food', 'food_court'].includes(tags.amenity)) {
             counts.restaurant++;
-          } else if (tags.shop === 'convenience' || tags.shop === 'supermarket') {
+          } else if (tags.shop && ['convenience', 'supermarket', 'department_store'].includes(tags.shop)) {
             counts.convenience++;
-          } else if (tags.public_transport || tags.highway === 'bus_stop' || tags.railway === 'station') {
+          } else if (
+            tags.public_transport || 
+            tags.highway === 'bus_stop' || 
+            tags.railway === 'station' || 
+            tags.railway === 'halt' || 
+            tags.amenity === 'bus_station'
+          ) {
             counts.transport++;
-          } else if (tags.amenity === 'hospital' || tags.amenity === 'clinic' || tags.amenity === 'pharmacy') {
+          } else if (
+            (tags.amenity && ['hospital', 'clinic', 'doctors', 'dentist', 'pharmacy'].includes(tags.amenity)) ||
+            tags.healthcare
+          ) {
             counts.health++;
-          } else if (tags.amenity === 'school' || tags.amenity === 'university') {
+          } else if (
+            tags.amenity && ['school', 'university', 'college', 'kindergarten'].includes(tags.amenity)
+          ) {
             counts.education++;
           }
         });
       }
 
-      // Calculate weighted score
+      console.log('Amenity counts:', counts);
+
+      // Calculate weighted score with more generous scoring
       const weights = {
         transport: 25,    // 25%
         convenience: 20,  // 20%
@@ -178,16 +224,28 @@ const ApartmentSupply = () => {
         const count = counts[category];
         let categoryScore = 0;
         
-        // Score based on count
-        if (count === 0) categoryScore = 0;
-        else if (count <= 2) categoryScore = 50;
-        else if (count <= 5) categoryScore = 75;
-        else categoryScore = 100;
+        // More generous scoring system
+        if (count === 0) {
+          categoryScore = 0;
+        } else if (count === 1) {
+          categoryScore = 30; // Give some points for having at least one
+        } else if (count <= 3) {
+          categoryScore = 60;
+        } else if (count <= 7) {
+          categoryScore = 80;
+        } else {
+          categoryScore = 100;
+        }
 
-        totalScore += (categoryScore * weights[category]) / 100;
+        const weightedScore = (categoryScore * weights[category]) / 100;
+        totalScore += weightedScore;
+        
+        console.log(`${category}: ${count} places → ${categoryScore}% → weighted: ${weightedScore.toFixed(1)}`);
       });
 
       const finalScore = Math.round(totalScore);
+      console.log('Final proximity score:', finalScore);
+      
       proximityCache.set(property.id, finalScore);
       
       // Update the property in the main data array
@@ -205,15 +263,23 @@ const ApartmentSupply = () => {
 
     } catch (error) {
       console.error('Error calculating proximity score:', error);
-      // Use a default score based on location (Bangkok city center = higher score)
+      
+      // Use a more sophisticated fallback based on Bangkok districts
       const bangkokCenter = { lat: 13.7563, lng: 100.5018 };
       const distance = Math.sqrt(
-        Math.pow(property.latitude - bangkokCenter.lat, 2) + 
-        Math.pow(property.longitude - bangkokCenter.lng, 2)
+        Math.pow((property.latitude - bangkokCenter.lat) * 111000, 2) + 
+        Math.pow((property.longitude - bangkokCenter.lng) * 111000, 2)
       );
       
-      // Closer to city center = higher score
-      const fallbackScore = Math.max(20, Math.min(80, Math.round(80 - (distance * 1000))));
+      // Distance-based fallback (in meters)
+      let fallbackScore = 50; // default
+      if (distance < 5000) fallbackScore = 75; // Within 5km of center
+      else if (distance < 10000) fallbackScore = 60; // Within 10km
+      else if (distance < 20000) fallbackScore = 45; // Within 20km
+      else fallbackScore = 30; // Further out
+      
+      console.log(`Using fallback score: ${fallbackScore}% (distance: ${Math.round(distance)}m from center)`);
+      
       proximityCache.set(property.id, fallbackScore);
       
       // Update the property in the main data array
