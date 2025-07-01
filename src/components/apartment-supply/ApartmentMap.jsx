@@ -20,7 +20,8 @@ const ApartmentMap = ({
   colorScheme = 'priceRange', 
   isMobile, 
   onApartmentSelect, 
-  selectedApartment 
+  selectedApartment,
+  calculateFacilityScore
 }) => {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
@@ -64,7 +65,7 @@ const ApartmentMap = ({
       }).addTo(map);
     }
 
-    // Simplified popup positioning - remove complex logic that might block popups
+    // Simplified popup positioning
     map.on('popupopen', function(e) {
       const popup = e.popup;
       console.log('Popup opened successfully');
@@ -154,32 +155,49 @@ const ApartmentMap = ({
     };
   }, [isMobile]);
 
-  // Color scheme logic
-  const getMarkerColor = (apartment) => {
+  // Color scheme logic - updated for new data structure
+  const getMarkerColor = (property) => {
     const schemes = {
       priceRange: () => {
-        const price = apartment.price_min || 0;
+        const price = property.monthly_min_price || 0;
         if (price <= 5000) return '#22c55e'; // Green - Low price
         if (price <= 10000) return '#eab308'; // Yellow - Medium price
         if (price <= 20000) return '#f97316'; // Orange - High price
         return '#ef4444'; // Red - Very high price
       },
-      roomType: () => {
-        const roomType = apartment.room_type || '';
-        switch (roomType.toLowerCase()) {
-          case 'studio': return '#8b5cf6'; // Purple
-          case '1 bedroom': return '#06b6d4'; // Cyan
-          case '2 bedroom': return '#10b981'; // Emerald
-          case '3 bedroom': return '#f59e0b'; // Amber
+      propertyType: () => {
+        const propertyType = property.property_type || '';
+        switch (propertyType.toLowerCase()) {
+          case 'apartment': return '#8b5cf6'; // Purple
+          case 'condo': return '#06b6d4'; // Cyan
+          case 'house': return '#10b981'; // Emerald
+          case 'townhouse': return '#f59e0b'; // Amber
           default: return '#6b7280'; // Gray
         }
       },
-      facilityScore: () => {
-        const score = calculateFacilityScore(apartment);
+      roomType: () => {
+        const roomType = property.room_type || '';
+        switch (roomType.toLowerCase()) {
+          case 'studio': return '#8b5cf6'; // Purple
+          case 'one_bed_room': return '#06b6d4'; // Cyan
+          case 'two_bed_room': return '#10b981'; // Emerald
+          case 'three_bed_room': return '#f59e0b'; // Amber
+          default: return '#6b7280'; // Gray
+        }
+      },
+      amenityScore: () => {
+        const score = calculateFacilityScore ? calculateFacilityScore(property) : 0;
         if (score >= 80) return '#22c55e'; // Green - Excellent
         if (score >= 60) return '#eab308'; // Yellow - Good
         if (score >= 40) return '#f97316'; // Orange - Fair
         return '#ef4444'; // Red - Poor
+      },
+      size: () => {
+        const size = property.room_size_min || property.room_size_max || 0;
+        if (size <= 20) return '#22c55e'; // Green - Small
+        if (size <= 35) return '#eab308'; // Yellow - Medium
+        if (size <= 50) return '#f97316'; // Orange - Large
+        return '#ef4444'; // Red - Very large
       }
     };
     
@@ -187,8 +205,8 @@ const ApartmentMap = ({
   };
 
   // Create simple circle marker options
-  const createSimpleMarker = (apartment, isSelected, isHover = false) => {
-    const markerColor = getMarkerColor(apartment);
+  const createSimpleMarker = (property, isSelected, isHover = false) => {
+    const markerColor = getMarkerColor(property);
     const size = isSelected || isHover ? 12 : 8;
 
     return {
@@ -201,77 +219,58 @@ const ApartmentMap = ({
     };
   };
 
-  // Calculate facility score
-  const calculateFacilityScore = (apartment) => {
-    const facilities = [
-      'facility_wifi',
-      'facility_parking', 
-      'facility_aircondition',
-      'facility_pool',
-      'facility_gym',
-      'facility_security',
-      'facility_elevator',
-      'facility_waterheater',
-      'facility_laundry',
-      'facility_cctv'
-    ];
-    
-    const availableFacilities = facilities.filter(facility => apartment[facility]);
-    return Math.round((availableFacilities.length / facilities.length) * 100);
-  };
-
-  // Enhanced popup content generator for apartment markers
-  const generatePopupContent = (apartment) => {
-    const facilityScore = calculateFacilityScore(apartment);
+  // Enhanced popup content generator for properties - updated for new structure
+  const generatePopupContent = (property) => {
+    const amenityScore = calculateFacilityScore ? calculateFacilityScore(property) : 0;
     
     // Helper function to format price range
     const formatPriceRange = () => {
-      if (apartment.price_min && apartment.price_max && apartment.price_min !== apartment.price_max) {
-        return `฿${apartment.price_min?.toLocaleString()} - ฿${apartment.price_max?.toLocaleString()}`;
-      } else if (apartment.price_min) {
-        return `฿${apartment.price_min?.toLocaleString()}`;
+      if (property.monthly_min_price && property.monthly_max_price && property.monthly_min_price !== property.monthly_max_price) {
+        return `฿${property.monthly_min_price?.toLocaleString()} - ฿${property.monthly_max_price?.toLocaleString()}`;
+      } else if (property.monthly_min_price) {
+        return `฿${property.monthly_min_price?.toLocaleString()}`;
       }
       return 'ราคาไม่ระบุ';
     };
 
     // Helper function to format size range
     const formatSizeRange = () => {
-      if (apartment.size_min && apartment.size_max && apartment.size_min !== apartment.size_max) {
-        return `${apartment.size_min} - ${apartment.size_max} ตร.ม.`;
-      } else if (apartment.size_max || apartment.size_min) {
-        return `${apartment.size_max || apartment.size_min} ตร.ม.`;
+      if (property.room_size_min && property.room_size_max && property.room_size_min !== property.room_size_max) {
+        return `${property.room_size_min} - ${property.room_size_max} ตร.ม.`;
+      } else if (property.room_size_max || property.room_size_min) {
+        return `${property.room_size_max || property.room_size_min} ตร.ม.`;
       }
       return 'ขนาดไม่ระบุ';
     };
 
-    // Facility icons mapping
-    const facilityIcons = {
-      wifi: '📶',
-      parking: '🚗',
-      aircondition: '❄️',
-      pool: '🏊‍♂️',
-      gym: '💪',
-      security: '🔒',
-      elevator: '🛗',
-      waterheater: '🚿',
-      laundry: '👕',
-      cctv: '📹'
+    // Amenity icons mapping
+    const amenityIcons = {
+      has_air: '❄️',
+      has_furniture: '🛋️',
+      has_internet: '📶',
+      has_parking: '🚗',
+      has_lift: '🛗',
+      has_pool: '🏊‍♂️',
+      has_fitness: '💪',
+      has_security: '🔒',
+      has_cctv: '📹',
+      allow_pet: '🐕'
     };
 
-    // Get available facilities
-    const facilities = [];
-    if (apartment.facility_wifi) facilities.push({ key: 'wifi', label: 'WiFi', icon: facilityIcons.wifi });
-    if (apartment.facility_parking) facilities.push({ key: 'parking', label: 'ที่จอดรถ', icon: facilityIcons.parking });
-    if (apartment.facility_aircondition) facilities.push({ key: 'aircondition', label: 'เครื่องปรับอากาศ', icon: facilityIcons.aircondition });
-    if (apartment.facility_pool) facilities.push({ key: 'pool', label: 'สระว่ายน้ำ', icon: facilityIcons.pool });
-    if (apartment.facility_gym) facilities.push({ key: 'gym', label: 'ห้องออกกำลังกาย', icon: facilityIcons.gym });
-    if (apartment.facility_security) facilities.push({ key: 'security', label: 'รปภ. 24 ชั่วโมง', icon: facilityIcons.security });
-    if (apartment.facility_elevator) facilities.push({ key: 'elevator', label: 'ลิฟต์', icon: facilityIcons.elevator });
-    if (apartment.facility_waterheater) facilities.push({ key: 'waterheater', label: 'เครื่องทำน้ำอุ่น', icon: facilityIcons.waterheater });
-    if (apartment.facility_laundry) facilities.push({ key: 'laundry', label: 'ห้องซักรีด', icon: facilityIcons.laundry });
-    if (apartment.facility_cctv) facilities.push({ key: 'cctv', label: 'กล้องวงจรปิด', icon: facilityIcons.cctv });
+    // Get available amenities
+    const amenities = [];
+    if (property.has_air) amenities.push({ key: 'has_air', label: 'เครื่องปรับอากาศ', icon: amenityIcons.has_air });
+    if (property.has_furniture) amenities.push({ key: 'has_furniture', label: 'เฟอร์นิเจอร์', icon: amenityIcons.has_furniture });
+    if (property.has_internet) amenities.push({ key: 'has_internet', label: 'อินเทอร์เน็ต', icon: amenityIcons.has_internet });
+    if (property.has_parking) amenities.push({ key: 'has_parking', label: 'ที่จอดรถ', icon: amenityIcons.has_parking });
+    if (property.has_lift) amenities.push({ key: 'has_lift', label: 'ลิฟต์', icon: amenityIcons.has_lift });
+    if (property.has_pool) amenities.push({ key: 'has_pool', label: 'สระว่ายน้ำ', icon: amenityIcons.has_pool });
+    if (property.has_fitness) amenities.push({ key: 'has_fitness', label: 'ฟิตเนส', icon: amenityIcons.has_fitness });
+    if (property.has_security) amenities.push({ key: 'has_security', label: 'รักษาความปลอดภัย', icon: amenityIcons.has_security });
+    if (property.has_cctv) amenities.push({ key: 'has_cctv', label: 'กล้องวงจรปิด', icon: amenityIcons.has_cctv });
+    if (property.allow_pet) amenities.push({ key: 'allow_pet', label: 'อนุญาตสัตว์เลี้ยง', icon: amenityIcons.allow_pet });
 
-    // Facility score color
+    // Amenity score color
     const getScoreColor = (score) => {
       if (score >= 80) return '#10b981'; // green
       if (score >= 60) return '#f59e0b'; // yellow
@@ -305,7 +304,7 @@ const ApartmentMap = ({
               font-weight: 700; 
               line-height: 1.3;
               text-shadow: 0 1px 2px rgba(0,0,0,0.1);
-            ">${apartment.apartment_name || 'ไม่ระบุชื่อ'}</h3>
+            ">${property.name || 'ไม่ระบุชื่อ'}</h3>
             
             <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
               <div style="
@@ -316,7 +315,17 @@ const ApartmentMap = ({
                 font-size: 12px; 
                 font-weight: 600;
                 border: 1px solid rgba(255,255,255,0.3);
-              ">${apartment.room_type || 'ห้องพัก'}</div>
+              ">${property.property_type || 'ที่พัก'}</div>
+              
+              <div style="
+                background: rgba(255,255,255,0.2); 
+                backdrop-filter: blur(10px);
+                padding: 4px 10px; 
+                border-radius: 20px; 
+                font-size: 12px; 
+                font-weight: 600;
+                border: 1px solid rgba(255,255,255,0.3);
+              ">${property.room_type || 'ห้องพัก'}</div>
               
               <div style="
                 background: rgba(255,255,255,0.2); 
@@ -335,15 +344,25 @@ const ApartmentMap = ({
               color: #fff;
               text-shadow: 0 1px 2px rgba(0,0,0,0.1);
             ">${formatPriceRange()}<span style="font-size: 14px; font-weight: 500;">/เดือน</span></div>
+            
+            ${property.daily_min_price && property.daily_min_price > 0 ? `
+              <div style="
+                font-size: 14px; 
+                font-weight: 600; 
+                color: #fff;
+                opacity: 0.9;
+                text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+              ">฿${property.daily_min_price?.toLocaleString()}/วัน</div>
+            ` : ''}
           </div>
         </div>
 
         <!-- Content Section -->
         <div style="padding: 16px;">
-          <!-- Facility Score -->
+          <!-- Amenity Score -->
           <div style="
-            background: linear-gradient(90deg, rgba(${getScoreColor(facilityScore).replace('#', '')}, 0.1) 0%, rgba(${getScoreColor(facilityScore).replace('#', '')}, 0.05) 100%);
-            border: 1px solid rgba(${getScoreColor(facilityScore).replace('#', '')}, 0.2);
+            background: linear-gradient(90deg, rgba(${getScoreColor(amenityScore).replace('#', '')}, 0.1) 0%, rgba(${getScoreColor(amenityScore).replace('#', '')}, 0.05) 100%);
+            border: 1px solid rgba(${getScoreColor(amenityScore).replace('#', '')}, 0.2);
             border-radius: 8px;
             padding: 12px;
             margin-bottom: 16px;
@@ -352,9 +371,9 @@ const ApartmentMap = ({
             <div style="
               font-size: 24px; 
               font-weight: 800; 
-              color: ${getScoreColor(facilityScore)};
+              color: ${getScoreColor(amenityScore)};
               margin-bottom: 4px;
-            ">${facilityScore}%</div>
+            ">${amenityScore}%</div>
             <div style="
               font-size: 12px; 
               color: #6b7280; 
@@ -362,15 +381,15 @@ const ApartmentMap = ({
             ">คะแนนสิ่งอำนวยความสะดวก</div>
           </div>
 
-          <!-- Facilities Grid -->
-          ${facilities.length > 0 ? `
+          <!-- Amenities Grid -->
+          ${amenities.length > 0 ? `
             <div style="
               display: grid; 
               grid-template-columns: repeat(3, 1fr); 
               gap: 8px;
               margin-bottom: 16px;
             ">
-              ${facilities.slice(0, 6).map(facility => `
+              ${amenities.slice(0, 6).map(amenity => `
                 <div style="
                   display: flex; 
                   flex-direction: column; 
@@ -381,10 +400,39 @@ const ApartmentMap = ({
                   border-radius: 6px;
                   border: 1px solid #e2e8f0;
                 ">
-                  <div style="font-size: 16px; margin-bottom: 4px;">${facility.icon}</div>
-                  <div style="font-size: 10px; color: #64748b; font-weight: 500;">${facility.label}</div>
+                  <div style="font-size: 16px; margin-bottom: 4px;">${amenity.icon}</div>
+                  <div style="font-size: 10px; color: #64748b; font-weight: 500;">${amenity.label}</div>
                 </div>
               `).join('')}
+            </div>
+          ` : ''}
+
+          <!-- Contact & Additional Info -->
+          ${property.contact_line_id ? `
+            <div style="
+              background: #f8fafc; 
+              padding: 8px 10px; 
+              border-radius: 6px; 
+              margin-bottom: 8px; 
+              border-left: 3px solid #3b82f6;
+              font-size: 12px;
+            ">
+              <span style="color: #64748b;">Line ID: </span>
+              <span style="color: #334155; font-weight: 500;">${property.contact_line_id}</span>
+            </div>
+          ` : ''}
+          
+          ${property.rooms_available && property.rooms_available > 0 ? `
+            <div style="
+              background: #f8fafc; 
+              padding: 8px 10px; 
+              border-radius: 6px; 
+              margin-bottom: 8px; 
+              border-left: 3px solid #10b981;
+              font-size: 12px;
+            ">
+              <span style="color: #64748b;">ห้องว่าง: </span>
+              <span style="color: #334155; font-weight: 500;">${property.rooms_available} ห้อง</span>
             </div>
           ` : ''}
 
@@ -484,43 +532,57 @@ const ApartmentMap = ({
                   ">
               ✕ ล้างสถานที่ใกล้เคียง
             </button>
+
+          ${property.url ? `
+            <a href="${property.url}" target="_blank" rel="noopener noreferrer" 
+               style="
+                 display: block;
+                 background: #1f77b4; 
+                 color: white; 
+                 text-decoration: none;
+                 padding: 8px 12px; 
+                 border-radius: 8px; 
+                 font-size: 11px; 
+                 font-weight: 500;
+                 text-align: center;
+                 margin-top: 8px;
+                 transition: all 0.2s;
+               ">
+               🔗 ดูรายละเอียดเพิ่มเติม
+            </a>
+          ` : ''}
         </div>
       </div>
     `;
   };
 
-  // Show nearby places function
+  // Show nearby places function (same as before)
   const showNearbyPlaces = async (category = 'restaurant') => {
     if (!mapRef.current) return;
 
     setLoadingNearby(true);
     
     try {
-      // Don't close popup immediately, just clear existing nearby places first
       clearNearbyPlaces();
 
-      // Always use the pinned apartment's coordinates for consistent search radius
       let searchCenter;
-      if (pinnedMarkerRef.current && pinnedMarkerRef.current.apartmentData) {
-        // Use pinned apartment's coordinates - this is the most reliable method
-        const apartment = pinnedMarkerRef.current.apartmentData;
-        searchCenter = { lat: apartment.latitude, lng: apartment.longitude };
-        console.log('Using pinned apartment coordinates:', searchCenter);
+      if (pinnedMarkerRef.current && pinnedMarkerRef.current.propertyData) {
+        const property = pinnedMarkerRef.current.propertyData;
+        searchCenter = { lat: property.latitude, lng: property.longitude };
+        console.log('Using pinned property coordinates:', searchCenter);
       } else if (selectedApartment && selectedApartment.latitude && selectedApartment.longitude) {
-        // Fallback to selected apartment coordinates
         searchCenter = { lat: selectedApartment.latitude, lng: selectedApartment.longitude };
-        console.log('Using selected apartment coordinates:', searchCenter);
+        console.log('Using selected property coordinates:', searchCenter);
       } else {
-        // Last resort - use map center (but log this as it may cause inconsistent results)
         const center = mapRef.current.getCenter();
         searchCenter = { lat: center.lat, lng: center.lng };
-        console.warn('Using map center coordinates (may be inconsistent):', searchCenter);
+        console.warn('Using map center coordinates:', searchCenter);
       }
 
-      const radius = 1000; // Fixed 1km radius for consistency
+      const radius = 1000;
       console.log(`Searching for ${category} within ${radius}m of:`, searchCenter);
 
-      // Category-specific queries
+      // Category-specific queries (same as before)
       const buildQuery = (category, lat, lng, radius) => {
         switch(category) {
           case 'restaurant':
@@ -632,7 +694,6 @@ const ApartmentMap = ({
               fillOpacity: place.type === 'way' ? 0.8 : 0.7
             });
 
-            // Enhanced and attractive popup content
             const detailedType = getDetailedPlaceType(place, category);
             const name = place.tags?.name || place.tags?.brand || detailedType;
             
@@ -646,7 +707,6 @@ const ApartmentMap = ({
                 overflow: hidden;
                 box-shadow: 0 4px 15px rgba(0,0,0,0.1);
               ">
-                <!-- Header Section -->
                 <div style="
                   background: linear-gradient(135deg, ${style.color} 0%, ${style.color}dd 100%);
                   padding: 12px 16px;
@@ -679,7 +739,6 @@ const ApartmentMap = ({
                   </div>
                 </div>
 
-                <!-- Content Section -->
                 <div style="padding: 12px 16px;">
                   ${place.tags?.cuisine ? `
                     <div style="
@@ -722,24 +781,7 @@ const ApartmentMap = ({
                       <span style="color: #334155; font-weight: 500;">${place.tags.phone}</span>
                     </div>
                   ` : ''}
-                  
-                  ${place.tags?.website ? `
-                    <div style="
-                      background: #f8fafc; 
-                      padding: 6px 10px; 
-                      border-radius: 6px; 
-                      margin-bottom: 8px; 
-                      border-left: 3px solid ${style.color};
-                      font-size: 12px;
-                    ">
-                      <span style="color: #64748b;">🌐 </span>
-                      <a href="${place.tags.website}" target="_blank" style="color: ${style.color}; font-weight: 500; text-decoration: none;">
-                        เว็บไซต์
-                      </a>
-                    </div>
-                  ` : ''}
 
-                  <!-- Location Info -->
                   <div style="
                     background: linear-gradient(90deg, rgba(${style.color.replace('#', '')}, 0.1) 0%, rgba(${style.color.replace('#', '')}, 0.05) 100%);
                     border: 1px solid rgba(${style.color.replace('#', '')}, 0.2);
@@ -760,7 +802,6 @@ const ApartmentMap = ({
               offset: [0, -10]
             });
 
-            // Add hover effects for amenity markers
             marker.on('mouseover', function() {
               this.setStyle({
                 radius: place.type === 'way' ? 12 : 10,
@@ -782,7 +823,6 @@ const ApartmentMap = ({
         nearbyLayersRef.current[category] = layerGroup;
         layerGroup.addTo(mapRef.current);
         
-        // Now that nearby places are loaded, we can safely close the popup
         setTimeout(() => {
           if (mapRef.current) {
             mapRef.current.closePopup();
@@ -830,7 +870,6 @@ const ApartmentMap = ({
     
     setNearbyNotification(notification);
     
-    // Auto-hide notification after 5 seconds
     setTimeout(() => {
       setNearbyNotification(null);
     }, 5000);
@@ -840,7 +879,6 @@ const ApartmentMap = ({
   const getDetailedPlaceType = (place, category) => {
     const tags = place.tags || {};
     
-    // For healthcare/medical facilities
     if (category === 'health') {
       if (tags.amenity === 'hospital') return 'โรงพยาบาล';
       if (tags.amenity === 'clinic') return 'คลินิก';
@@ -849,58 +887,38 @@ const ApartmentMap = ({
       if (tags.amenity === 'pharmacy' || tags.shop === 'chemist') return 'ร้านขายยา';
       if (tags.healthcare === 'hospital') return 'โรงพยาบาล';
       if (tags.healthcare === 'clinic') return 'คลินิก';
-      if (tags.healthcare === 'centre') return 'ศูนย์สุขภาพ';
-      if (tags.healthcare === 'doctor') return 'คลินิกแพทย์';
-      if (tags.healthcare === 'dentist') return 'คลินิกทันตกรรม';
-      if (tags.healthcare === 'pharmacy') return 'ร้านขายยา';
-      if (tags.medical) return 'สถานพยาบาล';
       return 'สถานพยาบาล';
     }
     
-    // For restaurants
     if (category === 'restaurant') {
       if (tags.amenity === 'restaurant') return 'ร้านอาหาร';
       if (tags.amenity === 'cafe') return 'ร้านกาแฟ';
       if (tags.amenity === 'fast_food') return 'ฟาสต์ฟูด';
-      if (tags.amenity === 'bar') return 'บาร์';
-      if (tags.amenity === 'pub') return 'ผับ';
       return 'ร้านอาหาร';
     }
     
-    // For convenience stores
     if (category === 'convenience') {
       if (tags.shop === 'convenience') return 'ร้านสะดวกซื้อ';
       if (tags.shop === 'supermarket') return 'ซูเปอร์มาร์เก็ต';
-      if (tags.shop === 'mall') return 'ห้างสรรพสินค้า';
-      if (tags.shop === 'department_store') return 'ห้างสรรพสินค้า';
       if (tags.brand === '7-Eleven') return 'เซเว่น อีเลฟเว่น';
       if (tags.brand === 'Family Mart') return 'แฟมิลี่มาร์ท';
-      if (tags.brand === 'Lotus') return 'โลตัส';
-      if (tags.brand === 'Big C') return 'บิ๊กซี';
-      if (tags.brand === 'Tesco Lotus') return 'เทสโก้ โลตัส';
       return 'ร้านสะดวกซื้อ';
     }
     
-    // For schools
     if (category === 'school') {
       if (tags.amenity === 'school') return 'โรงเรียน';
       if (tags.amenity === 'university') return 'มหาวิทยาลัย';
-      if (tags.amenity === 'college') return 'วิทยาลัย';
       if (tags.amenity === 'kindergarten') return 'โรงเรียนอนุบาล';
       return 'สถานศึกษา';
     }
     
-    // For transport
     if (category === 'transport') {
       if (tags.highway === 'bus_stop') return 'ป้ายรถเมล์';
       if (tags.amenity === 'bus_station') return 'สถานีขนส่ง';
       if (tags.railway === 'station') return 'สถานีรถไฟ';
-      if (tags.public_transport === 'platform') return 'ชานชาลา';
-      if (tags.public_transport === 'station') return 'สถานีขนส่งสาธารณะ';
       return 'ขนส่งสาธารณะ';
     }
     
-    // Fallback to general category
     return getCategoryName(category);
   };
 
@@ -916,97 +934,79 @@ const ApartmentMap = ({
     return categoryNames[category] || category;
   };
 
-  // Update apartment markers when data or filters change
+  // Update apartment markers when data or filters change - updated for new structure
   useEffect(() => {
     if (!mapRef.current || !apartmentData || !markerClusterRef.current) return;
 
-    console.log('Updating clustered markers, selectedApartment:', selectedApartment?.apartment_name);
+    console.log('Updating clustered markers, selectedApartment:', selectedApartment?.name);
 
-    // Don't clear markers if we have a pinned marker - this prevents popup issues
     if (pinnedMarkerRef.current) {
       console.log('Skipping marker update - pinned marker active');
       return;
     }
 
-    // Clear existing markers from cluster
     markerClusterRef.current.clearLayers();
     markersRef.current = [];
 
-    // Add markers to cluster group
-    apartmentData.forEach(apartment => {
-      if (!apartment.latitude || !apartment.longitude) return;
+    apartmentData.forEach(property => {
+      if (!property.latitude || !property.longitude) return;
 
-      const isSelected = selectedApartment && selectedApartment.apartment_id === apartment.apartment_id;
-      const markerOptions = createSimpleMarker(apartment, isSelected, false);
+      const isSelected = selectedApartment && selectedApartment.id === property.id;
+      const markerOptions = createSimpleMarker(property, isSelected, false);
       
-      const marker = L.circleMarker([apartment.latitude, apartment.longitude], markerOptions);
+      const marker = L.circleMarker([property.latitude, property.longitude], markerOptions);
 
-      // Store apartment data on the marker for reference
-      marker.apartmentData = apartment;
+      marker.propertyData = property;
       marker.isHovered = false;
 
-      // Enhanced popup binding options - simplified to avoid conflicts
       const popupOptions = {
         closeButton: true,
-        autoClose: false, // Don't auto-close when clicking elsewhere
+        autoClose: false,
         closeOnEscapeKey: true,
         maxWidth: 340,
         minWidth: 300,
         offset: [0, -8],
         className: 'custom-apartment-popup',
         autoPan: true,
-        autoPanPadding: [50, 50], // More padding to ensure popup fits
+        autoPanPadding: [50, 50],
         keepInView: true,
-        maxHeight: 500 // Limit height to prevent overflow
+        maxHeight: 500
       };
 
-      // Bind popup with enhanced content
-      marker.bindPopup(generatePopupContent(apartment), popupOptions);
+      marker.bindPopup(generatePopupContent(property), popupOptions);
 
-      // CLICK HANDLER - Simplified to focus on popup display
       marker.on('click', (e) => {
-        console.log('Marker clicked!', apartment.apartment_name);
+        console.log('Marker clicked!', property.name);
         
-        // Prevent event bubbling
         L.DomEvent.stopPropagation(e);
         
-        // If there's already a pinned marker, restore it to cluster first
         if (pinnedMarkerRef.current && pinnedMarkerRef.current !== marker) {
           mapRef.current.removeLayer(pinnedMarkerRef.current);
           markerClusterRef.current.addLayer(pinnedMarkerRef.current);
         }
         
-        // Remove this marker from cluster and add directly to map
         markerClusterRef.current.removeLayer(marker);
         marker.addTo(mapRef.current);
         
-        // Store reference to pinned marker
         pinnedMarkerRef.current = marker;
+        pinnedMarkerRef.current.propertyData = property;
         
-        // Ensure the marker retains its apartment data
-        pinnedMarkerRef.current.apartmentData = apartment;
-        
-        // Set flag to prevent fitBounds
         hasZoomedToMarker.current = true;
         
-        // Force popup to open with explicit positioning
         setTimeout(() => {
           try {
-            // Ensure marker is still on map before opening popup
             if (mapRef.current.hasLayer(marker)) {
-              console.log('Opening popup for:', apartment.apartment_name);
+              console.log('Opening popup for:', property.name);
               marker.openPopup();
               
-              // Verify popup opened
               setTimeout(() => {
                 if (marker.isPopupOpen()) {
                   console.log('Popup successfully opened');
                 } else {
                   console.log('Popup failed to open, retrying...');
-                  // Retry with different approach
                   const popup = L.popup(popupOptions)
-                    .setLatLng([apartment.latitude, apartment.longitude])
-                    .setContent(generatePopupContent(apartment))
+                    .setLatLng([property.latitude, property.longitude])
+                    .setContent(generatePopupContent(property))
                     .openOn(mapRef.current);
                 }
               }, 100);
@@ -1016,40 +1016,35 @@ const ApartmentMap = ({
           }
         }, 10);
         
-        // Set selected apartment with delay
         setTimeout(() => {
           if (onApartmentSelect) {
-            onApartmentSelect(apartment);
+            onApartmentSelect(property);
           }
         }, 100);
         
-        // Pan to location
         setTimeout(() => {
-          mapRef.current.panTo([apartment.latitude, apartment.longitude]);
+          mapRef.current.panTo([property.latitude, property.longitude]);
         }, 200);
       });
 
-      // HOVER EFFECTS - only changes size, keeps color
       if (!isMobile) {
         marker.on('mouseover', () => {
           marker.isHovered = true;
-          const hoverOptions = createSimpleMarker(apartment, isSelected, true);
+          const hoverOptions = createSimpleMarker(property, isSelected, true);
           marker.setStyle(hoverOptions);
         });
 
         marker.on('mouseout', () => {
           marker.isHovered = false;
-          const normalOptions = createSimpleMarker(apartment, isSelected, false);
+          const normalOptions = createSimpleMarker(property, isSelected, false);
           marker.setStyle(normalOptions);
         });
       }
 
-      // Add marker to cluster group instead of directly to map
       markerClusterRef.current.addLayer(marker);
       markersRef.current.push(marker);
     });
 
-    // Only fit bounds on initial load and when no apartment is selected
     if (isInitialLoad.current && !selectedApartment && !hasZoomedToMarker.current && markersRef.current.length > 0) {
       console.log('Fitting bounds to clustered markers (initial load)');
       const group = new L.featureGroup(markersRef.current);
@@ -1061,35 +1056,32 @@ const ApartmentMap = ({
 
   }, [apartmentData, colorScheme, isMobile]);
 
-  // Separate effect for updating marker styles when selection changes
+  // Update marker styles when selection changes
   useEffect(() => {
     if (!mapRef.current || !selectedApartment) return;
 
-    console.log('Updating marker styles for selected apartment:', selectedApartment.apartment_name);
+    console.log('Updating marker styles for selected property:', selectedApartment.name);
 
-    // Add a small delay to avoid interfering with popup opening
     setTimeout(() => {
-      // If we have a pinned marker, update its style
-      if (pinnedMarkerRef.current && pinnedMarkerRef.current.apartmentData) {
-        const apartment = pinnedMarkerRef.current.apartmentData;
-        const isSelected = apartment.apartment_id === selectedApartment.apartment_id;
+      if (pinnedMarkerRef.current && pinnedMarkerRef.current.propertyData) {
+        const property = pinnedMarkerRef.current.propertyData;
+        const isSelected = property.id === selectedApartment.id;
         const isHovered = pinnedMarkerRef.current.isHovered || false;
-        const updatedOptions = createSimpleMarker(apartment, isSelected, isHovered);
+        const updatedOptions = createSimpleMarker(property, isSelected, isHovered);
         pinnedMarkerRef.current.setStyle(updatedOptions);
-        return; // Don't update cluster markers if we have a pinned marker
+        return;
       }
 
-      // Update marker styles without recreating them
       markersRef.current.forEach(marker => {
-        const apartment = apartmentData.find(apt => 
-          Math.abs(apt.latitude - marker.getLatLng().lat) < 0.0001 && 
-          Math.abs(apt.longitude - marker.getLatLng().lng) < 0.0001
+        const property = apartmentData.find(prop => 
+          Math.abs(prop.latitude - marker.getLatLng().lat) < 0.0001 && 
+          Math.abs(prop.longitude - marker.getLatLng().lng) < 0.0001
         );
         
-        if (apartment) {
-          const isSelected = apartment.apartment_id === selectedApartment.apartment_id;
+        if (property) {
+          const isSelected = property.id === selectedApartment.id;
           const isHovered = marker.isHovered || false;
-          const updatedOptions = createSimpleMarker(apartment, isSelected, isHovered);
+          const updatedOptions = createSimpleMarker(property, isSelected, isHovered);
           marker.setStyle(updatedOptions);
         }
       });

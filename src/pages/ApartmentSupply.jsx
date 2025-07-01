@@ -10,13 +10,14 @@ const ApartmentSupply = () => {
   const [isMobile, setIsMobile] = useState(false);
   const [showFilters, setShowFilters] = useState(true);
 
-  // Filter state
+  // Filter state - updated for new structure
   const [filters, setFilters] = useState({
     priceRange: 'all',
+    propertyType: 'all',
     roomType: 'all',
     sizeRange: 'all',
-    facilities: 'all',
-    requiredFacilities: []
+    amenities: 'all',
+    requiredAmenities: []
   });
 
   // Color scheme state
@@ -24,13 +25,14 @@ const ApartmentSupply = () => {
 
   // Statistics state
   const [stats, setStats] = useState({
-    totalApartments: 0,
+    totalProperties: 0,
     averagePrice: 0,
     averageSize: 0,
-    averageFacilityScore: 0,
+    averageAmenityScore: 0,
+    propertyTypes: {},
     roomTypes: {},
     priceRanges: {},
-    popularFacilities: {}
+    popularAmenities: {}
   });
 
   // Check if device is mobile
@@ -48,52 +50,56 @@ const ApartmentSupply = () => {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Calculate facility score for an apartment
-  const calculateFacilityScore = (apartment) => {
-    const facilityFields = [
-      'facility_aircondition', 'facility_waterheater', 'facility_furniture',
-      'facility_tv', 'facility_cabletv', 'facility_wifi', 'facility_parking',
-      'facility_moto_parking', 'facility_elevator', 'facility_keycard',
-      'facility_cctv', 'facility_security', 'facility_laundry_shop',
-      'facility_shop', 'facility_fan', 'facility_telephone', 'facility_restaurant',
-      'facility_internet_cafe', 'facility_salon', 'facility_smoke_allowed',
-      'facility_shuttle', 'facility_pets_allowed', 'facility_pool',
-      'facility_gym', 'facility_LAN'
+  // Calculate amenity score for a property
+  const calculateAmenityScore = (property) => {
+    const amenityFields = [
+      'has_air', 'has_furniture', 'has_internet', 'has_parking',
+      'has_lift', 'has_pool', 'has_fitness', 'has_security', 
+      'has_cctv', 'allow_pet'
     ];
 
-    const totalFacilities = facilityFields.length;
-    const availableFacilities = facilityFields.reduce((count, field) => {
-      return count + (apartment[field] ? 1 : 0);
+    const totalAmenities = amenityFields.length;
+    const availableAmenities = amenityFields.reduce((count, field) => {
+      return count + (property[field] === 'TRUE' || property[field] === true ? 1 : 0);
     }, 0);
 
-    return Math.round((availableFacilities / totalFacilities) * 100);
+    return Math.round((availableAmenities / totalAmenities) * 100);
   };
 
   // Calculate statistics
   const calculateStatistics = (data) => {
     if (!data || !data.length) {
       setStats({
-        totalApartments: 0,
+        totalProperties: 0,
         averagePrice: 0,
         averageSize: 0,
-        averageFacilityScore: 0,
+        averageAmenityScore: 0,
+        propertyTypes: {},
         roomTypes: {},
         priceRanges: {},
-        popularFacilities: {}
+        popularAmenities: {}
       });
       return;
     }
 
-    const totalApartments = data.length;
-    const totalPrice = data.reduce((sum, apt) => sum + (apt.price_min || 0), 0);
-    const totalSize = data.reduce((sum, apt) => sum + (apt.size_max || apt.size_min || 0), 0);
-    const totalFacilityScore = data.reduce((sum, apt) => sum + calculateFacilityScore(apt), 0);
+    const totalProperties = data.length;
+    const totalPrice = data.reduce((sum, prop) => sum + (parseFloat(prop.monthly_min_price) || 0), 0);
+    const totalSize = data.reduce((sum, prop) => sum + (parseFloat(prop.room_size_min) || 0), 0);
+    const totalAmenityScore = data.reduce((sum, prop) => sum + calculateAmenityScore(prop), 0);
+
+    // Calculate property type distribution
+    const propertyTypes = {};
+    data.forEach(prop => {
+      if (prop.property_type) {
+        propertyTypes[prop.property_type] = (propertyTypes[prop.property_type] || 0) + 1;
+      }
+    });
 
     // Calculate room type distribution
     const roomTypes = {};
-    data.forEach(apt => {
-      if (apt.room_type) {
-        roomTypes[apt.room_type] = (roomTypes[apt.room_type] || 0) + 1;
+    data.forEach(prop => {
+      if (prop.room_type) {
+        roomTypes[prop.room_type] = (roomTypes[prop.room_type] || 0) + 1;
       }
     });
 
@@ -106,8 +112,8 @@ const ApartmentSupply = () => {
       'over30k': 0
     };
 
-    data.forEach(apt => {
-      const price = apt.price_min || 0;
+    data.forEach(prop => {
+      const price = parseFloat(prop.monthly_min_price) || 0;
       if (price < 5000) priceRanges['under5k']++;
       else if (price < 10000) priceRanges['5k-10k']++;
       else if (price < 20000) priceRanges['10k-20k']++;
@@ -115,14 +121,35 @@ const ApartmentSupply = () => {
       else priceRanges['over30k']++;
     });
 
+    // Calculate popular amenities
+    const popularAmenities = {};
+    const amenityFields = [
+      { key: 'has_air', label: 'เครื่องปรับอากาศ' },
+      { key: 'has_furniture', label: 'เฟอร์นิเจอร์' },
+      { key: 'has_internet', label: 'อินเทอร์เน็ต' },
+      { key: 'has_parking', label: 'ที่จอดรถ' },
+      { key: 'has_lift', label: 'ลิฟต์' },
+      { key: 'has_pool', label: 'สระว่ายน้ำ' },
+      { key: 'has_fitness', label: 'ฟิตเนส' },
+      { key: 'has_security', label: 'รักษาความปลอดภัย' },
+      { key: 'has_cctv', label: 'กล้องวงจรปิด' },
+      { key: 'allow_pet', label: 'อนุญาตสัตว์เลี้ยง' }
+    ];
+
+    amenityFields.forEach(({ key, label }) => {
+      const count = data.filter(prop => prop[key] === 'TRUE' || prop[key] === true).length;
+      popularAmenities[key] = (count / totalProperties) * 100;
+    });
+
     setStats({
-      totalApartments,
-      averagePrice: Math.round(totalPrice / totalApartments),
-      averageSize: Math.round(totalSize / totalApartments),
-      averageFacilityScore: Math.round(totalFacilityScore / totalApartments),
+      totalProperties,
+      averagePrice: Math.round(totalPrice / totalProperties),
+      averageSize: Math.round(totalSize / totalProperties),
+      averageAmenityScore: Math.round(totalAmenityScore / totalProperties),
+      propertyTypes,
       roomTypes,
       priceRanges,
-      popularFacilities: {}
+      popularAmenities
     });
   };
 
@@ -137,57 +164,75 @@ const ApartmentSupply = () => {
         
         const result = await getCkanData('b6dbb8e0-1194-4eeb-945d-e883b3275b35', {
           limit: 2000,
-          sort: 'apartment_id asc'
+          sort: 'name asc'
         });
         
         if (!result || !result.records) {
           throw new Error('No data received from CKAN API');
         }
         
-        // Process and validate the data
+        // Process and validate the data with new structure
         const processedData = result.records.map(record => ({
-          apartment_id: record.apartment_id,
-          apartment_name: record.apartment_name || `Apartment ${record.apartment_id}`,
-          room_type: record.room_type,
-          size_min: parseFloat(record.size_min) || 0,
-          size_max: parseFloat(record.size_max) || 0,
-          price_min: parseFloat(record.price_min) || 0,
-          price_max: parseFloat(record.price_max) || 0,
-          address: record.address,
+          // Basic property info
+          id: record.name + '_' + (record.latitude || '') + '_' + (record.longitude || ''), // Create unique ID
+          name: record.name || 'Unknown Property',
+          property_type: record.property_type || 'APARTMENT',
           latitude: parseFloat(record.latitude),
           longitude: parseFloat(record.longitude),
-          // Facility data
-          facility_aircondition: parseFloat(record.facility_aircondition) || 0,
-          facility_waterheater: parseFloat(record.facility_waterheater) || 0,
-          facility_furniture: parseFloat(record.facility_furniture) || 0,
-          facility_tv: parseInt(record.facility_tv) || 0,
-          facility_cabletv: parseInt(record.facility_cabletv) || 0,
-          facility_wifi: parseFloat(record.facility_wifi) || 0,
-          facility_parking: parseInt(record.facility_parking) || 0,
-          facility_moto_parking: parseInt(record.facility_moto_parking) || 0,
-          facility_elevator: parseInt(record.facility_elevator) || 0,
-          facility_keycard: parseFloat(record.facility_keycard) || 0,
-          facility_cctv: parseFloat(record.facility_cctv) || 0,
-          facility_security: parseFloat(record.facility_security) || 0,
-          facility_laundry_shop: parseInt(record.facility_laundry_shop) || 0,
-          facility_shop: parseInt(record.facility_shop) || 0,
-          facility_fan: parseInt(record.facility_fan) || 0,
-          facility_telephone: parseInt(record.facility_telephone) || 0,
-          facility_restaurant: parseInt(record.facility_restaurant) || 0,
-          facility_internet_cafe: parseInt(record.facility_internet_cafe) || 0,
-          facility_salon: parseInt(record.facility_salon) || 0,
-          facility_smoke_allowed: parseInt(record.facility_smoke_allowed) || 0,
-          facility_shuttle: parseInt(record.facility_shuttle) || 0,
-          facility_pets_allowed: parseInt(record.facility_pets_allowed) || 0,
-          facility_pool: parseInt(record.facility_pool) || 0,
-          facility_gym: parseInt(record.facility_gym) || 0,
-          facility_LAN: parseInt(record.facility_LAN) || 0
-        })).filter(apartment => 
-          apartment.latitude && apartment.longitude && 
-          !isNaN(apartment.latitude) && !isNaN(apartment.longitude)
+          
+          // Location info
+          province: record.province || '',
+          district: record.district || '',
+          subdistrict: record.subdistrict || '',
+          address: `${record.house_number || ''} ${record.street || ''} ${record.road || ''} ${record.subdistrict || ''} ${record.district || ''} ${record.province || ''}`.trim(),
+          
+          // Pricing info
+          monthly_min_price: parseFloat(record.monthly_min_price) || 0,
+          monthly_max_price: parseFloat(record.monthly_max_price) || 0,
+          daily_min_price: parseFloat(record.daily_min_price) || 0,
+          daily_max_price: parseFloat(record.daily_max_price) || 0,
+          
+          // Room info
+          room_type: record.room_type || '',
+          room_size_min: parseFloat(record.room_size_min) || 0,
+          room_size_max: parseFloat(record.room_size_max) || 0,
+          rooms_available: parseInt(record.rooms_available) || 0,
+          total_room_types: parseInt(record.total_room_types) || 0,
+          
+          // Amenities - convert string 'TRUE'/'FALSE' to boolean
+          has_air: record.has_air === 'TRUE' || record.has_air === true,
+          has_furniture: record.has_furniture === 'TRUE' || record.has_furniture === true,
+          has_internet: record.has_internet === 'TRUE' || record.has_internet === true,
+          has_parking: record.has_parking === 'TRUE' || record.has_parking === true,
+          has_lift: record.has_lift === 'TRUE' || record.has_lift === true,
+          has_pool: record.has_pool === 'TRUE' || record.has_pool === true,
+          has_fitness: record.has_fitness === 'TRUE' || record.has_fitness === true,
+          has_security: record.has_security === 'TRUE' || record.has_security === true,
+          has_cctv: record.has_cctv === 'TRUE' || record.has_cctv === true,
+          allow_pet: record.allow_pet === 'TRUE' || record.allow_pet === true,
+          total_amenities: parseInt(record.total_amenities) || 0,
+          
+          // Contact info
+          contact_email: record.contact_email || '',
+          contact_line_id: record.contact_line_id || '',
+          phone_count: parseInt(record.phone_count) || 0,
+          url: record.url || '',
+          
+          // Fees
+          water_fee_type: record.water_fee_type || '',
+          water_unit_price: parseFloat(record.water_unit_price) || 0,
+          electric_fee_type: record.electric_fee_type || '',
+          electric_unit_price: parseFloat(record.electric_unit_price) || 0,
+          service_fee_type: record.service_fee_type || '',
+          internet_fee_type: record.internet_fee_type || '',
+          deposit_type: record.deposit_type || ''
+        })).filter(property => 
+          // Filter out properties without valid coordinates
+          property.latitude && property.longitude && 
+          !isNaN(property.latitude) && !isNaN(property.longitude)
         );
         
-        console.log(`Processed ${processedData.length} valid apartment records`);
+        console.log(`Processed ${processedData.length} valid property records`);
         
         setApartmentData(processedData);
         calculateStatistics(processedData);
@@ -205,59 +250,66 @@ const ApartmentSupply = () => {
 
   // Filter apartment data based on current filters
   const getFilteredData = () => {
-    return apartmentData.filter(apartment => {
-      // Price range filter
+    return apartmentData.filter(property => {
+      // Price range filter (monthly)
       if (filters.priceRange !== 'all') {
         const [minPrice, maxPrice] = filters.priceRange.split('-').map(Number);
-        const apartmentPrice = apartment.price_min || 0;
+        const propertyPrice = property.monthly_min_price || 0;
         if (maxPrice && maxPrice !== 999999) {
-          if (apartmentPrice < minPrice || apartmentPrice > maxPrice) return false;
+          if (propertyPrice < minPrice || propertyPrice > maxPrice) return false;
         } else {
-          if (apartmentPrice < minPrice) return false;
+          if (propertyPrice < minPrice) return false;
         }
+      }
+
+      // Property type filter
+      if (filters.propertyType !== 'all') {
+        if (property.property_type !== filters.propertyType) return false;
       }
 
       // Room type filter
       if (filters.roomType !== 'all') {
-        if (apartment.room_type !== filters.roomType) return false;
+        if (property.room_type !== filters.roomType) return false;
       }
 
       // Size filter
       if (filters.sizeRange !== 'all') {
         const [minSize, maxSize] = filters.sizeRange.split('-').map(Number);
-        const apartmentSize = apartment.size_max || apartment.size_min || 0;
+        const propertySize = property.room_size_max || property.room_size_min || 0;
         if (maxSize && maxSize !== 999) {
-          if (apartmentSize < minSize || apartmentSize > maxSize) return false;
+          if (propertySize < minSize || propertySize > maxSize) return false;
         } else {
-          if (apartmentSize < minSize) return false;
+          if (propertySize < minSize) return false;
         }
       }
 
-      // Facility score filter
-      if (filters.facilities !== 'all') {
-        const facilityScore = calculateFacilityScore(apartment);
-        const [minScore, maxScore] = filters.facilities.split('-').map(Number);
+      // Amenity score filter
+      if (filters.amenities !== 'all') {
+        const amenityScore = calculateAmenityScore(property);
+        const [minScore, maxScore] = filters.amenities.split('-').map(Number);
         if (maxScore) {
-          if (facilityScore < minScore || facilityScore > maxScore) return false;
+          if (amenityScore < minScore || amenityScore > maxScore) return false;
         } else {
-          if (facilityScore < minScore) return false;
+          if (amenityScore < minScore) return false;
         }
       }
 
-      // Required facilities filter
-      if (filters.requiredFacilities && filters.requiredFacilities.length > 0) {
-        const facilityMap = {
-          'parking': 'facility_parking',
-          'wifi': 'facility_wifi',
-          'pool': 'facility_pool',
-          'gym': 'facility_gym',
-          'security': 'facility_security',
-          'elevator': 'facility_elevator'
+      // Required amenities filter
+      if (filters.requiredAmenities && filters.requiredAmenities.length > 0) {
+        const amenityMap = {
+          'parking': 'has_parking',
+          'internet': 'has_internet',
+          'pool': 'has_pool',
+          'fitness': 'has_fitness',
+          'security': 'has_security',
+          'lift': 'has_lift',
+          'air': 'has_air',
+          'furniture': 'has_furniture'
         };
 
-        for (const requiredFacility of filters.requiredFacilities) {
-          const facilityKey = facilityMap[requiredFacility];
-          if (!facilityKey || !apartment[facilityKey]) {
+        for (const requiredAmenity of filters.requiredAmenities) {
+          const amenityKey = amenityMap[requiredAmenity];
+          if (!amenityKey || !property[amenityKey]) {
             return false;
           }
         }
@@ -275,21 +327,30 @@ const ApartmentSupply = () => {
   // Get the filtered data count for display
   const filteredData = getFilteredData();
 
+  // Get unique values for dropdowns
+  const getUniquePropertyTypes = () => {
+    return [...new Set(apartmentData.map(prop => prop.property_type).filter(Boolean))];
+  };
+
+  const getUniqueRoomTypes = () => {
+    return [...new Set(apartmentData.map(prop => prop.room_type).filter(Boolean))];
+  };
+
   // Show loading state
   if (loading) {
     return (
       <div className="min-h-[calc(100vh-4rem)] bg-gray-50">
         <div className="container mx-auto px-4 py-4">
           <div className="mb-4">
-            <h1 className="text-2xl font-bold text-gray-800">Apartment Supply Analysis</h1>
+            <h1 className="text-2xl font-bold text-gray-800">Property Supply Analysis</h1>
             <p className="text-gray-600 mt-2">
-              สำรวจข้อมูลอพาร์ตเมนต์ พร้อมดูสิ่งที่อยู่ใกล้เคียงผ่าน OpenStreetMap
+              สำรวจข้อมูลอสังหาริมทรัพย์ พร้อมดูสิ่งที่อยู่ใกล้เคียงผ่าน OpenStreetMap
             </p>
           </div>
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
-              <p className="mt-3 text-gray-600">กำลังโหลดข้อมูลอพาร์ตเมนต์จาก CKAN API...</p>
+              <p className="mt-3 text-gray-600">กำลังโหลดข้อมูลอสังหาริมทรัพย์จาก CKAN API...</p>
             </div>
           </div>
         </div>
@@ -303,9 +364,9 @@ const ApartmentSupply = () => {
       <div className="min-h-[calc(100vh-4rem)] bg-gray-50">
         <div className="container mx-auto px-4 py-4">
           <div className="mb-4">
-            <h1 className="text-2xl font-bold text-gray-800">Apartment Supply Analysis</h1>
+            <h1 className="text-2xl font-bold text-gray-800">Property Supply Analysis</h1>
             <p className="text-gray-600 mt-2">
-              สำรวจข้อมูลอพาร์ตเมนต์ พร้อมดูสิ่งที่อยู่ใกล้เคียงผ่าน OpenStreetMap
+              สำรวจข้อมูลอสังหาริมทรัพย์ พร้อมดูสิ่งที่อยู่ใกล้เคียงผ่าน OpenStreetMap
             </p>
           </div>
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
@@ -336,13 +397,13 @@ const ApartmentSupply = () => {
       <div className="container mx-auto px-4 py-4">
         {/* Header */}
         <div className="mb-4">
-          <h1 className="text-2xl font-bold text-gray-800">Apartment Supply Analysis</h1>
+          <h1 className="text-2xl font-bold text-gray-800">Property Supply Analysis</h1>
           <p className="text-gray-600 mt-2">
-            สำรวจข้อมูลอพาร์ตเมนต์ พร้อมดูสิ่งที่อยู่ใกล้เคียงผ่าน OpenStreetMap
+            สำรวจข้อมูลอสังหาริมทรัพย์ พร้อมดูสิ่งที่อยู่ใกล้เคียงผ่าน OpenStreetMap
           </p>
           <div className="flex items-center gap-4 mt-2">
             <span className="text-sm text-gray-500">
-              แสดง {filteredData.length.toLocaleString()} จาก {apartmentData.length.toLocaleString()} อพาร์ตเมนต์
+              แสดง {filteredData.length.toLocaleString()} จาก {apartmentData.length.toLocaleString()} ที่พัก
             </span>
           </div>
         </div>
@@ -386,8 +447,9 @@ const ApartmentSupply = () => {
                     onChange={(e) => setColorScheme(e.target.value)}
                   >
                     <option value="priceRange">ช่วงราคา</option>
+                    <option value="propertyType">ประเภทที่พัก</option>
                     <option value="roomType">ประเภทห้อง</option>
-                    <option value="facilityScore">คะแนนสิ่งอำนวยความสะดวก</option>
+                    <option value="amenityScore">คะแนนสิ่งอำนวยความสะดวก</option>
                     <option value="size">ขนาดห้อง</option>
                   </select>
                 </div>
@@ -409,6 +471,21 @@ const ApartmentSupply = () => {
                   </select>
                 </div>
 
+                {/* Property Type Filter */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">ประเภทที่พัก</label>
+                  <select 
+                    className="mt-1 block w-full rounded-md border border-gray-300 p-2"
+                    value={filters.propertyType}
+                    onChange={(e) => setFilters({...filters, propertyType: e.target.value})}
+                  >
+                    <option value="all">ทุกประเภท</option>
+                    {getUniquePropertyTypes().map(type => (
+                      <option key={type} value={type}>{type}</option>
+                    ))}
+                  </select>
+                </div>
+
                 {/* Room Type Filter */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700">ประเภทห้อง</label>
@@ -418,7 +495,7 @@ const ApartmentSupply = () => {
                     onChange={(e) => setFilters({...filters, roomType: e.target.value})}
                   >
                     <option value="all">ทุกประเภท</option>
-                    {[...new Set(apartmentData.map(apt => apt.room_type).filter(Boolean))].map(type => (
+                    {getUniqueRoomTypes().map(type => (
                       <option key={type} value={type}>{type}</option>
                     ))}
                   </select>
@@ -440,13 +517,13 @@ const ApartmentSupply = () => {
                   </select>
                 </div>
 
-                {/* Facility Score Filter */}
+                {/* Amenity Score Filter */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700">คะแนนสิ่งอำนวยความสะดวก (%)</label>
                   <select 
                     className="mt-1 block w-full rounded-md border border-gray-300 p-2"
-                    value={filters.facilities}
-                    onChange={(e) => setFilters({...filters, facilities: e.target.value})}
+                    value={filters.amenities}
+                    onChange={(e) => setFilters({...filters, amenities: e.target.value})}
                   >
                     <option value="all">ทุกระดับ</option>
                     <option value="80-100">สูงมาก (80-100%)</option>
@@ -457,41 +534,63 @@ const ApartmentSupply = () => {
                   </select>
                 </div>
 
-                {/* Required Facilities */}
+                {/* Required Amenities */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700">สิ่งอำนวยความสะดวกที่ต้องการ</label>
                   <div className="mt-2 space-y-2">
                     {[
                       { key: 'parking', label: 'ที่จอดรถ' },
-                      { key: 'wifi', label: 'WiFi' },
+                      { key: 'internet', label: 'อินเทอร์เน็ต' },
                       { key: 'pool', label: 'สระว่ายน้ำ' },
-                      { key: 'gym', label: 'ฟิตเนส' },
+                      { key: 'fitness', label: 'ฟิตเนส' },
                       { key: 'security', label: 'รปภ.24ชม.' },
-                      { key: 'elevator', label: 'ลิฟต์' }
-                    ].map(facility => (
-                      <label key={facility.key} className="flex items-center">
+                      { key: 'lift', label: 'ลิฟต์' },
+                      { key: 'air', label: 'เครื่องปรับอากาศ' },
+                      { key: 'furniture', label: 'เฟอร์นิเจอร์' }
+                    ].map(amenity => (
+                      <label key={amenity.key} className="flex items-center">
                         <input
                           type="checkbox"
-                          checked={filters.requiredFacilities.includes(facility.key)}
+                          checked={filters.requiredAmenities.includes(amenity.key)}
                           onChange={(e) => {
                             if (e.target.checked) {
                               setFilters({
                                 ...filters,
-                                requiredFacilities: [...filters.requiredFacilities, facility.key]
+                                requiredAmenities: [...filters.requiredAmenities, amenity.key]
                               });
                             } else {
                               setFilters({
                                 ...filters,
-                                requiredFacilities: filters.requiredFacilities.filter(f => f !== facility.key)
+                                requiredAmenities: filters.requiredAmenities.filter(f => f !== amenity.key)
                               });
                             }
                           }}
                           className="mr-2"
                         />
-                        <span className="text-sm text-gray-700">{facility.label}</span>
+                        <span className="text-sm text-gray-700">{amenity.label}</span>
                       </label>
                     ))}
                   </div>
+                </div>
+
+                {/* Clear Filters Button */}
+                <div className="pt-4 border-t border-gray-200">
+                  <button
+                    onClick={() => {
+                      setFilters({
+                        priceRange: 'all',
+                        propertyType: 'all',
+                        roomType: 'all',
+                        sizeRange: 'all',
+                        amenities: 'all',
+                        requiredAmenities: []
+                      });
+                      setColorScheme('priceRange');
+                    }}
+                    className="w-full px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors text-sm"
+                  >
+                    ล้างตัวกรองทั้งหมด
+                  </button>
                 </div>
               </div>
 
@@ -500,8 +599,8 @@ const ApartmentSupply = () => {
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">สถิติข้อมูล</h3>
                 <div className="space-y-3">
                   <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">จำนวนอพาร์ตเมนต์:</span>
-                    <span className="text-sm font-medium">{stats.totalApartments.toLocaleString()}</span>
+                    <span className="text-sm text-gray-600">จำนวนที่พัก:</span>
+                    <span className="text-sm font-medium">{stats.totalProperties.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm text-gray-600">ราคาเฉลี่ย:</span>
@@ -513,7 +612,7 @@ const ApartmentSupply = () => {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm text-gray-600">คะแนนสิ่งอำนวยฯ เฉลี่ย:</span>
-                    <span className="text-sm font-medium">{stats.averageFacilityScore}%</span>
+                    <span className="text-sm font-medium">{stats.averageAmenityScore}%</span>
                   </div>
                 </div>
               </div>
@@ -529,35 +628,82 @@ const ApartmentSupply = () => {
               isMobile={isMobile}
               selectedApartment={selectedApartment}
               onApartmentSelect={setSelectedApartment}
-              calculateFacilityScore={calculateFacilityScore}
+              calculateFacilityScore={calculateAmenityScore}
             />
           </div>
         </div>
 
-        {/* Selected Apartment Details */}
+        {/* Selected Property Details */}
         {selectedApartment && (
           <div className="mt-4 bg-white rounded-lg shadow p-4">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">รายละเอียดอพาร์ตเมนต์</h3>
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">รายละเอียดที่พัก</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
-                <h4 className="font-medium text-gray-700">{selectedApartment.apartment_name}</h4>
+                <h4 className="font-medium text-gray-700">{selectedApartment.name}</h4>
                 <p className="text-sm text-gray-600">{selectedApartment.address}</p>
+                <p className="text-sm text-gray-600">ประเภท: {selectedApartment.property_type}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-600">ประเภท: {selectedApartment.room_type}</p>
-                <p className="text-sm text-gray-600">ขนาด: {selectedApartment.size_max || selectedApartment.size_min || 'N/A'} ตร.ม.</p>
+                <p className="text-sm text-gray-600">ห้อง: {selectedApartment.room_type}</p>
+                <p className="text-sm text-gray-600">ขนาด: {selectedApartment.room_size_min || 'N/A'} ตร.ม.</p>
+                <p className="text-sm text-gray-600">ห้องว่าง: {selectedApartment.rooms_available || 'N/A'}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-600">ราคา: ฿{selectedApartment.price_min?.toLocaleString() || 'N/A'}/เดือน</p>
-                <p className="text-sm text-gray-600">คะแนนสิ่งอำนวยฯ: {calculateFacilityScore(selectedApartment)}%</p>
+                <p className="text-sm text-gray-600">ราคา/เดือน: ฿{selectedApartment.monthly_min_price?.toLocaleString() || 'N/A'}</p>
+                {selectedApartment.daily_min_price > 0 && (
+                  <p className="text-sm text-gray-600">ราคา/วัน: ฿{selectedApartment.daily_min_price?.toLocaleString()}</p>
+                )}
+                <p className="text-sm text-gray-600">คะแนนสิ่งอำนวยฯ: {calculateAmenityScore(selectedApartment)}%</p>
               </div>
               <div>
+                {selectedApartment.contact_line_id && (
+                  <p className="text-sm text-gray-600">Line ID: {selectedApartment.contact_line_id}</p>
+                )}
+                {selectedApartment.url && (
+                  <a 
+                    href={selectedApartment.url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-600 hover:text-blue-800 underline"
+                  >
+                    ดูรายละเอียดเพิ่มเติม
+                  </a>
+                )}
                 <button
                   onClick={() => setSelectedApartment(null)}
-                  className="bg-gray-600 text-white px-4 py-2 rounded-md text-sm hover:bg-gray-700 transition-colors"
+                  className="block mt-2 bg-gray-600 text-white px-4 py-2 rounded-md text-sm hover:bg-gray-700 transition-colors"
                 >
                   ปิด
                 </button>
+              </div>
+            </div>
+            
+            {/* Amenities List */}
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <h4 className="text-sm font-medium text-gray-700 mb-2">สิ่งอำนวยความสะดวก</h4>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { key: 'has_air', label: 'เครื่องปรับอากาศ', icon: '❄️' },
+                  { key: 'has_furniture', label: 'เฟอร์นิเจอร์', icon: '🛋️' },
+                  { key: 'has_internet', label: 'อินเทอร์เน็ต', icon: '📶' },
+                  { key: 'has_parking', label: 'ที่จอดรถ', icon: '🚗' },
+                  { key: 'has_lift', label: 'ลิฟต์', icon: '🛗' },
+                  { key: 'has_pool', label: 'สระว่ายน้ำ', icon: '🏊‍♂️' },
+                  { key: 'has_fitness', label: 'ฟิตเนส', icon: '💪' },
+                  { key: 'has_security', label: 'รักษาความปลอดภัย', icon: '🔒' },
+                  { key: 'has_cctv', label: 'กล้องวงจรปิด', icon: '📹' },
+                  { key: 'allow_pet', label: 'อนุญาตสัตว์เลี้ยง', icon: '🐕' }
+                ].map(amenity => (
+                  selectedApartment[amenity.key] && (
+                    <span 
+                      key={amenity.key}
+                      className="inline-flex items-center gap-1 bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs"
+                    >
+                      <span>{amenity.icon}</span>
+                      <span>{amenity.label}</span>
+                    </span>
+                  )
+                ))}
               </div>
             </div>
           </div>
