@@ -84,16 +84,16 @@ const ApartmentSupply = () => {
     return Math.round((availableAmenities / totalAmenities) * 100);
   };
 
-  // Calculate proximity score for a property (updated with better rate limiting)
-  const calculateProximityScore = async (property) => {
-    if (!property.latitude || !property.longitude || proximityCache.has(property.id)) {
-      return proximityCache.get(property.id) || 0;
+  // Calculate proximity score on-demand for selected property
+  const calculateProximityScoreOnDemand = async (property) => {
+    if (!property || proximityCache.has(property.id)) {
+      return proximityCache.get(property.id) || null;
     }
 
     try {
       const lat = property.latitude;
       const lng = property.longitude;
-      const searchRadius = 500; // 500m radius for proximity check
+      const searchRadius = 500;
       
       // Single combined query to reduce API calls
       const combinedQuery = `
@@ -126,8 +126,9 @@ const ApartmentSupply = () => {
       if (!response.ok) {
         if (response.status === 429) {
           console.warn('Rate limited by Overpass API, using fallback score');
-          proximityCache.set(property.id, 50); // Fallback score
-          return 50;
+          const fallbackScore = 50; // Neutral fallback score
+          proximityCache.set(property.id, fallbackScore);
+          return fallbackScore;
         }
         throw new Error(`API error: ${response.status}`);
       }
@@ -188,6 +189,18 @@ const ApartmentSupply = () => {
 
       const finalScore = Math.round(totalScore);
       proximityCache.set(property.id, finalScore);
+      
+      // Update the property in the main data array
+      setApartmentData(prevData => {
+        const newData = prevData.map(prop => 
+          prop.id === property.id 
+            ? { ...prop, proximityScore: finalScore }
+            : prop
+        );
+        calculateStatistics(newData);
+        return newData;
+      });
+      
       return finalScore;
 
     } catch (error) {
@@ -202,6 +215,18 @@ const ApartmentSupply = () => {
       // Closer to city center = higher score
       const fallbackScore = Math.max(20, Math.min(80, Math.round(80 - (distance * 1000))));
       proximityCache.set(property.id, fallbackScore);
+      
+      // Update the property in the main data array
+      setApartmentData(prevData => {
+        const newData = prevData.map(prop => 
+          prop.id === property.id 
+            ? { ...prop, proximityScore: fallbackScore }
+            : prop
+        );
+        calculateStatistics(newData);
+        return newData;
+      });
+      
       return fallbackScore;
     }
   };
@@ -401,11 +426,9 @@ const ApartmentSupply = () => {
         
         setApartmentData(processedData);
         calculateStatistics(processedData);
-        
-        // Start calculating proximity scores in background
-        calculateProximityScoresInBackground(processedData);
-        
         setLoading(false);
+        
+        // Remove automatic proximity calculation - now done on-demand
         
       } catch (err) {
         console.error('Error loading apartment data:', err);
@@ -417,79 +440,23 @@ const ApartmentSupply = () => {
     loadApartmentData();
   }, [selectedProvince]); // Re-load when province changes
 
-  // Calculate proximity scores in background for better UX (updated with better rate limiting)
-  const calculateProximityScoresInBackground = async (properties) => {
-    if (!properties || properties.length === 0) return;
+  // Handle property selection and calculate proximity on-demand
+  const handleApartmentSelect = async (property) => {
+    setSelectedApartment(property);
     
-    setIsCalculatingProximity(true);
-    setProximityProgress(0);
-    
-    const batchSize = 3; // Reduced from 5 to 3 to be more conservative with API
-    const delayBetweenBatches = 2000; // Increased to 2 seconds between batches
-    const totalBatches = Math.ceil(properties.length / batchSize);
-    let updatedProperties = [...properties];
-    
-    console.log(`Starting proximity calculation for ${properties.length} properties in ${totalBatches} batches`);
-    
-    for (let i = 0; i < totalBatches; i++) {
-      const startIdx = i * batchSize;
-      const endIdx = Math.min(startIdx + batchSize, properties.length);
-      const batch = properties.slice(startIdx, endIdx);
-      
-      console.log(`Processing batch ${i + 1}/${totalBatches} (properties ${startIdx + 1}-${endIdx})`);
-      
-      // Calculate proximity scores for this batch with delays between each property
-      const proximityPromises = batch.map(async (property, index) => {
-        // Add delay between properties in the same batch
-        if (index > 0) {
-          await new Promise(resolve => setTimeout(resolve, 500)); // 500ms between properties
-        }
-        
-        const proximityScore = await calculateProximityScore(property);
-        return {
-          ...property,
-          proximityScore
-        };
-      });
+    // Calculate proximity score if not already calculated
+    if (property && !proximityCache.has(property.id)) {
+      console.log('Calculating proximity score for:', property.name);
+      setIsCalculatingProximity(true);
       
       try {
-        const updatedBatch = await Promise.all(proximityPromises);
-        
-        // Update the properties array
-        for (let j = 0; j < updatedBatch.length; j++) {
-          updatedProperties[startIdx + j] = updatedBatch[j];
-        }
-        
-        // Update progress
-        const progress = Math.round(((i + 1) / totalBatches) * 100);
-        setProximityProgress(progress);
-        
-        // Update the state every batch
-        setApartmentData([...updatedProperties]);
-        calculateStatistics(updatedProperties);
-        
-        console.log(`Completed batch ${i + 1}/${totalBatches} - Progress: ${progress}%`);
-        
-        // Longer delay between batches to respect API limits
-        if (i < totalBatches - 1) {
-          console.log(`Waiting ${delayBetweenBatches}ms before next batch...`);
-          await new Promise(resolve => setTimeout(resolve, delayBetweenBatches));
-        }
-        
+        await calculateProximityScoreOnDemand(property);
       } catch (error) {
-        console.error(`Error processing batch ${i + 1}:`, error);
-        // Continue with next batch even if this one fails
+        console.error('Error calculating proximity score:', error);
+      } finally {
+        setIsCalculatingProximity(false);
       }
     }
-    
-    setIsCalculatingProximity(false);
-    setProximityProgress(100);
-    
-    // Final update
-    setApartmentData(updatedProperties);
-    calculateStatistics(updatedProperties);
-    
-    console.log('Proximity score calculation completed for', updatedProperties.length, 'properties');
   };
 
   // Filter apartment data based on current filters
@@ -903,24 +870,15 @@ const ApartmentSupply = () => {
                     <span className="text-sm font-medium text-blue-600">{stats.averageProximityScore}%</span>
                   </div>
                   
-                  {/* Proximity calculation progress */}
+                  {/* On-demand proximity calculation status */}
                   {isCalculatingProximity && (
                     <div className="mt-3 pt-3 border-t border-gray-200">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs text-gray-600">กำลังคำนวณคะแนนความใกล้:</span>
-                        <span className="text-xs text-blue-600">{proximityProgress}%</span>
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="animate-spin rounded-full h-3 w-3 border-t-2 border-b-2 border-blue-500"></div>
+                        <span className="text-xs text-gray-600">กำลังคำนวณคะแนนความใกล้...</span>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
-                          style={{ width: `${proximityProgress}%` }}
-                        ></div>
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1">
-                        ใช้ข้อมูลจาก OpenStreetMap (ใช้เวลาประมาณ 2-3 นาที)
-                      </p>
-                      <p className="text-xs text-orange-600 mt-1">
-                        หากมีข้อผิดพลาด API จะใช้คะแนนประมาณการ
+                      <p className="text-xs text-gray-500">
+                        คำนวณเฉพาะที่พักที่เลือก (ใช้เวลา 3-5 วินาที)
                       </p>
                     </div>
                   )}
@@ -937,7 +895,7 @@ const ApartmentSupply = () => {
               colorScheme={colorScheme}
               isMobile={isMobile}
               selectedApartment={selectedApartment}
-              onApartmentSelect={setSelectedApartment}
+              onApartmentSelect={handleApartmentSelect}
               calculateFacilityScore={calculateAmenityScore}
             />
           </div>

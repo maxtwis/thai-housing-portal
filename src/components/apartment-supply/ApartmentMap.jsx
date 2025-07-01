@@ -389,7 +389,7 @@ const ApartmentMap = ({
             ">คะแนนสิ่งอำนวยความสะดวก</div>
           </div>
 
-          <!-- Proximity Score (new) -->
+          <!-- Proximity Score (new - on-demand) -->
           ${property.proximityScore !== undefined ? `
             <div style="
               background: linear-gradient(90deg, rgba(59, 130, 246, 0.1) 0%, rgba(59, 130, 246, 0.05) 100%);
@@ -419,13 +419,14 @@ const ApartmentMap = ({
               padding: 12px;
               margin-bottom: 16px;
               text-align: center;
-            ">
+              cursor: pointer;
+            " onclick="console.log('Calculating proximity for this property...')">
               <div style="
                 font-size: 16px; 
                 font-weight: 600; 
                 color: #6b7280;
                 margin-bottom: 4px;
-              ">กำลังคำนวณ...</div>
+              ">คลิกเพื่อคำนวณ</div>
               <div style="
                 font-size: 12px; 
                 color: #6b7280; 
