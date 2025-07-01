@@ -289,44 +289,84 @@ const ApartmentSupply = () => {
       try {
         console.log('Loading apartment data for province:', selectedProvince);
         
-        const resourceId = '2bde73f3-6c0b-4c85-9100-3e44b04d8c5f';
-        const filters = selectedProvince ? { province_code: selectedProvince } : {};
+        const resourceId = 'b6dbb8e0-1194-4eeb-945d-e883b3275b35';
+        const apiFilters = selectedProvince ? { province_code: selectedProvince } : {};
         
         const result = await getCkanData(resourceId, {
-          limit: 1000,
-          filters
+          filters: JSON.stringify(apiFilters),
+          limit: 50000,
+          sort: 'name asc'
         });
         
         console.log('Raw apartment data:', result);
         
         if (result && result.records && Array.isArray(result.records)) {
-          // Process and validate data
-          const processedData = result.records
-            .map(record => ({
-              ...record,
-              // Ensure numeric fields are properly converted
-              monthly_min_price: parseFloat(record.monthly_min_price) || 0,
-              monthly_max_price: parseFloat(record.monthly_max_price) || parseFloat(record.monthly_min_price) || 0,
-              room_size_min: parseFloat(record.room_size_min) || 0,
-              room_size_max: parseFloat(record.room_size_max) || parseFloat(record.room_size_min) || 0,
-              latitude: parseFloat(record.latitude),
-              longitude: parseFloat(record.longitude),
-              // Ensure boolean fields are properly converted
-              has_air: record.has_air === true || record.has_air === 'TRUE' || record.has_air === '1',
-              has_furniture: record.has_furniture === true || record.has_furniture === 'TRUE' || record.has_furniture === '1',
-              has_internet: record.has_internet === true || record.has_internet === 'TRUE' || record.has_internet === '1',
-              has_parking: record.has_parking === true || record.has_parking === 'TRUE' || record.has_parking === '1',
-              has_lift: record.has_lift === true || record.has_lift === 'TRUE' || record.has_lift === '1',
-              has_pool: record.has_pool === true || record.has_pool === 'TRUE' || record.has_pool === '1',
-              has_fitness: record.has_fitness === true || record.has_fitness === 'TRUE' || record.has_fitness === '1',
-              has_security: record.has_security === true || record.has_security === 'TRUE' || record.has_security === '1',
-              has_cctv: record.has_cctv === true || record.has_cctv === 'TRUE' || record.has_cctv === '1',
-              allow_pet: record.allow_pet === true || record.allow_pet === 'TRUE' || record.allow_pet === '1',
-            }))
-            .filter(property => 
-              property.latitude && property.longitude && 
-              !isNaN(property.latitude) && !isNaN(property.longitude)
-            );
+          // Process and validate data using the same structure as useApartmentQueries.js
+          const processedData = result.records.map(record => ({
+            // Basic property info
+            id: record.name + '_' + (record.latitude || '') + '_' + (record.longitude || ''), // Create unique ID
+            name: record.name || 'Unknown Property',
+            apartment_name: record.name || 'Unknown Property', // Add this for display
+            property_type: record.property_type || 'APARTMENT',
+            latitude: parseFloat(record.latitude),
+            longitude: parseFloat(record.longitude),
+            
+            // Location info
+            province: record.province || '',
+            province_code: parseInt(record.province_code) || selectedProvince,
+            district: record.district || '',
+            subdistrict: record.subdistrict || '',
+            street: record.street || '',
+            road: record.road || '',
+            house_number: record.house_number || '',
+            address: `${record.house_number || ''} ${record.street || ''} ${record.road || ''} ${record.subdistrict || ''} ${record.district || ''} ${record.province || ''}`.trim(),
+            
+            // Pricing info
+            monthly_min_price: parseFloat(record.monthly_min_price) || 0,
+            monthly_max_price: parseFloat(record.monthly_max_price) || 0,
+            daily_min_price: parseFloat(record.daily_min_price) || 0,
+            daily_max_price: parseFloat(record.daily_max_price) || 0,
+            daily_rental_type: record.daily_rental_type || '',
+            
+            // Fee structure
+            water_fee_type: record.water_fee_type || '',
+            water_unit_price: parseFloat(record.water_unit_price) || 0,
+            electric_fee_type: record.electric_fee_type || '',
+            electric_unit_price: parseFloat(record.electric_unit_price) || 0,
+            service_fee_type: record.service_fee_type || '',
+            internet_fee_type: record.internet_fee_type || '',
+            deposit_type: record.deposit_type || '',
+            
+            // Room info
+            room_type: record.room_type || '',
+            room_size_min: parseFloat(record.room_size_min) || 0,
+            room_size_max: parseFloat(record.room_size_max) || 0,
+            rooms_available: parseInt(record.rooms_available) || 0,
+            total_room_types: parseInt(record.total_room_types) || 0,
+            
+            // Amenities - convert string 'TRUE'/'FALSE' to boolean
+            has_air: record.has_air === 'TRUE' || record.has_air === true,
+            has_furniture: record.has_furniture === 'TRUE' || record.has_furniture === true,
+            has_internet: record.has_internet === 'TRUE' || record.has_internet === true,
+            has_parking: record.has_parking === 'TRUE' || record.has_parking === true,
+            has_lift: record.has_lift === 'TRUE' || record.has_lift === true,
+            has_pool: record.has_pool === 'TRUE' || record.has_pool === true,
+            has_fitness: record.has_fitness === 'TRUE' || record.has_fitness === true,
+            has_security: record.has_security === 'TRUE' || record.has_security === true,
+            has_cctv: record.has_cctv === 'TRUE' || record.has_cctv === true,
+            allow_pet: record.allow_pet === 'TRUE' || record.allow_pet === true,
+            total_amenities: parseInt(record.total_amenities) || 0,
+            
+            // Contact info
+            contact_email: record.contact_email || '',
+            contact_line_id: record.contact_line_id || '',
+            phone_count: parseInt(record.phone_count) || 0,
+            url: record.url || ''
+          })).filter(property => 
+            // Filter out properties without valid coordinates
+            property.latitude && property.longitude && 
+            !isNaN(property.latitude) && !isNaN(property.longitude)
+          );
           
           console.log(`Processed ${processedData.length} valid property records`);
           setApartmentData(processedData);
