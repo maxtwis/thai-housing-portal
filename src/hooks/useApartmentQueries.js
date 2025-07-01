@@ -4,15 +4,22 @@ import { getCkanData } from '../utils/ckanClient';
 // Apartment supply resource ID
 const APARTMENT_RESOURCE_ID = 'b6dbb8e0-1194-4eeb-945d-e883b3275b35';
 
-// Hook to fetch apartment supply data with new structure
-export const useApartmentData = (filters = {}) => {
+// Hook to fetch apartment supply data with new structure and province filtering
+export const useApartmentData = (provinceCode = null, filters = {}) => {
   return useQuery({
-    queryKey: ['apartment-supply', filters],
+    queryKey: ['apartment-supply', provinceCode, filters],
     queryFn: async () => {
-      console.log('Fetching apartment data from CKAN API...');
+      console.log(`Fetching apartment data for province code: ${provinceCode}`);
+      
+      // Build API filters
+      const apiFilters = {};
+      if (provinceCode) {
+        apiFilters.province_code = provinceCode;
+      }
       
       const result = await getCkanData(APARTMENT_RESOURCE_ID, {
-        limit: 5000,
+        filters: JSON.stringify(apiFilters),
+        limit: 50000, // High limit since we're filtering by province
         sort: 'name asc',
         ...filters
       });
@@ -20,6 +27,8 @@ export const useApartmentData = (filters = {}) => {
       if (!result || !result.records) {
         throw new Error('No apartment data received from CKAN API');
       }
+      
+      console.log(`Received ${result.records.length} records for province ${provinceCode}`);
       
       // Process and validate the data with new structure
       const processedData = result.records.map(record => ({
@@ -32,7 +41,7 @@ export const useApartmentData = (filters = {}) => {
         
         // Location info
         province: record.province || '',
-        province_code: record.province_code || '',
+        province_code: parseInt(record.province_code) || provinceCode,
         district: record.district || '',
         subdistrict: record.subdistrict || '',
         street: record.street || '',

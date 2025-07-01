@@ -9,6 +9,17 @@ const ApartmentSupply = () => {
   const [selectedApartment, setSelectedApartment] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
   const [showFilters, setShowFilters] = useState(true);
+  
+  // Province selection state
+  const [selectedProvince, setSelectedProvince] = useState(10); // Default to Bangkok
+
+  // Available provinces (matching Housing Profile)
+  const provinces = [
+    { id: 10, name: 'กรุงเทพมหานคร', code: 10 },
+    { id: 40, name: 'ขอนแก่น', code: 40 },
+    { id: 50, name: 'เชียงใหม่', code: 50 },
+    { id: 90, name: 'สงขลา', code: 90 }
+  ];
 
   // Filter state - updated for new structure
   const [filters, setFilters] = useState({
@@ -161,23 +172,31 @@ const ApartmentSupply = () => {
     });
   };
 
-  // Load apartment data from CKAN API
+  // Load apartment data from CKAN API - updated with province filtering
   useEffect(() => {
     const loadApartmentData = async () => {
       try {
         setLoading(true);
         setError(null);
         
-        console.log('Loading apartment data from CKAN API...');
+        console.log(`Loading apartment data for province code: ${selectedProvince}`);
+        
+        // Use filters to get data for specific province
+        const apiFilters = {
+          province_code: selectedProvince
+        };
         
         const result = await getCkanData('b6dbb8e0-1194-4eeb-945d-e883b3275b35', {
-          limit: 2000,
+          filters: JSON.stringify(apiFilters),
+          limit: 50000, // High limit since we're filtering by province
           sort: 'name asc'
         });
         
         if (!result || !result.records) {
           throw new Error('No data received from CKAN API');
         }
+        
+        console.log(`Received ${result.records.length} records for province ${selectedProvince}`);
         
         // Process and validate the data with new structure
         const processedData = result.records.map(record => ({
@@ -190,8 +209,12 @@ const ApartmentSupply = () => {
           
           // Location info
           province: record.province || '',
+          province_code: parseInt(record.province_code) || selectedProvince,
           district: record.district || '',
           subdistrict: record.subdistrict || '',
+          street: record.street || '',
+          road: record.road || '',
+          house_number: record.house_number || '',
           address: `${record.house_number || ''} ${record.street || ''} ${record.road || ''} ${record.subdistrict || ''} ${record.district || ''} ${record.province || ''}`.trim(),
           
           // Pricing info
@@ -199,6 +222,16 @@ const ApartmentSupply = () => {
           monthly_max_price: parseFloat(record.monthly_max_price) || 0,
           daily_min_price: parseFloat(record.daily_min_price) || 0,
           daily_max_price: parseFloat(record.daily_max_price) || 0,
+          daily_rental_type: record.daily_rental_type || '',
+          
+          // Fee structure
+          water_fee_type: record.water_fee_type || '',
+          water_unit_price: parseFloat(record.water_unit_price) || 0,
+          electric_fee_type: record.electric_fee_type || '',
+          electric_unit_price: parseFloat(record.electric_unit_price) || 0,
+          service_fee_type: record.service_fee_type || '',
+          internet_fee_type: record.internet_fee_type || '',
+          deposit_type: record.deposit_type || '',
           
           // Room info
           room_type: record.room_type || '',
@@ -224,23 +257,14 @@ const ApartmentSupply = () => {
           contact_email: record.contact_email || '',
           contact_line_id: record.contact_line_id || '',
           phone_count: parseInt(record.phone_count) || 0,
-          url: record.url || '',
-          
-          // Fees
-          water_fee_type: record.water_fee_type || '',
-          water_unit_price: parseFloat(record.water_unit_price) || 0,
-          electric_fee_type: record.electric_fee_type || '',
-          electric_unit_price: parseFloat(record.electric_unit_price) || 0,
-          service_fee_type: record.service_fee_type || '',
-          internet_fee_type: record.internet_fee_type || '',
-          deposit_type: record.deposit_type || ''
+          url: record.url || ''
         })).filter(property => 
           // Filter out properties without valid coordinates
           property.latitude && property.longitude && 
           !isNaN(property.latitude) && !isNaN(property.longitude)
         );
         
-        console.log(`Processed ${processedData.length} valid property records`);
+        console.log(`Processed ${processedData.length} valid property records for ${provinces.find(p => p.id === selectedProvince)?.name}`);
         
         setApartmentData(processedData);
         calculateStatistics(processedData);
@@ -254,7 +278,7 @@ const ApartmentSupply = () => {
     };
 
     loadApartmentData();
-  }, []);
+  }, [selectedProvince]); // Re-load when province changes
 
   // Filter apartment data based on current filters
   const getFilteredData = () => {
@@ -409,9 +433,31 @@ const ApartmentSupply = () => {
           <p className="text-gray-600 mt-2">
             สำรวจข้อมูลอสังหาริมทรัพย์ พร้อมดูสิ่งที่อยู่ใกล้เคียงผ่าน OpenStreetMap
           </p>
-          <div className="flex items-center gap-4 mt-2">
+          
+          {/* Province Selector */}
+          <div className="flex items-center gap-4 mt-4">
+            <div className="flex items-center gap-2">
+              <label htmlFor="province-select" className="text-sm font-medium text-gray-700">
+                เลือกจังหวัด:
+              </label>
+              <select
+                id="province-select"
+                value={selectedProvince}
+                onChange={(e) => setSelectedProvince(parseInt(e.target.value))}
+                className="border border-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                {provinces.map(province => (
+                  <option key={province.id} value={province.id}>
+                    {province.name}
+                  </option>
+                ))}
+              </select>
+            </div>
             <span className="text-sm text-gray-500">
               แสดง {filteredData.length.toLocaleString()} จาก {apartmentData.length.toLocaleString()} ที่พัก
+              {provinces.find(p => p.id === selectedProvince) && 
+                ` ใน${provinces.find(p => p.id === selectedProvince).name}`
+              }
             </span>
           </div>
         </div>
@@ -599,6 +645,15 @@ const ApartmentSupply = () => {
                   >
                     ล้างตัวกรองทั้งหมด
                   </button>
+                </div>
+
+                {/* Province Info */}
+                <div className="pt-4 border-t border-gray-200">
+                  <p className="text-xs text-gray-500">
+                    ข้อมูลจาก: {provinces.find(p => p.id === selectedProvince)?.name}
+                    <br />
+                    เปลี่ยนจังหวัดได้ที่ด้านบน
+                  </p>
                 </div>
               </div>
 
