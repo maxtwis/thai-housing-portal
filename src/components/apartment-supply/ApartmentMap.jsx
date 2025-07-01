@@ -69,45 +69,48 @@ const ApartmentMap = ({
 
     // Simplified popup positioning
     map.on('popupopen', function(e) {
-      const popup = e.popup;
       console.log('Popup opened successfully');
       
-      // Simple positioning - just check if popup would be clipped at the top
-      const popupLatLng = popup.getLatLng();
-      const popupPoint = map.latLngToContainerPoint(popupLatLng);
-      
-      if (popupPoint.y < 150) {
-        // Show popup below marker if too close to top
-        popup.options.offset = [0, 25];
-        popup.update();
-      }
+      // Don't do complex repositioning that might cause popup to close
+      // Just let Leaflet handle it naturally
     });
 
     // Handle popup close - restore marker to cluster if needed
     map.on('popupclose', function(e) {
-      console.log('Popup closed, clearing preservation flag');
-      preservePinnedMarker.current = false;
+      console.log('Popup closed, clearing preservation flag after delay...');
       
-      // Add a small delay to prevent conflicts with other operations
+      // Delay clearing the flag to prevent immediate clearing during popup repositioning
       setTimeout(() => {
-        if (pinnedMarkerRef.current && mapRef.current.hasLayer(pinnedMarkerRef.current)) {
-          try {
-            // Remove the pinned marker from map
-            mapRef.current.removeLayer(pinnedMarkerRef.current);
-            
-            // Add it back to the cluster
-            markerClusterRef.current.addLayer(pinnedMarkerRef.current);
-            
-            // Clear the reference
-            pinnedMarkerRef.current = null;
-            console.log('Pinned marker restored to cluster');
-          } catch (error) {
-            console.warn('Error restoring marker to cluster:', error);
-            // Clear the reference anyway to prevent further issues
-            pinnedMarkerRef.current = null;
+        preservePinnedMarker.current = false;
+        console.log('Preservation flag cleared');
+        
+        // Add a small delay to prevent conflicts with other operations
+        setTimeout(() => {
+          if (pinnedMarkerRef.current && mapRef.current.hasLayer(pinnedMarkerRef.current)) {
+            try {
+              // Check if popup is really closed (not just repositioning)
+              if (!pinnedMarkerRef.current.isPopupOpen()) {
+                // Remove the pinned marker from map
+                mapRef.current.removeLayer(pinnedMarkerRef.current);
+                
+                // Add it back to the cluster
+                markerClusterRef.current.addLayer(pinnedMarkerRef.current);
+                
+                // Clear the reference
+                pinnedMarkerRef.current = null;
+                console.log('Pinned marker restored to cluster');
+              } else {
+                console.log('Popup still open, keeping marker pinned');
+                preservePinnedMarker.current = true; // Restore flag
+              }
+            } catch (error) {
+              console.warn('Error restoring marker to cluster:', error);
+              // Clear the reference anyway to prevent further issues
+              pinnedMarkerRef.current = null;
+            }
           }
-        }
-      }, 50);
+        }, 100);
+      }, 500); // Wait 500ms before actually clearing
     });
 
     // Initialize marker cluster group with custom options
@@ -159,6 +162,20 @@ const ApartmentMap = ({
           console.log('marker is on map:', mapRef.current.hasLayer(pinnedMarkerRef.current));
         }
         
+        // Try to find the marker if pinnedMarkerRef is lost
+        if (!pinnedMarkerRef.current || !pinnedMarkerRef.current.isPopupOpen()) {
+          console.log('Trying to find open popup manually...');
+          
+          // Check if there's an open popup on the map
+          if (mapRef.current._popup && mapRef.current._popup.isOpen()) {
+            console.log('Found open popup, trying to update it directly');
+            const newContent = generatePopupContent(property);
+            mapRef.current._popup.setContent(newContent);
+            console.log('SUCCESS: Updated popup via map._popup');
+            return;
+          }
+        }
+        
         if (pinnedMarkerRef.current && pinnedMarkerRef.current.isPopupOpen()) {
           console.log('Force updating popup content for:', property.name);
           
@@ -168,7 +185,7 @@ const ApartmentMap = ({
           // Generate and set new content
           const newContent = generatePopupContent(property);
           pinnedMarkerRef.current.setPopupContent(newContent);
-          console.log('Popup content updated successfully');
+          console.log('SUCCESS: Popup content updated via pinned marker');
         } else {
           console.warn('Cannot update popup - either no pinned marker or popup is closed');
           
@@ -1150,9 +1167,8 @@ const ApartmentMap = ({
         pinnedMarkerRef.current = marker;
         pinnedMarkerRef.current.propertyData = property;
         
-        // Set preservation flag to prevent marker clearing
-        preservePinnedMarker.current = true;
-        console.log('PINNED: Marker pinned and preservation flag set for:', property.name);
+        // Don't set preservation flag immediately - wait for popup to stabilize
+        console.log('PINNED: Marker pinned for:', property.name, '(protection pending)');
         
         hasZoomedToMarker.current = true;
         
@@ -1192,8 +1208,14 @@ const ApartmentMap = ({
           if (marker && mapRef.current.hasLayer(marker)) {
             pinnedMarkerRef.current = marker;
             pinnedMarkerRef.current.propertyData = property;
-            preservePinnedMarker.current = true;
-            console.log('SECURED: Pinned marker reference secured for:', property.name);
+            
+            // Set preservation flag only after popup is stable
+            setTimeout(() => {
+              if (pinnedMarkerRef.current && pinnedMarkerRef.current.isPopupOpen()) {
+                preservePinnedMarker.current = true;
+                console.log('SECURED: Pinned marker reference secured and protection enabled for:', property.name);
+              }
+            }, 300); // Wait for popup to stabilize
           }
         }, 200);
         
