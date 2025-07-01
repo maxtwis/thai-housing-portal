@@ -31,8 +31,12 @@ const ApartmentSupply = () => {
     requiredAmenities: []
   });
 
-  // Color scheme state
+  // Color scheme state - updated to include proximity
   const [colorScheme, setColorScheme] = useState('priceRange');
+
+  // Proximity calculation state
+  const [isCalculatingProximity, setIsCalculatingProximity] = useState(false);
+  const [proximityProgress, setProximityProgress] = useState(0);
 
   // Statistics state
   const [stats, setStats] = useState({
@@ -42,6 +46,7 @@ const ApartmentSupply = () => {
     averagePrice: 0,
     averageSize: 0,
     averageAmenityScore: 0,
+    averageProximityScore: 0,
     propertyTypes: {},
     roomTypes: {},
     priceRanges: {},
@@ -79,6 +84,93 @@ const ApartmentSupply = () => {
     return Math.round((availableAmenities / totalAmenities) * 100);
   };
 
+  // Calculate proximity score for a property (new function)
+  const calculateProximityScore = async (property) => {
+    if (!property.latitude || !property.longitude || proximityCache.has(property.id)) {
+      return proximityCache.get(property.id) || 0;
+    }
+
+    try {
+      const lat = property.latitude;
+      const lng = property.longitude;
+      const searchRadius = 500; // 500m radius for proximity check
+      
+      const amenityCategories = [
+        {
+          key: 'restaurant',
+          query: `[out:json][timeout:10];(node["amenity"~"^(restaurant|cafe|fast_food)$"](around:${searchRadius},${lat},${lng}););out count;`,
+          weight: 15 // 15% weight
+        },
+        {
+          key: 'convenience', 
+          query: `[out:json][timeout:10];(node["shop"~"^(convenience|supermarket)$"](around:${searchRadius},${lat},${lng}););out count;`,
+          weight: 20 // 20% weight
+        },
+        {
+          key: 'transport',
+          query: `[out:json][timeout:10];(node["public_transport"](around:${searchRadius},${lat},${lng});node["highway"="bus_stop"](around:${searchRadius},${lat},${lng}););out count;`,
+          weight: 25 // 25% weight
+        },
+        {
+          key: 'health',
+          query: `[out:json][timeout:10];(node["amenity"~"^(hospital|clinic|pharmacy)$"](around:${searchRadius},${lat},${lng}););out count;`,
+          weight: 20 // 20% weight  
+        },
+        {
+          key: 'school',
+          query: `[out:json][timeout:10];(node["amenity"~"^(school|university)$"](around:${searchRadius},${lat},${lng}););out count;`,
+          weight: 20 // 20% weight
+        }
+      ];
+
+      let totalScore = 0;
+      let completedQueries = 0;
+
+      for (const category of amenityCategories) {
+        try {
+          const response = await fetch('https://overpass-api.de/api/interpreter', {
+            method: 'POST',
+            body: category.query,
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            const count = data.elements ? data.elements.length : 0;
+            
+            // Score calculation: normalize count and apply weight
+            // 0 places = 0%, 1-2 places = 50%, 3-5 places = 75%, 6+ places = 100%
+            let categoryScore = 0;
+            if (count === 0) categoryScore = 0;
+            else if (count <= 2) categoryScore = 50;
+            else if (count <= 5) categoryScore = 75;
+            else categoryScore = 100;
+
+            totalScore += (categoryScore * category.weight) / 100;
+            completedQueries++;
+          }
+        } catch (error) {
+          console.warn(`Error querying ${category.key}:`, error);
+          completedQueries++;
+        }
+
+        // Small delay to avoid overwhelming the API
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+
+      const finalScore = Math.round(totalScore);
+      proximityCache.set(property.id, finalScore);
+      return finalScore;
+
+    } catch (error) {
+      console.error('Error calculating proximity score:', error);
+      proximityCache.set(property.id, 0);
+      return 0;
+    }
+  };
+
+  // Cache for proximity scores to avoid repeated API calls
+  const proximityCache = new Map();
+
   // Calculate statistics
   const calculateStatistics = (data) => {
     if (!data || !data.length) {
@@ -89,6 +181,7 @@ const ApartmentSupply = () => {
         averagePrice: 0,
         averageSize: 0,
         averageAmenityScore: 0,
+        averageProximityScore: 0,
         propertyTypes: {},
         roomTypes: {},
         priceRanges: {},
@@ -103,6 +196,7 @@ const ApartmentSupply = () => {
     const totalPrice = data.reduce((sum, prop) => sum + (parseFloat(prop.monthly_min_price) || 0), 0);
     const totalSize = data.reduce((sum, prop) => sum + (parseFloat(prop.room_size_min) || 0), 0);
     const totalAmenityScore = data.reduce((sum, prop) => sum + calculateAmenityScore(prop), 0);
+    const totalProximityScore = data.reduce((sum, prop) => sum + (prop.proximityScore || 0), 0);
 
     // Calculate property type distribution
     const propertyTypes = {};
@@ -165,6 +259,7 @@ const ApartmentSupply = () => {
       averagePrice: Math.round(totalPrice / totalProperties),
       averageSize: Math.round(totalSize / totalProperties),
       averageAmenityScore: Math.round(totalAmenityScore / totalProperties),
+      averageProximityScore: Math.round(totalProximityScore / totalProperties),
       propertyTypes,
       roomTypes,
       priceRanges,
@@ -268,6 +363,10 @@ const ApartmentSupply = () => {
         
         setApartmentData(processedData);
         calculateStatistics(processedData);
+        
+        // Start calculating proximity scores in background
+        calculateProximityScoresInBackground(processedData);
+        
         setLoading(false);
         
       } catch (err) {
@@ -279,6 +378,64 @@ const ApartmentSupply = () => {
 
     loadApartmentData();
   }, [selectedProvince]); // Re-load when province changes
+
+  // Calculate proximity scores in background for better UX
+  const calculateProximityScoresInBackground = async (properties) => {
+    if (!properties || properties.length === 0) return;
+    
+    setIsCalculatingProximity(true);
+    setProximityProgress(0);
+    
+    const batchSize = 5; // Process 5 properties at a time to avoid API limits
+    const totalBatches = Math.ceil(properties.length / batchSize);
+    let updatedProperties = [...properties];
+    
+    for (let i = 0; i < totalBatches; i++) {
+      const startIdx = i * batchSize;
+      const endIdx = Math.min(startIdx + batchSize, properties.length);
+      const batch = properties.slice(startIdx, endIdx);
+      
+      // Calculate proximity scores for this batch
+      const proximityPromises = batch.map(async (property, index) => {
+        const proximityScore = await calculateProximityScore(property);
+        return {
+          ...property,
+          proximityScore
+        };
+      });
+      
+      const updatedBatch = await Promise.all(proximityPromises);
+      
+      // Update the properties array
+      for (let j = 0; j < updatedBatch.length; j++) {
+        updatedProperties[startIdx + j] = updatedBatch[j];
+      }
+      
+      // Update progress
+      const progress = Math.round(((i + 1) / totalBatches) * 100);
+      setProximityProgress(progress);
+      
+      // Update the state periodically
+      if (i % 3 === 0 || i === totalBatches - 1) {
+        setApartmentData([...updatedProperties]);
+        calculateStatistics(updatedProperties);
+      }
+      
+      // Small delay between batches to be respectful to the API
+      if (i < totalBatches - 1) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+    
+    setIsCalculatingProximity(false);
+    setProximityProgress(100);
+    
+    // Final update
+    setApartmentData(updatedProperties);
+    calculateStatistics(updatedProperties);
+    
+    console.log('Proximity score calculation completed for', updatedProperties.length, 'properties');
+  };
 
   // Filter apartment data based on current filters
   const getFilteredData = () => {
@@ -504,6 +661,7 @@ const ApartmentSupply = () => {
                     <option value="propertyType">ประเภทที่พัก</option>
                     <option value="roomType">ประเภทห้อง</option>
                     <option value="amenityScore">คะแนนสิ่งอำนวยความสะดวก</option>
+                    <option value="proximityScore">คะแนนความใกล้สถานที่สำคัญ</option>
                     <option value="size">ขนาดห้อง</option>
                   </select>
                 </div>
@@ -685,6 +843,29 @@ const ApartmentSupply = () => {
                     <span className="text-sm text-gray-600">คะแนนสิ่งอำนวยฯ เฉลี่ย:</span>
                     <span className="text-sm font-medium">{stats.averageAmenityScore}%</span>
                   </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-600">คะแนนความใกล้ฯ เฉลี่ย:</span>
+                    <span className="text-sm font-medium text-blue-600">{stats.averageProximityScore}%</span>
+                  </div>
+                  
+                  {/* Proximity calculation progress */}
+                  {isCalculatingProximity && (
+                    <div className="mt-3 pt-3 border-t border-gray-200">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs text-gray-600">กำลังคำนวณคะแนนความใกล้:</span>
+                        <span className="text-xs text-blue-600">{proximityProgress}%</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                          style={{ width: `${proximityProgress}%` }}
+                        ></div>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        ใช้ข้อมูลจาก OpenStreetMap
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -727,6 +908,11 @@ const ApartmentSupply = () => {
                   <p className="text-sm text-gray-600">ราคา/วัน: ฿{selectedApartment.daily_min_price?.toLocaleString()}</p>
                 )}
                 <p className="text-sm text-gray-600">คะแนนสิ่งอำนวยฯ: {calculateAmenityScore(selectedApartment)}%</p>
+                {selectedApartment.proximityScore !== undefined ? (
+                  <p className="text-sm text-blue-600">คะแนนความใกล้ฯ: {selectedApartment.proximityScore}%</p>
+                ) : (
+                  <p className="text-sm text-gray-400">คะแนนความใกล้ฯ: กำลังคำนวณ...</p>
+                )}
               </div>
               <div>
                 {selectedApartment.contact_line_id && (

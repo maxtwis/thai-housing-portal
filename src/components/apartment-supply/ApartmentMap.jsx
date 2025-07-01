@@ -192,6 +192,14 @@ const ApartmentMap = ({
         if (score >= 40) return '#f97316'; // Orange - Fair
         return '#ef4444'; // Red - Poor
       },
+      proximityScore: () => {
+        const score = property.proximityScore || 0;
+        if (score >= 80) return '#22c55e'; // Green - Excellent location
+        if (score >= 60) return '#eab308'; // Yellow - Good location
+        if (score >= 40) return '#f97316'; // Orange - Fair location
+        if (score >= 20) return '#ef4444'; // Red - Poor location
+        return '#6b7280'; // Gray - No data
+      },
       size: () => {
         const size = property.room_size_min || property.room_size_max || 0;
         if (size <= 20) return '#22c55e'; // Green - Small
@@ -380,6 +388,51 @@ const ApartmentMap = ({
               font-weight: 500;
             ">คะแนนสิ่งอำนวยความสะดวก</div>
           </div>
+
+          <!-- Proximity Score (new) -->
+          ${property.proximityScore !== undefined ? `
+            <div style="
+              background: linear-gradient(90deg, rgba(59, 130, 246, 0.1) 0%, rgba(59, 130, 246, 0.05) 100%);
+              border: 1px solid rgba(59, 130, 246, 0.2);
+              border-radius: 8px;
+              padding: 12px;
+              margin-bottom: 16px;
+              text-align: center;
+            ">
+              <div style="
+                font-size: 24px; 
+                font-weight: 800; 
+                color: #3b82f6;
+                margin-bottom: 4px;
+              ">${property.proximityScore || 0}%</div>
+              <div style="
+                font-size: 12px; 
+                color: #6b7280; 
+                font-weight: 500;
+              ">คะแนนความใกล้สถานที่สำคัญ</div>
+            </div>
+          ` : `
+            <div style="
+              background: linear-gradient(90deg, rgba(107, 114, 128, 0.1) 0%, rgba(107, 114, 128, 0.05) 100%);
+              border: 1px solid rgba(107, 114, 128, 0.2);
+              border-radius: 8px;
+              padding: 12px;
+              margin-bottom: 16px;
+              text-align: center;
+            ">
+              <div style="
+                font-size: 16px; 
+                font-weight: 600; 
+                color: #6b7280;
+                margin-bottom: 4px;
+              ">กำลังคำนวณ...</div>
+              <div style="
+                font-size: 12px; 
+                color: #6b7280; 
+                font-weight: 500;
+              ">คะแนนความใกล้สถานที่สำคัญ</div>
+            </div>
+          `}
 
           <!-- Amenities Grid -->
           ${amenities.length > 0 ? `
