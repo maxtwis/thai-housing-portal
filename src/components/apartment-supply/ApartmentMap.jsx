@@ -389,7 +389,7 @@ const ApartmentMap = ({
             ">คะแนนสิ่งอำนวยความสะดวก</div>
           </div>
 
-          <!-- Proximity Score (new - on-demand with better messaging) -->
+          <!-- Proximity Score (auto-calculated on click) -->
           ${property.proximityScore !== undefined ? `
             <div style="
               background: linear-gradient(90deg, rgba(59, 130, 246, 0.1) 0%, rgba(59, 130, 246, 0.05) 100%);
@@ -424,14 +424,28 @@ const ApartmentMap = ({
               padding: 12px;
               margin-bottom: 16px;
               text-align: center;
-              cursor: pointer;
-            " onclick="console.log('Click on property marker to calculate proximity score')">
+            ">
               <div style="
-                font-size: 16px; 
-                font-weight: 600; 
-                color: #6b7280;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
                 margin-bottom: 4px;
-              ">🎯 คลิกเพื่อคำนวณ</div>
+              ">
+                <div style="
+                  width: 16px;
+                  height: 16px;
+                  border: 2px solid #6b7280;
+                  border-top: 2px solid #3b82f6;
+                  border-radius: 50%;
+                  animation: spin 1s linear infinite;
+                "></div>
+                <div style="
+                  font-size: 16px; 
+                  font-weight: 600; 
+                  color: #6b7280;
+                ">กำลังคำนวณ...</div>
+              </div>
               <div style="
                 font-size: 12px; 
                 color: #6b7280; 
@@ -441,8 +455,14 @@ const ApartmentMap = ({
                 font-size: 10px; 
                 color: #9ca3af; 
                 margin-top: 4px;
-              ">ประเมินจากสถานที่ใกล้เคียง</div>
+              ">ใช้เวลา 3-5 วินาที</div>
             </div>
+            <style>
+              @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+              }
+            </style>
           `}
 
           <!-- Amenities Grid -->
@@ -1057,6 +1077,7 @@ const ApartmentMap = ({
         
         hasZoomedToMarker.current = true;
         
+        // Open popup immediately
         setTimeout(() => {
           try {
             if (mapRef.current.hasLayer(marker)) {
@@ -1080,11 +1101,12 @@ const ApartmentMap = ({
           }
         }, 10);
         
+        // Trigger property selection and auto-calculate proximity
         setTimeout(() => {
           if (onApartmentSelect) {
             onApartmentSelect(property);
           }
-        }, 100);
+        }, 50); // Small delay to let popup open first
         
         setTimeout(() => {
           mapRef.current.panTo([property.latitude, property.longitude]);

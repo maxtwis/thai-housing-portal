@@ -506,21 +506,20 @@ const ApartmentSupply = () => {
     loadApartmentData();
   }, [selectedProvince]); // Re-load when province changes
 
-  // Handle property selection and calculate proximity on-demand
+  // Handle property selection and calculate proximity immediately on click
   const handleApartmentSelect = async (property) => {
     setSelectedApartment(property);
     
-    // Calculate proximity score if not already calculated
+    // Calculate proximity score immediately if not already calculated
     if (property && !proximityCache.has(property.id)) {
-      console.log('Calculating proximity score for:', property.name);
-      setIsCalculatingProximity(true);
+      console.log('Auto-calculating proximity score for:', property.name);
       
+      // Don't show loading state since it happens automatically
       try {
         await calculateProximityScoreOnDemand(property);
+        console.log('Proximity calculation completed for:', property.name);
       } catch (error) {
         console.error('Error calculating proximity score:', error);
-      } finally {
-        setIsCalculatingProximity(false);
       }
     }
   };
@@ -936,18 +935,7 @@ const ApartmentSupply = () => {
                     <span className="text-sm font-medium text-blue-600">{stats.averageProximityScore}%</span>
                   </div>
                   
-                  {/* On-demand proximity calculation status */}
-                  {isCalculatingProximity && (
-                    <div className="mt-3 pt-3 border-t border-gray-200">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="animate-spin rounded-full h-3 w-3 border-t-2 border-b-2 border-blue-500"></div>
-                        <span className="text-xs text-gray-600">กำลังคำนวณคะแนนความใกล้...</span>
-                      </div>
-                      <p className="text-xs text-gray-500">
-                        คำนวณเฉพาะที่พักที่เลือก (ใช้เวลา 3-5 วินาที)
-                      </p>
-                    </div>
-                  )}
+                  {/* Remove manual proximity calculation status since it's automatic */}
                 </div>
               </div>
             </div>
