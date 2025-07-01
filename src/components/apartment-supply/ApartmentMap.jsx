@@ -75,49 +75,27 @@ const ApartmentMap = ({
       // Just let Leaflet handle it naturally
     });
 
-    // Handle popup close - restore marker to cluster if needed
+    // Handle popup close - simplified
     map.on('popupclose', function(e) {
       console.log('Popup closed event triggered');
       
-      // Only clean up if this isn't a marker switch (check if preservation flag is false)
-      if (!preservePinnedMarker.current) {
-        console.log('Popup closed, clearing preservation flag after delay...');
-        
-        // Delay clearing the flag to prevent immediate clearing during popup repositioning
-        setTimeout(() => {
+      // Don't immediately clean up - wait to see if it's a marker switch
+      setTimeout(() => {
+        // Only clean up if no new marker was pinned in the meantime
+        if (pinnedMarkerRef.current && !pinnedMarkerRef.current.isPopupOpen()) {
+          console.log('Cleaning up closed popup');
           preservePinnedMarker.current = false;
-          console.log('Preservation flag cleared');
           
-          // Add a small delay to prevent conflicts with other operations
-          setTimeout(() => {
-            if (pinnedMarkerRef.current && mapRef.current.hasLayer(pinnedMarkerRef.current)) {
-              try {
-                // Check if popup is really closed (not just repositioning)
-                if (!pinnedMarkerRef.current.isPopupOpen()) {
-                  // Remove the pinned marker from map
-                  mapRef.current.removeLayer(pinnedMarkerRef.current);
-                  
-                  // Add it back to the cluster
-                  markerClusterRef.current.addLayer(pinnedMarkerRef.current);
-                  
-                  // Clear the reference
-                  pinnedMarkerRef.current = null;
-                  console.log('Pinned marker restored to cluster');
-                } else {
-                  console.log('Popup still open, keeping marker pinned');
-                  preservePinnedMarker.current = true; // Restore flag
-                }
-              } catch (error) {
-                console.warn('Error restoring marker to cluster:', error);
-                // Clear the reference anyway to prevent further issues
-                pinnedMarkerRef.current = null;
-              }
-            }
-          }, 100);
-        }, 200); // Reduced delay for faster switching
-      } else {
-        console.log('Popup close ignored - marker switch in progress');
-      }
+          // Remove from map and add back to cluster
+          if (mapRef.current.hasLayer(pinnedMarkerRef.current)) {
+            mapRef.current.removeLayer(pinnedMarkerRef.current);
+            markerClusterRef.current.addLayer(pinnedMarkerRef.current);
+          }
+          
+          pinnedMarkerRef.current = null;
+          console.log('Pinned marker restored to cluster');
+        }
+      }, 100);
     });
 
     // Initialize marker cluster group with custom options
@@ -1192,85 +1170,59 @@ const ApartmentMap = ({
         
         L.DomEvent.stopPropagation(e);
         
-        // If there's already a pinned marker, clean it up immediately
+        // Immediately clean up any existing pinned marker
         if (pinnedMarkerRef.current && pinnedMarkerRef.current !== marker) {
           console.log('Cleaning up previous pinned marker');
           
-          // Close any existing popup first
-          if (pinnedMarkerRef.current.isPopupOpen()) {
-            pinnedMarkerRef.current.closePopup();
-          }
+          // Force close any existing popup
+          mapRef.current.closePopup();
           
-          // Remove from map and add back to cluster
+          // Remove from map
           if (mapRef.current.hasLayer(pinnedMarkerRef.current)) {
             mapRef.current.removeLayer(pinnedMarkerRef.current);
+            markerClusterRef.current.addLayer(pinnedMarkerRef.current);
           }
           
-          // Clear preservation flag
+          // Clear everything immediately
           preservePinnedMarker.current = false;
-          
-          // Reset reference
           pinnedMarkerRef.current = null;
         }
         
-        // Small delay to ensure cleanup is complete
+        // Remove marker from cluster and add to map
+        markerClusterRef.current.removeLayer(marker);
+        marker.addTo(mapRef.current);
+        
+        // Set as pinned marker
+        pinnedMarkerRef.current = marker;
+        pinnedMarkerRef.current.propertyData = property;
+        hasZoomedToMarker.current = true;
+        
+        console.log('PINNED: New marker pinned for:', property.name);
+        
+        // Open popup immediately
+        const popupContent = generatePopupContent(property);
+        marker.bindPopup(popupContent, popupOptions);
+        marker.openPopup();
+        
+        console.log('Opening popup for:', property.name);
+        
+        // Set preservation flag after a short delay
         setTimeout(() => {
-          // Remove new marker from cluster and add to map
-          markerClusterRef.current.removeLayer(marker);
-          marker.addTo(mapRef.current);
-          
-          // Set as new pinned marker
-          pinnedMarkerRef.current = marker;
-          pinnedMarkerRef.current.propertyData = property;
-          
-          console.log('PINNED: New marker pinned for:', property.name, '(protection pending)');
-          
-          hasZoomedToMarker.current = true;
-          
-          // Open popup immediately
-          setTimeout(() => {
-            try {
-              if (mapRef.current.hasLayer(marker)) {
-                console.log('Opening popup for:', property.name);
-                marker.openPopup();
-                
-                setTimeout(() => {
-                  if (marker.isPopupOpen()) {
-                    console.log('Popup successfully opened');
-                  } else {
-                    console.log('Popup failed to open, retrying...');
-                    const popup = L.popup(popupOptions)
-                      .setLatLng([property.latitude, property.longitude])
-                      .setContent(generatePopupContent(property))
-                      .openOn(mapRef.current);
-                  }
-                }, 100);
-              }
-            } catch (error) {
-              console.error('Error opening popup:', error);
-            }
-          }, 10);
-          
-          // Trigger property selection and auto-calculate proximity  
-          setTimeout(() => {
-            if (onApartmentSelect) {
-              onApartmentSelect(property);
-            }
-          }, 50);
-          
-          // Set preservation flag after popup is stable
-          setTimeout(() => {
-            if (pinnedMarkerRef.current && pinnedMarkerRef.current.isPopupOpen()) {
-              preservePinnedMarker.current = true;
-              console.log('SECURED: Protection enabled for:', property.name);
-            }
-          }, 500);
-          
-          setTimeout(() => {
-            mapRef.current.panTo([property.latitude, property.longitude]);
-          }, 200);
-          
-        }, 50); // Small delay to ensure previous cleanup is complete
+          if (pinnedMarkerRef.current && pinnedMarkerRef.current.isPopupOpen()) {
+            preservePinnedMarker.current = true;
+            console.log('SECURED: Protection enabled for:', property.name);
+          }
+        }, 300);
+        
+        // Trigger property selection and auto-calculate proximity
+        if (onApartmentSelect) {
+          onApartmentSelect(property);
+        }
+        
+        // Pan to marker
+        setTimeout(() => {
+          mapRef.current.panTo([property.latitude, property.longitude]);
+        }, 100);
       });
 
       if (!isMobile) {
