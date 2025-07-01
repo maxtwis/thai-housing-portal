@@ -10,6 +10,16 @@ const ApartmentSupply = () => {
   const [isMobile, setIsMobile] = useState(false);
   const [showFilters, setShowFilters] = useState(true);
   
+  // Load Google Material Icons if not already loaded
+  useEffect(() => {
+    if (!document.querySelector('link[href*="material+symbols"]')) {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = 'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&icon_names=apartment';
+      document.head.appendChild(link);
+    }
+  }, []);
+  
   // Province selection state
   const [selectedProvince, setSelectedProvince] = useState(10); // Default to Bangkok
 

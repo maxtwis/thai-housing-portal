@@ -272,19 +272,42 @@ const ApartmentMap = ({
     return colorScheme in schemes ? schemes[colorScheme]() : schemes.priceRange();
   };
 
-  // Create simple circle marker options
-  const createSimpleMarker = (property, isSelected, isHover = false) => {
+  // Create apartment icon marker instead of circle marker
+  const createApartmentMarker = (property, isSelected, isHover = false) => {
     const markerColor = getMarkerColor(property);
-    const size = isSelected || isHover ? 12 : 8;
+    const size = isSelected || isHover ? 32 : 24;
+    const iconSize = isSelected || isHover ? 20 : 16;
+    
+    // Create custom HTML for apartment icon
+    const iconHtml = `
+      <div style="
+        width: ${size}px;
+        height: ${size}px;
+        background-color: ${markerColor};
+        border: ${isSelected ? '3px' : '2px'} solid #ffffff;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        transition: all 0.2s ease;
+      ">
+        <span class="material-symbols-outlined" style="
+          font-size: ${iconSize}px;
+          color: white;
+          font-weight: 500;
+          line-height: 1;
+        ">apartment</span>
+      </div>
+    `;
 
-    return {
-      radius: size,
-      fillColor: markerColor,
-      color: '#ffffff',
-      weight: isSelected ? 3 : 2,
-      opacity: 1,
-      fillOpacity: 0.9
-    };
+    return L.divIcon({
+      html: iconHtml,
+      iconSize: [size, size],
+      iconAnchor: [size/2, size/2],
+      popupAnchor: [0, -size/2],
+      className: 'custom-apartment-icon'
+    });
   };
 
   // Update popup content in real-time when proximity score changes
@@ -1095,11 +1118,11 @@ const ApartmentMap = ({
       // Just update the marker styles for the selected apartment
       if (selectedApartment) {
         const property = apartmentData.find(prop => prop.id === selectedApartment.id);
-        if (property && pinnedMarkerRef.current.propertyData) {
+        if (property) {
           const isSelected = property.id === selectedApartment.id;
           const isHovered = pinnedMarkerRef.current.isHovered || false;
-          const updatedOptions = createSimpleMarker(property, isSelected, isHovered);
-          pinnedMarkerRef.current.setStyle(updatedOptions);
+          const updatedIcon = createApartmentMarker(property, isSelected, isHovered);
+          pinnedMarkerRef.current.setIcon(updatedIcon);
           
           // Update property data if proximity score changed
           if (property.proximityScore !== pinnedMarkerRef.current.propertyData.proximityScore) {
@@ -1128,9 +1151,9 @@ const ApartmentMap = ({
       if (!property.latitude || !property.longitude) return;
 
       const isSelected = selectedApartment && selectedApartment.id === property.id;
-      const markerOptions = createSimpleMarker(property, isSelected, false);
+      const markerIcon = createApartmentMarker(property, isSelected, false);
       
-      const marker = L.circleMarker([property.latitude, property.longitude], markerOptions);
+      const marker = L.marker([property.latitude, property.longitude], { icon: markerIcon });
 
       marker.propertyData = property;
       marker.isHovered = false;
@@ -1227,14 +1250,14 @@ const ApartmentMap = ({
       if (!isMobile) {
         marker.on('mouseover', () => {
           marker.isHovered = true;
-          const hoverOptions = createSimpleMarker(property, isSelected, true);
-          marker.setStyle(hoverOptions);
+          const hoverIcon = createApartmentMarker(property, isSelected, true);
+          marker.setIcon(hoverIcon);
         });
 
         marker.on('mouseout', () => {
           marker.isHovered = false;
-          const normalOptions = createSimpleMarker(property, isSelected, false);
-          marker.setStyle(normalOptions);
+          const normalIcon = createApartmentMarker(property, isSelected, false);
+          marker.setIcon(normalIcon);
         });
       }
 
@@ -1278,8 +1301,8 @@ const ApartmentMap = ({
         if (property) {
           const isSelected = property.id === selectedApartment.id;
           const isHovered = marker.isHovered || false;
-          const updatedOptions = createSimpleMarker(property, isSelected, isHovered);
-          marker.setStyle(updatedOptions);
+          const updatedIcon = createApartmentMarker(property, isSelected, isHovered);
+          marker.setIcon(updatedIcon);
         }
       });
     }, 100);
