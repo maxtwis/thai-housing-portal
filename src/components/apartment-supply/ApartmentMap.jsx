@@ -227,6 +227,14 @@ const ApartmentMap = ({
     };
   };
 
+  // Update popup content in real-time when proximity score changes
+  const updatePopupContent = (property) => {
+    if (pinnedMarkerRef.current && pinnedMarkerRef.current.isPopupOpen()) {
+      const newContent = generatePopupContent(property);
+      pinnedMarkerRef.current.setPopupContent(newContent);
+    }
+  };
+
   // Enhanced popup content generator for properties - updated for new structure
   const generatePopupContent = (property) => {
     const amenityScore = calculateFacilityScore ? calculateFacilityScore(property) : 0;
@@ -1017,6 +1025,26 @@ const ApartmentMap = ({
     };
     return categoryNames[category] || category;
   };
+
+  // Effect to update popup when apartment data changes (for real-time updates)
+  useEffect(() => {
+    if (pinnedMarkerRef.current && pinnedMarkerRef.current.propertyData && pinnedMarkerRef.current.isPopupOpen()) {
+      const currentProperty = pinnedMarkerRef.current.propertyData;
+      
+      // Find updated property data
+      const updatedProperty = apartmentData.find(prop => prop.id === currentProperty.id);
+      
+      if (updatedProperty && updatedProperty.proximityScore !== currentProperty.proximityScore) {
+        console.log('Updating popup with new proximity score:', updatedProperty.proximityScore);
+        
+        // Update the marker's property data
+        pinnedMarkerRef.current.propertyData = updatedProperty;
+        
+        // Update popup content in real-time
+        updatePopupContent(updatedProperty);
+      }
+    }
+  }, [apartmentData]);
 
   // Update apartment markers when data or filters change - updated for new structure
   useEffect(() => {
