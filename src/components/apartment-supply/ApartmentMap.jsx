@@ -424,15 +424,15 @@ const ApartmentMap = ({
           
           ${property.rooms_available && property.rooms_available > 0 ? `
             <div style="
-              background: #f8fafc; 
+              background: #f0f9ff; 
               padding: 8px 10px; 
               border-radius: 6px; 
               margin-bottom: 8px; 
               border-left: 3px solid #10b981;
               font-size: 12px;
             ">
-              <span style="color: #64748b;">ห้องว่าง: </span>
-              <span style="color: #334155; font-weight: 500;">${property.rooms_available} ห้อง</span>
+              <span style="color: #64748b;">สถานะ: </span>
+              <span style="color: #059669; font-weight: 600;">ว่าง</span>
             </div>
           ` : ''}
 

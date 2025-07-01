@@ -26,6 +26,8 @@ const ApartmentSupply = () => {
   // Statistics state
   const [stats, setStats] = useState({
     totalProperties: 0,
+    availableProperties: 0,
+    availabilityRate: 0,
     averagePrice: 0,
     averageSize: 0,
     averageAmenityScore: 0,
@@ -71,6 +73,8 @@ const ApartmentSupply = () => {
     if (!data || !data.length) {
       setStats({
         totalProperties: 0,
+        availableProperties: 0,
+        availabilityRate: 0,
         averagePrice: 0,
         averageSize: 0,
         averageAmenityScore: 0,
@@ -83,6 +87,8 @@ const ApartmentSupply = () => {
     }
 
     const totalProperties = data.length;
+    const availableProperties = data.filter(prop => prop.rooms_available && prop.rooms_available > 0).length;
+    const availabilityRate = (availableProperties / totalProperties) * 100;
     const totalPrice = data.reduce((sum, prop) => sum + (parseFloat(prop.monthly_min_price) || 0), 0);
     const totalSize = data.reduce((sum, prop) => sum + (parseFloat(prop.room_size_min) || 0), 0);
     const totalAmenityScore = data.reduce((sum, prop) => sum + calculateAmenityScore(prop), 0);
@@ -143,6 +149,8 @@ const ApartmentSupply = () => {
 
     setStats({
       totalProperties,
+      availableProperties,
+      availabilityRate: Math.round(availabilityRate),
       averagePrice: Math.round(totalPrice / totalProperties),
       averageSize: Math.round(totalSize / totalProperties),
       averageAmenityScore: Math.round(totalAmenityScore / totalProperties),
@@ -603,6 +611,14 @@ const ApartmentSupply = () => {
                     <span className="text-sm font-medium">{stats.totalProperties.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
+                    <span className="text-sm text-gray-600">ที่พักว่าง:</span>
+                    <span className="text-sm font-medium text-green-600">{stats.availableProperties.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-600">อัตราว่าง:</span>
+                    <span className="text-sm font-medium text-green-600">{stats.availabilityRate}%</span>
+                  </div>
+                  <div className="flex justify-between">
                     <span className="text-sm text-gray-600">ราคาเฉลี่ย:</span>
                     <span className="text-sm font-medium">฿{stats.averagePrice.toLocaleString()}/เดือน</span>
                   </div>
@@ -646,7 +662,9 @@ const ApartmentSupply = () => {
               <div>
                 <p className="text-sm text-gray-600">ห้อง: {selectedApartment.room_type}</p>
                 <p className="text-sm text-gray-600">ขนาด: {selectedApartment.room_size_min || 'N/A'} ตร.ม.</p>
-                <p className="text-sm text-gray-600">ห้องว่าง: {selectedApartment.rooms_available || 'N/A'}</p>
+                {selectedApartment.rooms_available && selectedApartment.rooms_available > 0 && (
+                  <p className="text-sm text-green-600 font-medium">สถานะ: ว่าง</p>
+                )}
               </div>
               <div>
                 <p className="text-sm text-gray-600">ราคา/เดือน: ฿{selectedApartment.monthly_min_price?.toLocaleString() || 'N/A'}</p>

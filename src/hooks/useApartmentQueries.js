@@ -261,6 +261,8 @@ export const calculatePropertyStatistics = (properties) => {
   if (!properties || properties.length === 0) {
     return {
       totalProperties: 0,
+      availableProperties: 0,
+      availabilityRate: 0,
       averagePrice: 0,
       averageSize: 0,
       averageAmenityScore: 0,
@@ -273,6 +275,8 @@ export const calculatePropertyStatistics = (properties) => {
   }
 
   const totalProperties = properties.length;
+  const availableProperties = properties.filter(prop => prop.rooms_available && prop.rooms_available > 0).length;
+  const availabilityRate = (availableProperties / totalProperties) * 100;
   const totalPrice = properties.reduce((sum, prop) => sum + (prop.monthly_min_price || 0), 0);
   const totalSize = properties.reduce((sum, prop) => sum + (prop.room_size_min || 0), 0);
   const totalAmenityScore = properties.reduce((sum, prop) => sum + calculateAmenityScore(prop), 0);
@@ -341,6 +345,8 @@ export const calculatePropertyStatistics = (properties) => {
 
   return {
     totalProperties,
+    availableProperties,
+    availabilityRate: Math.round(availabilityRate),
     averagePrice: Math.round(totalPrice / totalProperties),
     averageSize: Math.round(totalSize / totalProperties),
     averageAmenityScore: Math.round(totalAmenityScore / totalProperties),
