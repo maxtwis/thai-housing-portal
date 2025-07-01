@@ -29,6 +29,7 @@ const ApartmentMap = ({
   const markersRef = useRef([]);
   const markerClusterRef = useRef(null);
   const pinnedMarkerRef = useRef(null); // For temporarily pinned marker
+  const preservePinnedMarker = useRef(false); // Flag to prevent marker clearing
   const nearbyLayersRef = useRef({});
   const isInitialLoad = useRef(true);
   const hasZoomedToMarker = useRef(false);
@@ -84,6 +85,9 @@ const ApartmentMap = ({
 
     // Handle popup close - restore marker to cluster if needed
     map.on('popupclose', function(e) {
+      console.log('Popup closed, clearing preservation flag');
+      preservePinnedMarker.current = false;
+      
       // Add a small delay to prevent conflicts with other operations
       setTimeout(() => {
         if (pinnedMarkerRef.current && mapRef.current.hasLayer(pinnedMarkerRef.current)) {
@@ -96,6 +100,7 @@ const ApartmentMap = ({
             
             // Clear the reference
             pinnedMarkerRef.current = null;
+            console.log('Pinned marker restored to cluster');
           } catch (error) {
             console.warn('Error restoring marker to cluster:', error);
             // Clear the reference anyway to prevent further issues
@@ -1067,8 +1072,8 @@ const ApartmentMap = ({
   // Effect to update popup when apartment data changes (for real-time updates)
   useEffect(() => {
     // Don't update markers if we have a pinned marker with an open popup
-    if (pinnedMarkerRef.current && pinnedMarkerRef.current.isPopupOpen()) {
-      console.log('Skipping marker update - popup is open, preserving pinned marker');
+    if (preservePinnedMarker.current && pinnedMarkerRef.current && pinnedMarkerRef.current.isPopupOpen()) {
+      console.log('PRESERVING POPUP: Skipping marker update - popup is open, preserving pinned marker');
       
       // Just update the marker styles for the selected apartment
       if (selectedApartment) {
@@ -1081,13 +1086,13 @@ const ApartmentMap = ({
           
           // Update property data if proximity score changed
           if (property.proximityScore !== pinnedMarkerRef.current.propertyData.proximityScore) {
-            console.log('Updating pinned marker property data with new proximity score:', property.proximityScore);
+            console.log('REAL-TIME UPDATE: Updating popup with new proximity score:', property.proximityScore);
             pinnedMarkerRef.current.propertyData = property;
             
             // Update popup content
             const newContent = generatePopupContent(property);
             pinnedMarkerRef.current.setPopupContent(newContent);
-            console.log('Popup content updated via useEffect');
+            console.log('SUCCESS: Popup content updated in real-time!');
           }
         }
       }
@@ -1145,6 +1150,10 @@ const ApartmentMap = ({
         pinnedMarkerRef.current = marker;
         pinnedMarkerRef.current.propertyData = property;
         
+        // Set preservation flag to prevent marker clearing
+        preservePinnedMarker.current = true;
+        console.log('PINNED: Marker pinned and preservation flag set for:', property.name);
+        
         hasZoomedToMarker.current = true;
         
         // Open popup immediately
@@ -1183,7 +1192,8 @@ const ApartmentMap = ({
           if (marker && mapRef.current.hasLayer(marker)) {
             pinnedMarkerRef.current = marker;
             pinnedMarkerRef.current.propertyData = property;
-            console.log('Secured pinned marker reference for:', property.name);
+            preservePinnedMarker.current = true;
+            console.log('SECURED: Pinned marker reference secured for:', property.name);
           }
         }, 200);
         
