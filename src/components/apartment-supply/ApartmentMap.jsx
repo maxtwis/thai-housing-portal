@@ -15,28 +15,218 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
+// Proximity Score Calculation Functions
+const fetchNearbyCount = async (category, lat, lng, radius = 1000) => {
+  const query = buildOverpassQuery(category, lat, lng, radius);
+  
+  try {
+    const response = await fetch('https://overpass-api.de/api/interpreter', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: query,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Overpass API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.elements ? data.elements.length : 0;
+  } catch (error) {
+    console.error(`Error fetching ${category}:`, error);
+    return 0;
+  }
+};
+
+const buildOverpassQuery = (category, lat, lng, radius) => {
+  const timeout = 15;
+  switch(category) {
+    case 'restaurant':
+      return `[out:json][timeout:${timeout}];(node["amenity"~"^(restaurant|cafe|fast_food)$"](around:${radius},${lat},${lng});way["amenity"~"^(restaurant|cafe|fast_food)$"](around:${radius},${lat},${lng}););out count;`;
+    case 'convenience':
+      return `[out:json][timeout:${timeout}];(node["shop"~"^(convenience|supermarket)$"](around:${radius},${lat},${lng});way["shop"~"^(convenience|supermarket)$"](around:${radius},${lat},${lng}););out count;`;
+    case 'school':
+      return `[out:json][timeout:${timeout}];(node["amenity"~"^(school|university|kindergarten)$"](around:${radius},${lat},${lng});way["amenity"~"^(school|university|kindergarten)$"](around:${radius},${lat},${lng}););out count;`;
+    case 'health':
+      return `[out:json][timeout:${timeout}];(node["amenity"~"^(hospital|clinic|doctors|dentist|pharmacy)$"](around:${radius},${lat},${lng});node["healthcare"](around:${radius},${lat},${lng});node["shop"="chemist"](around:${radius},${lat},${lng});way["amenity"~"^(hospital|clinic|doctors|dentist|pharmacy)$"](around:${radius},${lat},${lng});way["healthcare"](around:${radius},${lat},${lng}););out count;`;
+    case 'transport':
+      return `[out:json][timeout:${timeout}];(node["public_transport"](around:${radius},${lat},${lng});node["highway"="bus_stop"](around:${radius},${lat},${lng});node["amenity"="bus_station"](around:${radius},${lat},${lng});node["railway"="station"](around:${radius},${lat},${lng});way["public_transport"](around:${radius},${lat},${lng});way["amenity"="bus_station"](around:${radius},${lat},${lng}););out count;`;
+    default:
+      return buildOverpassQuery('restaurant', lat, lng, radius);
+  }
+};
+
+const calculateCategoryScore = (count, category) => {
+  const thresholds = {
+    restaurant: { excellent: 15, good: 8, fair: 3 },
+    convenience: { excellent: 8, good: 4, fair: 2 },
+    school: { excellent: 5, good: 3, fair: 1 },
+    health: { excellent: 8, good: 4, fair: 2 },
+    transport: { excellent: 10, good: 5, fair: 2 }
+  };
+
+  const threshold = thresholds[category] || thresholds.restaurant;
+
+  if (count >= threshold.excellent) return 100;
+  if (count >= threshold.good) return 80;
+  if (count >= threshold.fair) return 60;
+  if (count > 0) return 40;
+  return 0;
+};
+
+const calculateProximityScore = async (property, radius = 1000) => {
+  if (!property.latitude || !property.longitude) return 0;
+
+  const categories = ['restaurant', 'convenience', 'school', 'health', 'transport'];
+  let totalScore = 0;
+  let categoryCount = 0;
+
+  for (const category of categories) {
+    try {
+      const nearbyCount = await fetchNearbyCount(category, property.latitude, property.longitude, radius);
+      const categoryScore = calculateCategoryScore(nearbyCount, category);
+      totalScore += categoryScore;
+      categoryCount++;
+      // Add small delay to avoid overwhelming the API
+      await new Promise(resolve => setTimeout(resolve, 100));
+    } catch (error) {
+      console.error(`Error fetching ${category} data:`, error);
+    }
+  }
+
+  return categoryCount > 0 ? Math.round(totalScore / categoryCount) : 0;
+};
+
+// Proximity Score Manager for batched processing
+class ProximityScoreManager {
+  constructor(maxConcurrent = 3, delayBetweenRequests = 200) {
+    this.queue = [];
+    this.processing = new Set();
+    this.maxConcurrent = maxConcurrent;
+    this.delay = delayBetweenRequests;
+    this.cache = new Map();
+  }
+
+  async calculateScore(property, callback) {
+    const cacheKey = `${property.latitude}_${property.longitude}`;
+    
+    // Check cache first (1 hour cache)
+    if (this.cache.has(cacheKey)) {
+      const cached = this.cache.get(cacheKey);
+      if (Date.now() - cached.timestamp < 60 * 60 * 1000) {
+        callback(property.id, cached.score);
+        return;
+      }
+    }
+
+    // Add to queue
+    this.queue.push({ property, callback });
+    this.processQueue();
+  }
+
+  async processQueue() {
+    if (this.processing.size >= this.maxConcurrent || this.queue.length === 0) {
+      return;
+    }
+
+    const { property, callback } = this.queue.shift();
+    const requestId = `${property.id}_${Date.now()}`;
+    this.processing.add(requestId);
+
+    try {
+      const score = await calculateProximityScore(property);
+      const cacheKey = `${property.latitude}_${property.longitude}`;
+      
+      // Cache the result
+      this.cache.set(cacheKey, {
+        score,
+        timestamp: Date.now()
+      });
+
+      callback(property.id, score);
+    } catch (error) {
+      console.error(`Error calculating proximity score for ${property.id}:`, error);
+      callback(property.id, 0);
+    } finally {
+      this.processing.delete(requestId);
+      
+      // Process next item after delay
+      setTimeout(() => {
+        this.processQueue();
+      }, this.delay);
+    }
+  }
+}
+
 const ApartmentMap = ({ 
   apartmentData, 
   colorScheme = 'priceRange', 
   isMobile, 
   onApartmentSelect, 
   selectedApartment,
-  calculateFacilityScore,
-  onPopupUpdate // New prop to trigger popup updates
+  calculateFacilityScore
 }) => {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const markersRef = useRef([]);
   const markerClusterRef = useRef(null);
-  const pinnedMarkerRef = useRef(null); // For temporarily pinned marker
-  const preservePinnedMarker = useRef(false); // Flag to prevent marker clearing
-  const isMarkerSwitching = useRef(false); // Flag to indicate marker switching in progress
+  const pinnedMarkerRef = useRef(null);
   const nearbyLayersRef = useRef({});
   const isInitialLoad = useRef(true);
   const hasZoomedToMarker = useRef(false);
+  const proximityManagerRef = useRef(null);
   
   const [loadingNearby, setLoadingNearby] = useState(false);
   const [nearbyNotification, setNearbyNotification] = useState(null);
+  const [proximityScores, setProximityScores] = useState({});
+  const [loadingProximityScores, setLoadingProximityScores] = useState(false);
+  const [proximityProgress, setProximityProgress] = useState(0);
+
+  // Initialize proximity score manager
+  useEffect(() => {
+    if (!proximityManagerRef.current) {
+      proximityManagerRef.current = new ProximityScoreManager(2, 300); // Conservative settings
+    }
+  }, []);
+
+  // Calculate proximity scores when apartment data loads
+  useEffect(() => {
+    const loadProximityScores = async () => {
+      if (!apartmentData || apartmentData.length === 0 || !proximityManagerRef.current) return;
+      
+      setLoadingProximityScores(true);
+      setProximityProgress(0);
+      const newScores = {};
+      let completed = 0;
+
+      const updateScore = (propertyId, score) => {
+        newScores[propertyId] = score;
+        completed++;
+        const progress = Math.round((completed / Math.min(apartmentData.length, 20)) * 100); // Limit to first 20 for demo
+        setProximityProgress(progress);
+        setProximityScores({...newScores});
+
+        if (completed >= Math.min(apartmentData.length, 20)) {
+          setLoadingProximityScores(false);
+        }
+      };
+
+      // Calculate for subset to avoid API limits
+      const dataToProcess = apartmentData.slice(0, 20); // Process first 20 properties
+      
+      dataToProcess.forEach(property => {
+        if (property.latitude && property.longitude) {
+          proximityManagerRef.current.calculateScore(property, updateScore);
+        } else {
+          updateScore(property.id, 0);
+        }
+      });
+    };
+
+    loadProximityScores();
+  }, [apartmentData]);
 
   // Initialize map
   useEffect(() => {
@@ -47,276 +237,108 @@ const ApartmentMap = ({
       zoom: 10,
       zoomControl: !isMobile,
       attributionControl: true,
-      scrollWheelZoom: true,
-      doubleClickZoom: true,
-      touchZoom: true,
-      dragging: true,
-      tap: true,
-      boxZoom: false
     });
 
-    // Add tile layer
+    // Add OpenStreetMap tile layer
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors',
-      maxZoom: 18
+      attribution: '© OpenStreetMap contributors'
     }).addTo(map);
 
-    // Add zoom control for mobile
-    if (isMobile) {
-      L.control.zoom({
-        position: 'topright'
-      }).addTo(map);
-    }
-
-    // Simplified popup positioning
-    map.on('popupopen', function(e) {
-      console.log('Popup opened successfully');
-      
-      // Don't do complex repositioning that might cause popup to close
-      // Just let Leaflet handle it naturally
-    });
-
-    // Handle popup close - optimized for fast switching
-    map.on('popupclose', function(e) {
-      console.log('Popup closed event triggered');
-      
-      // If we're in the middle of switching markers, ignore this close event
-      if (isMarkerSwitching.current) {
-        console.log('Ignoring popup close - marker switching in progress');
-        return;
-      }
-      
-      // Short delay to distinguish between switching and actual closing
-      setTimeout(() => {
-        // Only clean up if not switching and popup is really closed
-        if (pinnedMarkerRef.current && !pinnedMarkerRef.current.isPopupOpen() && !isMarkerSwitching.current) {
-          console.log('Cleaning up closed popup');
-          preservePinnedMarker.current = false;
-          
-          // Remove from map and add back to cluster
-          if (mapRef.current.hasLayer(pinnedMarkerRef.current)) {
-            mapRef.current.removeLayer(pinnedMarkerRef.current);
-            markerClusterRef.current.addLayer(pinnedMarkerRef.current);
-          }
-          
-          pinnedMarkerRef.current = null;
-          console.log('Pinned marker restored to cluster');
-        } else {
-          console.log('Popup close ignored - marker still active or switching');
-        }
-      }, 100); // Reduced delay for faster response
-    });
-
-    // Initialize marker cluster group with custom options
-    const markerCluster = L.markerClusterGroup({
-      // Clustering options
-      maxClusterRadius: 50, // Maximum radius for clustering (in pixels)
-      spiderfyOnMaxZoom: true, // Show all markers when zoomed to max and clicked
-      showCoverageOnHover: false, // Don't show cluster area on hover
-      zoomToBoundsOnClick: true, // Zoom to cluster bounds when clicked
-      spiderfyDistanceMultiplier: 1.2, // Distance multiplier for spider
-      removeOutsideVisibleBounds: true, // Remove markers outside visible bounds for performance
-      
-      // Custom cluster icon creation
+    // Initialize marker cluster group
+    markerClusterRef.current = L.markerClusterGroup({
+      chunkedLoading: true,
+      maxClusterRadius: 50,
+      spiderfyOnMaxZoom: true,
+      showCoverageOnHover: false,
+      zoomToBoundsOnClick: true,
       iconCreateFunction: function(cluster) {
-        const childCount = cluster.getChildCount();
-        let c = ' marker-cluster-';
+        const count = cluster.getChildCount();
+        let size = 'small';
+        if (count > 100) size = 'large';
+        else if (count > 10) size = 'medium';
         
-        // Size and color based on cluster size
-        if (childCount < 10) {
-          c += 'small';
-        } else if (childCount < 100) {
-          c += 'medium';
-        } else {
-          c += 'large';
-        }
-
-        return new L.DivIcon({
-          html: '<div><span>' + childCount + '</span></div>',
-          className: 'marker-cluster' + c,
-          iconSize: new L.Point(40, 40)
+        return L.divIcon({
+          html: '<div><span>' + count + '</span></div>',
+          className: `marker-cluster marker-cluster-${size}`,
+          iconSize: L.point(40, 40)
         });
       }
     });
 
-    markerClusterRef.current = markerCluster;
-    map.addLayer(markerCluster);
+    map.addLayer(markerClusterRef.current);
     mapRef.current = map;
-
-    // Expose popup update function to parent component with better error handling
     window.apartmentMapInstance = {
       showNearbyPlaces,
-      clearNearbyPlaces,
-      updateOpenPopup: (property) => {
-        console.log('updateOpenPopup called for:', property.name);
-        console.log('pinnedMarkerRef.current exists:', !!pinnedMarkerRef.current);
-        
-        if (pinnedMarkerRef.current) {
-          console.log('popup is open:', pinnedMarkerRef.current.isPopupOpen());
-          console.log('marker is on map:', mapRef.current.hasLayer(pinnedMarkerRef.current));
-        }
-        
-        // Try to find the marker if pinnedMarkerRef is lost
-        if (!pinnedMarkerRef.current || !pinnedMarkerRef.current.isPopupOpen()) {
-          console.log('Trying to find open popup manually...');
-          
-          // Check if there's an open popup on the map
-          if (mapRef.current._popup && mapRef.current._popup.isOpen()) {
-            console.log('Found open popup, trying to update it directly');
-            const newContent = generatePopupContent(property);
-            mapRef.current._popup.setContent(newContent);
-            console.log('SUCCESS: Updated popup via map._popup');
-            return;
-          }
-        }
-        
-        if (pinnedMarkerRef.current && pinnedMarkerRef.current.isPopupOpen()) {
-          console.log('Force updating popup content for:', property.name);
-          
-          // Update the marker's property data first
-          pinnedMarkerRef.current.propertyData = property;
-          
-          // Generate and set new content
-          const newContent = generatePopupContent(property);
-          pinnedMarkerRef.current.setPopupContent(newContent);
-          console.log('SUCCESS: Popup content updated via pinned marker');
-        } else {
-          console.warn('Cannot update popup - either no pinned marker or popup is closed');
-          
-          // Try to find the marker in clusters and update it there
-          let found = false;
-          markerClusterRef.current.eachLayer((marker) => {
-            if (marker.propertyData && marker.propertyData.id === property.id) {
-              console.log('Found marker in cluster, updating property data');
-              marker.propertyData = property;
-              found = true;
-            }
-          });
-          
-          if (!found) {
-            console.log('Marker not found in clusters either');
-          }
-        }
-      }
+      clearNearbyPlaces
     };
 
     return () => {
       if (mapRef.current) {
-        window.apartmentMapInstance = null;
         mapRef.current.remove();
         mapRef.current = null;
       }
     };
-  }, [isMobile]);
+  }, []);
 
-  // Color scheme logic - updated for new data structure
-  const getMarkerColor = (property) => {
-    const schemes = {
-      priceRange: () => {
+  // Color scheme functions
+  const getMarkerColor = (property, colorScheme) => {
+    switch (colorScheme) {
+      case 'priceRange':
         const price = property.monthly_min_price || 0;
-        if (price <= 5000) return '#22c55e'; // Green - Low price
-        if (price <= 10000) return '#eab308'; // Yellow - Medium price
-        if (price <= 20000) return '#f97316'; // Orange - High price
-        return '#ef4444'; // Red - Very high price
-      },
-      propertyType: () => {
-        const propertyType = property.property_type || '';
-        switch (propertyType.toLowerCase()) {
-          case 'apartment': return '#8b5cf6'; // Purple
-          case 'condo': return '#06b6d4'; // Cyan
-          case 'house': return '#10b981'; // Emerald
-          case 'townhouse': return '#f59e0b'; // Amber
-          default: return '#6b7280'; // Gray
-        }
-      },
-      roomType: () => {
-        const roomType = property.room_type || '';
-        switch (roomType.toLowerCase()) {
-          case 'studio': return '#8b5cf6'; // Purple
-          case 'one_bed_room': return '#06b6d4'; // Cyan
-          case 'two_bed_room': return '#10b981'; // Emerald
-          case 'three_bed_room': return '#f59e0b'; // Amber
-          default: return '#6b7280'; // Gray
-        }
-      },
-      amenityScore: () => {
-        const score = calculateFacilityScore ? calculateFacilityScore(property) : 0;
-        if (score >= 80) return '#22c55e'; // Green - Excellent
-        if (score >= 60) return '#eab308'; // Yellow - Good
-        if (score >= 40) return '#f97316'; // Orange - Fair
-        return '#ef4444'; // Red - Poor
-      },
-      proximityScore: () => {
-        const score = property.proximityScore || 0;
-        if (score >= 80) return '#22c55e'; // Green - Excellent location
-        if (score >= 60) return '#eab308'; // Yellow - Good location
-        if (score >= 40) return '#f97316'; // Orange - Fair location
-        if (score >= 20) return '#ef4444'; // Red - Poor location
-        return '#6b7280'; // Gray - No data
-      },
-      size: () => {
-        const size = property.room_size_min || property.room_size_max || 0;
-        if (size <= 20) return '#22c55e'; // Green - Small
-        if (size <= 35) return '#eab308'; // Yellow - Medium
-        if (size <= 50) return '#f97316'; // Orange - Large
-        return '#ef4444'; // Red - Very large
-      }
-    };
-    
-    return colorScheme in schemes ? schemes[colorScheme]() : schemes.priceRange();
-  };
-
-  // Create apartment icon marker instead of circle marker
-  const createApartmentMarker = (property, isSelected, isHover = false) => {
-    const markerColor = getMarkerColor(property);
-    const size = isSelected || isHover ? 32 : 24;
-    const iconSize = isSelected || isHover ? 20 : 16;
-    
-    // Create custom HTML for apartment icon
-    const iconHtml = `
-      <div style="
-        width: ${size}px;
-        height: ${size}px;
-        background-color: ${markerColor};
-        border: ${isSelected ? '3px' : '2px'} solid #ffffff;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-        transition: all 0.2s ease;
-      ">
-        <span class="material-symbols-outlined" style="
-          font-size: ${iconSize}px;
-          color: white;
-          font-weight: 500;
-          line-height: 1;
-        ">apartment</span>
-      </div>
-    `;
-
-    return L.divIcon({
-      html: iconHtml,
-      iconSize: [size, size],
-      iconAnchor: [size/2, size/2],
-      popupAnchor: [0, -size/2],
-      className: 'custom-apartment-icon'
-    });
-  };
-
-  // Update popup content in real-time when proximity score changes
-  const updatePopupContent = (property) => {
-    if (pinnedMarkerRef.current && pinnedMarkerRef.current.isPopupOpen()) {
-      const newContent = generatePopupContent(property);
-      pinnedMarkerRef.current.setPopupContent(newContent);
+        if (price < 5000) return '#22c55e';      // Green - cheap
+        if (price < 10000) return '#84cc16';     // Light green
+        if (price < 20000) return '#eab308';     // Yellow
+        if (price < 30000) return '#f97316';     // Orange
+        return '#ef4444';                        // Red - expensive
+      
+      case 'amenityScore':
+        const amenityScore = calculateFacilityScore ? calculateFacilityScore(property) : 0;
+        if (amenityScore >= 80) return '#10b981'; // High
+        if (amenityScore >= 60) return '#f59e0b'; // Medium
+        if (amenityScore >= 40) return '#ef4444'; // Low
+        return '#6b7280'; // Very low
+      
+      case 'proximityScore':
+        const proximityScore = proximityScores[property.id] || 0;
+        if (proximityScore >= 80) return '#10b981'; // High
+        if (proximityScore >= 60) return '#f59e0b'; // Medium
+        if (proximityScore >= 40) return '#ef4444'; // Low
+        return '#6b7280'; // Very low
+      
+      default:
+        return '#3b82f6'; // Default blue
     }
   };
 
-  // Enhanced popup content generator for properties - updated for new structure
+  // Create marker style
+  const createSimpleMarker = (property, isSelected, isHovered) => {
+    const markerColor = getMarkerColor(property, colorScheme);
+    const size = isSelected ? 12 : (isHovered ? 10 : 8);
+
+    return {
+      radius: size,
+      fillColor: markerColor,
+      color: '#ffffff',
+      weight: isSelected ? 3 : 2,
+      opacity: 1,
+      fillOpacity: 0.9
+    };
+  };
+
+  // Score color helper
+  const getScoreColor = (score) => {
+    if (score >= 80) return '#10b981'; // green
+    if (score >= 60) return '#f59e0b'; // yellow
+    if (score >= 40) return '#ef4444'; // orange
+    return '#6b7280'; // gray
+  };
+
+  // Enhanced popup content generator with proximity score
   const generatePopupContent = (property) => {
     const amenityScore = calculateFacilityScore ? calculateFacilityScore(property) : 0;
+    const proximityScore = proximityScores[property.id] || null;
     
-    // Helper function to format price range
+    // Helper functions
     const formatPriceRange = () => {
       if (property.monthly_min_price && property.monthly_max_price && property.monthly_min_price !== property.monthly_max_price) {
         return `฿${property.monthly_min_price?.toLocaleString()} - ฿${property.monthly_max_price?.toLocaleString()}`;
@@ -326,7 +348,6 @@ const ApartmentMap = ({
       return 'ราคาไม่ระบุ';
     };
 
-    // Helper function to format size range
     const formatSizeRange = () => {
       if (property.room_size_min && property.room_size_max && property.room_size_min !== property.room_size_max) {
         return `${property.room_size_min} - ${property.room_size_max} ตร.ม.`;
@@ -336,7 +357,7 @@ const ApartmentMap = ({
       return 'ขนาดไม่ระบุ';
     };
 
-    // Amenity icons mapping
+    // Amenity icons
     const amenityIcons = {
       has_air: '❄️',
       has_furniture: '🛋️',
@@ -363,17 +384,9 @@ const ApartmentMap = ({
     if (property.has_cctv) amenities.push({ key: 'has_cctv', label: 'กล้องวงจรปิด', icon: amenityIcons.has_cctv });
     if (property.allow_pet) amenities.push({ key: 'allow_pet', label: 'อนุญาตสัตว์เลี้ยง', icon: amenityIcons.allow_pet });
 
-    // Amenity score color
-    const getScoreColor = (score) => {
-      if (score >= 80) return '#10b981'; // green
-      if (score >= 60) return '#f59e0b'; // yellow
-      if (score >= 40) return '#ef4444'; // orange
-      return '#6b7280'; // gray
-    };
-
     return `
       <div style="
-        max-width: 320px; 
+        max-width: 340px; 
         padding: 0; 
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         background: white;
@@ -394,161 +407,96 @@ const ApartmentMap = ({
             <h3 style="
               margin: 0 0 8px 0; 
               font-size: 18px; 
-              font-weight: 700; 
-              line-height: 1.3;
+              font-weight: 700;
               text-shadow: 0 1px 2px rgba(0,0,0,0.1);
-            ">${property.name || 'ไม่ระบุชื่อ'}</h3>
-            
-            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-              <div style="
-                background: rgba(255,255,255,0.2); 
-                backdrop-filter: blur(10px);
-                padding: 4px 10px; 
-                border-radius: 20px; 
-                font-size: 12px; 
-                font-weight: 600;
-                border: 1px solid rgba(255,255,255,0.3);
-              ">${property.property_type || 'ที่พัก'}</div>
-              
-              <div style="
-                background: rgba(255,255,255,0.2); 
-                backdrop-filter: blur(10px);
-                padding: 4px 10px; 
-                border-radius: 20px; 
-                font-size: 12px; 
-                font-weight: 600;
-                border: 1px solid rgba(255,255,255,0.3);
-              ">${property.room_type || 'ห้องพัก'}</div>
-              
-              <div style="
-                background: rgba(255,255,255,0.2); 
-                backdrop-filter: blur(10px);
-                padding: 4px 10px; 
-                border-radius: 20px; 
-                font-size: 12px; 
-                font-weight: 600;
-                border: 1px solid rgba(255,255,255,0.3);
-              ">${formatSizeRange()}</div>
+            ">${property.apartment_name || property.name || 'ไม่ระบุชื่อ'}</h3>
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+              <span style="font-size: 14px; opacity: 0.9;">📍</span>
+              <span style="font-size: 13px; opacity: 0.9;">${property.district || 'ไม่ระบุ'}, ${property.province || 'ไม่ระบุ'}</span>
             </div>
-
             <div style="
-              font-size: 20px; 
-              font-weight: 800; 
+              font-size: 16px; 
+              font-weight: 600; 
               color: #fff;
               text-shadow: 0 1px 2px rgba(0,0,0,0.1);
-            ">${formatPriceRange()}<span style="font-size: 14px; font-weight: 500;">/เดือน</span></div>
-            
-            ${property.daily_min_price && property.daily_min_price > 0 ? `
-              <div style="
-                font-size: 14px; 
-                font-weight: 600; 
-                color: #fff;
-                opacity: 0.9;
-                text-shadow: 0 1px 2px rgba(0,0,0,0.1);
-              ">฿${property.daily_min_price?.toLocaleString()}/วัน</div>
-            ` : ''}
+            ">${formatPriceRange()}/เดือน</div>
+            <div style="
+              font-size: 12px; 
+              opacity: 0.8;
+            ">${formatSizeRange()}</div>
           </div>
         </div>
 
         <!-- Content Section -->
         <div style="padding: 16px;">
-          <!-- Amenity Score -->
-          <div style="
-            background: linear-gradient(90deg, rgba(${getScoreColor(amenityScore).replace('#', '')}, 0.1) 0%, rgba(${getScoreColor(amenityScore).replace('#', '')}, 0.05) 100%);
-            border: 1px solid rgba(${getScoreColor(amenityScore).replace('#', '')}, 0.2);
-            border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 16px;
-            text-align: center;
-          ">
+          <!-- Scores Section -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+            <!-- Facility Score -->
             <div style="
-              font-size: 24px; 
-              font-weight: 800; 
-              color: ${getScoreColor(amenityScore)};
-              margin-bottom: 4px;
-            ">${amenityScore}%</div>
-            <div style="
-              font-size: 12px; 
-              color: #6b7280; 
-              font-weight: 500;
-            ">คะแนนสิ่งอำนวยความสะดวก</div>
-          </div>
-
-          <!-- Proximity Score (auto-calculated on click) -->
-          ${property.proximityScore !== undefined ? `
-            <div style="
-              background: linear-gradient(90deg, rgba(59, 130, 246, 0.1) 0%, rgba(59, 130, 246, 0.05) 100%);
-              border: 1px solid rgba(59, 130, 246, 0.2);
+              background: linear-gradient(90deg, rgba(${getScoreColor(amenityScore).slice(1)}, 0.1) 0%, rgba(${getScoreColor(amenityScore).slice(1)}, 0.05) 100%);
+              border: 1px solid rgba(${getScoreColor(amenityScore).slice(1)}, 0.2);
               border-radius: 8px;
               padding: 12px;
-              margin-bottom: 16px;
               text-align: center;
             ">
               <div style="
-                font-size: 24px; 
+                font-size: 20px; 
                 font-weight: 800; 
-                color: #3b82f6;
+                color: ${getScoreColor(amenityScore)};
                 margin-bottom: 4px;
-              ">${property.proximityScore}%</div>
-              <div style="
-                font-size: 12px; 
-                color: #6b7280; 
-                font-weight: 500;
-              ">คะแนนความใกล้สถานที่สำคัญ</div>
+              ">${amenityScore}%</div>
               <div style="
                 font-size: 10px; 
-                color: #9ca3af; 
-                margin-top: 4px;
-              ">รัศมี 1 กม. • ขนส่ง ร้านค้า โรงพยาบาล</div>
+                color: #6b7280; 
+                font-weight: 500;
+                line-height: 1.2;
+              ">สิ่งอำนวยความสะดวก</div>
             </div>
-          ` : `
-            <div style="
-              background: linear-gradient(90deg, rgba(107, 114, 128, 0.1) 0%, rgba(107, 114, 128, 0.05) 100%);
-              border: 1px solid rgba(107, 114, 128, 0.2);
-              border-radius: 8px;
-              padding: 12px;
-              margin-bottom: 16px;
-              text-align: center;
-            ">
+
+            <!-- Proximity Score -->
+            ${proximityScore !== null ? `
               <div style="
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                gap: 8px;
-                margin-bottom: 4px;
+                background: linear-gradient(90deg, rgba(${getScoreColor(proximityScore).slice(1)}, 0.1) 0%, rgba(${getScoreColor(proximityScore).slice(1)}, 0.05) 100%);
+                border: 1px solid rgba(${getScoreColor(proximityScore).slice(1)}, 0.2);
+                border-radius: 8px;
+                padding: 12px;
+                text-align: center;
               ">
                 <div style="
-                  width: 16px;
-                  height: 16px;
-                  border: 2px solid #6b7280;
-                  border-top: 2px solid #3b82f6;
-                  border-radius: 50%;
-                  animation: spin 1s linear infinite;
-                "></div>
+                  font-size: 20px; 
+                  font-weight: 800; 
+                  color: ${getScoreColor(proximityScore)};
+                  margin-bottom: 4px;
+                ">${proximityScore}%</div>
+                <div style="
+                  font-size: 10px; 
+                  color: #6b7280; 
+                  font-weight: 500;
+                  line-height: 1.2;
+                ">ความใกล้เคียงสถานที่</div>
+              </div>
+            ` : `
+              <div style="
+                background: #f8fafc;
+                border: 1px solid #e2e8f0;
+                border-radius: 8px;
+                padding: 12px;
+                text-align: center;
+              ">
                 <div style="
                   font-size: 16px; 
-                  font-weight: 600; 
-                  color: #6b7280;
+                  color: #94a3b8;
+                  margin-bottom: 4px;
+                ">⏳</div>
+                <div style="
+                  font-size: 10px; 
+                  color: #64748b; 
+                  font-weight: 500;
+                  line-height: 1.2;
                 ">กำลังคำนวณ...</div>
               </div>
-              <div style="
-                font-size: 12px; 
-                color: #6b7280; 
-                font-weight: 500;
-              ">คะแนนความใกล้สถานที่สำคัญ</div>
-              <div style="
-                font-size: 10px; 
-                color: #9ca3af; 
-                margin-top: 4px;
-              ">ใช้เวลา 3-5 วินาที</div>
-            </div>
-            <style>
-              @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
-              }
-            </style>
-          `}
+            `}
+          </div>
 
           <!-- Amenities Grid -->
           ${amenities.length > 0 ? `
@@ -576,7 +524,72 @@ const ApartmentMap = ({
             </div>
           ` : ''}
 
-          <!-- Contact & Additional Info -->
+          <!-- Nearby Places Buttons -->
+          <div style="
+            display: grid; 
+            grid-template-columns: repeat(2, 1fr); 
+            gap: 6px;
+            margin-bottom: 12px;
+          ">
+            <button onclick="window.apartmentMapInstance?.showNearbyPlaces('restaurant')" 
+                    style="
+                      background: #ef4444; 
+                      color: white; 
+                      border: none;
+                      padding: 8px 6px; 
+                      border-radius: 6px; 
+                      font-size: 11px; 
+                      font-weight: 600;
+                      cursor: pointer;
+                      transition: all 0.2s;
+                    ">
+              🍽️ ร้านอาหาร
+            </button>
+            <button onclick="window.apartmentMapInstance?.showNearbyPlaces('convenience')" 
+                    style="
+                      background: #10b981; 
+                      color: white; 
+                      border: none;
+                      padding: 8px 6px; 
+                      border-radius: 6px; 
+                      font-size: 11px; 
+                      font-weight: 600;
+                      cursor: pointer;
+                      transition: all 0.2s;
+                    ">
+              🏪 ร้านสะดวกซื้อ
+            </button>
+            <button onclick="window.apartmentMapInstance?.showNearbyPlaces('school')" 
+                    style="
+                      background: #8b5cf6; 
+                      color: white; 
+                      border: none;
+                      padding: 8px 6px; 
+                      border-radius: 6px; 
+                      font-size: 11px; 
+                      font-weight: 600;
+                      cursor: pointer;
+                      transition: all 0.2s;
+                    ">
+              🎓 สถานศึกษา
+            </button>
+            <button onclick="window.apartmentMapInstance?.showNearbyPlaces('health')" 
+                    style="
+                      background: #ec4899; 
+                      color: white; 
+                      border: none;
+                      padding: 8px 6px; 
+                      border-radius: 6px; 
+                      font-size: 11px; 
+                      font-weight: 600;
+                      cursor: pointer;
+                      transition: all 0.2s;
+                    ">
+              🏥 สถานพยาบาล
+            </button>
+          </div>
+
+          <!-- Additional Info -->
           ${property.contact_line_id ? `
             <div style="
               background: #f8fafc; 
@@ -593,110 +606,29 @@ const ApartmentMap = ({
           
           ${property.rooms_available && property.rooms_available > 0 ? `
             <div style="
-              background: #f0f9ff; 
+              background: #dcfce7; 
               padding: 8px 10px; 
               border-radius: 6px; 
-              margin-bottom: 8px; 
-              border-left: 3px solid #10b981;
+              border-left: 3px solid #22c55e;
               font-size: 12px;
             ">
-              <span style="color: #64748b;">สถานะ: </span>
-              <span style="color: #059669; font-weight: 600;">ว่าง</span>
+              <span style="color: #15803d; font-weight: 500;">✓ ห้องว่าง: ${property.rooms_available} ห้อง</span>
             </div>
           ` : ''}
 
-          <!-- Action Buttons -->
-          <div style="
-            display: grid; 
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            margin-bottom: 12px;
-          ">
-            <button onclick="window.apartmentMapInstance?.showNearbyPlaces('restaurant')" 
-                    style="
-                      background: #3b82f6; 
-                      color: white; 
-                      border: none;
-                      padding: 10px 8px; 
-                      border-radius: 8px; 
-                      font-size: 12px; 
-                      font-weight: 600;
-                      cursor: pointer;
-                      transition: all 0.2s;
-                    ">
-              🍽️ ร้านอาหาร
-            </button>
-            <button onclick="window.apartmentMapInstance?.showNearbyPlaces('convenience')" 
-                    style="
-                      background: #10b981; 
-                      color: white; 
-                      border: none;
-                      padding: 10px 8px; 
-                      border-radius: 8px; 
-                      font-size: 12px; 
-                      font-weight: 600;
-                      cursor: pointer;
-                      transition: all 0.2s;
-                    ">
-              🏪 ร้านสะดวกซื้อ
-            </button>
-            <button onclick="window.apartmentMapInstance?.showNearbyPlaces('school')" 
-                    style="
-                      background: #8b5cf6; 
-                      color: white; 
-                      border: none;
-                      padding: 10px 8px; 
-                      border-radius: 8px; 
-                      font-size: 12px; 
-                      font-weight: 600;
-                      cursor: pointer;
-                      transition: all 0.2s;
-                    ">
-              🎓 สถานศึกษา
-            </button>
-            <button onclick="window.apartmentMapInstance?.showNearbyPlaces('health')" 
-                    style="
-                      background: #ec4899; 
-                      color: white; 
-                      border: none;
-                      padding: 10px 8px; 
-                      border-radius: 8px; 
-                      font-size: 12px; 
-                      font-weight: 600;
-                      cursor: pointer;
-                      transition: all 0.2s;
-                    ">
-              🏥 สถานพยาบาล
-            </button>
-            <button onclick="window.apartmentMapInstance?.showNearbyPlaces('transport')" 
-                    style="
-                      background: #f59e0b; 
-                      color: white; 
-                      border: none;
-                      padding: 10px 8px; 
-                      border-radius: 8px; 
-                      font-size: 12px; 
-                      font-weight: 600;
-                      cursor: pointer;
-                      transition: all 0.2s;
-                      grid-column: span 2;
-                    ">
-              🚌 ขนส่งสาธารณะ
-            </button>
-          </div>
-
-          <!-- Clear button -->
+          <!-- Clear nearby button -->
           <button onclick="window.apartmentMapInstance?.clearNearbyPlaces()" 
                   style="
                     background: #6b7280; 
                     color: white; 
                     border: none;
-                    padding: 8px 12px; 
-                    border-radius: 8px; 
+                    padding: 6px 10px; 
+                    border-radius: 6px; 
                     font-size: 11px; 
                     font-weight: 500;
                     cursor: pointer;
                     width: 100%;
+                    margin-top: 8px;
                     transition: all 0.2s;
                   ">
               ✕ ล้างสถานที่ใกล้เคียง
@@ -725,7 +657,7 @@ const ApartmentMap = ({
     `;
   };
 
-  // Show nearby places function (same as before)
+  // Show nearby places function
   const showNearbyPlaces = async (category = 'restaurant') => {
     if (!mapRef.current) return;
 
@@ -738,20 +670,14 @@ const ApartmentMap = ({
       if (pinnedMarkerRef.current && pinnedMarkerRef.current.propertyData) {
         const property = pinnedMarkerRef.current.propertyData;
         searchCenter = { lat: property.latitude, lng: property.longitude };
-        console.log('Using pinned property coordinates:', searchCenter);
       } else if (selectedApartment && selectedApartment.latitude && selectedApartment.longitude) {
         searchCenter = { lat: selectedApartment.latitude, lng: selectedApartment.longitude };
-        console.log('Using selected property coordinates:', searchCenter);
       } else {
         const center = mapRef.current.getCenter();
         searchCenter = { lat: center.lat, lng: center.lng };
-        console.warn('Using map center coordinates:', searchCenter);
       }
 
       const radius = 1000;
-      console.log(`Searching for ${category} within ${radius}m of:`, searchCenter);
-
-      // Category-specific queries (same as before)
       const buildQuery = (category, lat, lng, radius) => {
         switch(category) {
           case 'restaurant':
@@ -863,113 +789,19 @@ const ApartmentMap = ({
               fillOpacity: place.type === 'way' ? 0.8 : 0.7
             });
 
-            const detailedType = getDetailedPlaceType(place, category);
-            const name = place.tags?.name || place.tags?.brand || detailedType;
+            const placeName = place.tags?.name || place.tags?.brand || 'ไม่ระบุชื่อ';
+            const placeType = getDetailedPlaceType(place, category);
             
             marker.bindPopup(`
-              <div style="
-                max-width: 280px; 
-                padding: 0; 
-                font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                background: white;
-                border-radius: 10px;
-                overflow: hidden;
-                box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-              ">
-                <div style="
-                  background: linear-gradient(135deg, ${style.color} 0%, ${style.color}dd 100%);
-                  padding: 12px 16px;
-                  color: white;
-                  position: relative;
-                  overflow: hidden;
-                ">
-                  <div style="position: absolute; top: -30%; right: -30%; width: 60px; height: 60px; background: rgba(255,255,255,0.1); border-radius: 50%;"></div>
-                  <div style="position: relative; z-index: 1;">
-                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
-                      <span style="font-size: 20px;">${style.icon}</span>
-                      <h3 style="
-                        margin: 0; 
-                        font-size: 16px; 
-                        font-weight: 700; 
-                        line-height: 1.3;
-                        text-shadow: 0 1px 2px rgba(0,0,0,0.1);
-                      ">${name}</h3>
-                    </div>
-                    <div style="
-                      background: rgba(255,255,255,0.2); 
-                      backdrop-filter: blur(10px);
-                      padding: 3px 8px; 
-                      border-radius: 12px; 
-                      font-size: 11px; 
-                      font-weight: 600;
-                      border: 1px solid rgba(255,255,255,0.3);
-                      display: inline-block;
-                    ">${detailedType}</div>
-                  </div>
-                </div>
-
-                <div style="padding: 12px 16px;">
-                  ${place.tags?.cuisine ? `
-                    <div style="
-                      background: #f8fafc; 
-                      padding: 6px 10px; 
-                      border-radius: 6px; 
-                      margin-bottom: 8px; 
-                      border-left: 3px solid ${style.color};
-                      font-size: 12px;
-                    ">
-                      <span style="color: #64748b;">ประเภทอาหาร: </span>
-                      <span style="color: #334155; font-weight: 500;">${place.tags.cuisine}</span>
-                    </div>
-                  ` : ''}
-                  
-                  ${place.tags?.opening_hours ? `
-                    <div style="
-                      background: #f8fafc; 
-                      padding: 6px 10px; 
-                      border-radius: 6px; 
-                      margin-bottom: 8px; 
-                      border-left: 3px solid ${style.color};
-                      font-size: 12px;
-                    ">
-                      <span style="color: #64748b;">เวลาเปิด: </span>
-                      <span style="color: #334155; font-weight: 500;">${place.tags.opening_hours}</span>
-                    </div>
-                  ` : ''}
-                  
-                  ${place.tags?.phone ? `
-                    <div style="
-                      background: #f8fafc; 
-                      padding: 6px 10px; 
-                      border-radius: 6px; 
-                      margin-bottom: 8px; 
-                      border-left: 3px solid ${style.color};
-                      font-size: 12px;
-                    ">
-                      <span style="color: #64748b;">📞 </span>
-                      <span style="color: #334155; font-weight: 500;">${place.tags.phone}</span>
-                    </div>
-                  ` : ''}
-
-                  <div style="
-                    background: linear-gradient(90deg, rgba(${style.color.replace('#', '')}, 0.1) 0%, rgba(${style.color.replace('#', '')}, 0.05) 100%);
-                    border: 1px solid rgba(${style.color.replace('#', '')}, 0.2);
-                    border-radius: 6px;
-                    padding: 8px 10px;
-                    text-align: center;
-                    font-size: 11px;
-                    color: #6b7280;
-                    margin-top: 8px;
-                  ">
-                    📍 สถานที่ใกล้เคียง
-                  </div>
-                </div>
+              <div style="font-family: 'Inter', sans-serif; max-width: 200px;">
+                <h4 style="margin: 0 0 8px 0; color: #374151; font-size: 14px; font-weight: 600;">
+                  ${style.icon} ${placeName}
+                </h4>
+                <p style="margin: 0; color: #6b7280; font-size: 12px;">
+                  ${placeType}
+                </p>
               </div>
-            `, {
-              className: 'poi-popup',
-              maxWidth: 300,
-              offset: [0, -10]
-            });
+            `);
 
             marker.on('mouseover', function() {
               this.setStyle({
@@ -1103,57 +935,24 @@ const ApartmentMap = ({
     return categoryNames[category] || category;
   };
 
-  // Effect to update popup when apartment data changes (for real-time updates)
+  // Update apartment markers when data or filters change
   useEffect(() => {
-    // Don't update markers if we have a pinned marker with an open popup
-    if (preservePinnedMarker.current && pinnedMarkerRef.current) {
-      console.log('PRESERVING POPUP: Skipping marker update - popup is open, preserving pinned marker');
-      
-      // Just update the marker styles for the selected apartment
-      if (selectedApartment) {
-        const property = apartmentData.find(prop => prop.id === selectedApartment.id);
-        if (property) {
-          const isSelected = property.id === selectedApartment.id;
-          const isHovered = pinnedMarkerRef.current.isHovered || false;
-          const updatedIcon = createApartmentMarker(property, isSelected, isHovered);
-          pinnedMarkerRef.current.setIcon(updatedIcon);
-          
-          // Update property data if proximity score changed
-          if (property.proximityScore !== pinnedMarkerRef.current.propertyData.proximityScore) {
-            console.log('REAL-TIME UPDATE: Updating popup with new proximity score:', property.proximityScore);
-            pinnedMarkerRef.current.propertyData = property;
-            
-            // Update popup content
-            const newContent = generatePopupContent(property);
-            pinnedMarkerRef.current.setPopupContent(newContent);
-            console.log('SUCCESS: Popup content updated in real-time!');
-          }
-        }
-      }
-      return; // Skip the normal marker update process
-    }
-    
-    // Continue with normal marker updates only if no popup is open
     if (!mapRef.current || !apartmentData || !markerClusterRef.current) return;
 
-    console.log('Updating clustered markers, selectedApartment:', selectedApartment?.name);
+    if (pinnedMarkerRef.current) {
+      return;
+    }
 
-    // Clear all existing markers to prevent duplicates
     markerClusterRef.current.clearLayers();
-    markersRef.current.forEach(marker => {
-      if (mapRef.current.hasLayer(marker)) {
-        mapRef.current.removeLayer(marker);
-      }
-    });
     markersRef.current = [];
 
     apartmentData.forEach(property => {
       if (!property.latitude || !property.longitude) return;
 
       const isSelected = selectedApartment && selectedApartment.id === property.id;
-      const markerIcon = createApartmentMarker(property, isSelected, false);
+      const markerOptions = createSimpleMarker(property, isSelected, false);
       
-      const marker = L.marker([property.latitude, property.longitude], { icon: markerIcon });
+      const marker = L.circleMarker([property.latitude, property.longitude], markerOptions);
 
       marker.propertyData = property;
       marker.isHovered = false;
@@ -1175,98 +974,59 @@ const ApartmentMap = ({
       marker.bindPopup(generatePopupContent(property), popupOptions);
 
       marker.on('click', (e) => {
-        console.log('Marker clicked!', property.name);
-        
-        L.DomEvent.stopPropagation(e);
-        
-        // Set switching flag to prevent popup close cleanup
-        isMarkerSwitching.current = true;
-        
-        // Immediately clean up any existing pinned marker
-        if (pinnedMarkerRef.current && pinnedMarkerRef.current !== marker) {
-          console.log('Switching to new marker - cleaning up previous');
-          
-          // Force close any existing popup without triggering cleanup
-          mapRef.current.closePopup();
-          
-          // Remove from map and add back to cluster
-          if (mapRef.current.hasLayer(pinnedMarkerRef.current)) {
-            mapRef.current.removeLayer(pinnedMarkerRef.current);
-            markerClusterRef.current.addLayer(pinnedMarkerRef.current);
-          }
-        }
-        
-        // Remove marker from cluster and add to map
-        markerClusterRef.current.removeLayer(marker);
-        marker.addTo(mapRef.current);
-        
-        // Set as pinned marker immediately
-        pinnedMarkerRef.current = marker;
-        pinnedMarkerRef.current.propertyData = property;
-        hasZoomedToMarker.current = true;
-        
-        // Set preservation flag immediately
-        preservePinnedMarker.current = true;
-        console.log('PINNED: New marker pinned for:', property.name);
-        
-        // Open popup immediately
-        const popupContent = generatePopupContent(property);
-        marker.bindPopup(popupContent, popupOptions);
-        marker.openPopup();
-        
-        console.log('Opening popup for:', property.name);
-        
-        // Clear switching flag after popup is open
-        setTimeout(() => {
-          isMarkerSwitching.current = false;
-          console.log('Marker switching completed');
-        }, 50);
-        
-        // Trigger property selection and auto-calculate proximity
         if (onApartmentSelect) {
           onApartmentSelect(property);
         }
         
-        // Pan to marker
-        setTimeout(() => {
-          mapRef.current.panTo([property.latitude, property.longitude]);
-        }, 100);
+        if (pinnedMarkerRef.current) {
+          mapRef.current.removeLayer(pinnedMarkerRef.current);
+        }
+        
+        const pinnedMarkerOptions = createSimpleMarker(property, true, false);
+        const pinnedMarker = L.circleMarker([property.latitude, property.longitude], pinnedMarkerOptions);
+        pinnedMarker.propertyData = property;
+        pinnedMarker.bindPopup(generatePopupContent(property), popupOptions);
+        pinnedMarker.addTo(mapRef.current);
+        pinnedMarker.openPopup();
+        
+        pinnedMarkerRef.current = pinnedMarker;
+        
+        if (!hasZoomedToMarker.current) {
+          mapRef.current.setView([property.latitude, property.longitude], 15, {
+            animate: true,
+            duration: 1
+          });
+          hasZoomedToMarker.current = true;
+        }
       });
 
-      if (!isMobile) {
-        marker.on('mouseover', () => {
-          marker.isHovered = true;
-          const hoverIcon = createApartmentMarker(property, isSelected, true);
-          marker.setIcon(hoverIcon);
-        });
+      marker.on('mouseover', (e) => {
+        marker.isHovered = true;
+        const hoveredOptions = createSimpleMarker(property, isSelected, true);
+        marker.setStyle(hoveredOptions);
+      });
 
-        marker.on('mouseout', () => {
-          marker.isHovered = false;
-          const normalIcon = createApartmentMarker(property, isSelected, false);
-          marker.setIcon(normalIcon);
-        });
-      }
+      marker.on('mouseout', (e) => {
+        marker.isHovered = false;
+        const normalOptions = createSimpleMarker(property, isSelected, false);
+        marker.setStyle(normalOptions);
+      });
 
-      markerClusterRef.current.addLayer(marker);
       markersRef.current.push(marker);
+      markerClusterRef.current.addLayer(marker);
     });
 
-    if (isInitialLoad.current && !selectedApartment && !hasZoomedToMarker.current && markersRef.current.length > 0) {
-      console.log('Fitting bounds to clustered markers (initial load)');
-      const group = new L.featureGroup(markersRef.current);
-      mapRef.current.fitBounds(group.getBounds().pad(0.1));
+    if (isInitialLoad.current && apartmentData.length > 0 && !selectedApartment) {
+      const bounds = L.latLngBounds(apartmentData.map(item => [item.latitude, item.longitude]));
+      mapRef.current.fitBounds(bounds, { padding: [20, 20] });
       isInitialLoad.current = false;
-    } else {
-      console.log('Skipping fitBounds - selectedApartment:', !!selectedApartment, 'hasZoomedToMarker:', hasZoomedToMarker.current);
     }
 
-  }, [apartmentData, colorScheme, isMobile]);
+  }, [apartmentData, colorScheme, isMobile, proximityScores]);
 
   // Update marker styles when selection changes
   useEffect(() => {
     if (!mapRef.current || !selectedApartment) return;
-
-    console.log('Updating marker styles for selected property:', selectedApartment.name);
 
     setTimeout(() => {
       if (pinnedMarkerRef.current && pinnedMarkerRef.current.propertyData) {
@@ -1287,8 +1047,8 @@ const ApartmentMap = ({
         if (property) {
           const isSelected = property.id === selectedApartment.id;
           const isHovered = marker.isHovered || false;
-          const updatedIcon = createApartmentMarker(property, isSelected, isHovered);
-          marker.setIcon(updatedIcon);
+          const updatedOptions = createSimpleMarker(property, isSelected, isHovered);
+          marker.setStyle(updatedOptions);
         }
       });
     }, 100);
@@ -1298,10 +1058,9 @@ const ApartmentMap = ({
   // Reset zoom flag when filters change
   useEffect(() => {
     hasZoomedToMarker.current = false;
-    console.log('Reset zoom flag due to filter/data change');
   }, [apartmentData, colorScheme]);
 
-  // Dynamic height calculation based on viewport
+  // Dynamic height calculation
   const getMapHeight = () => {
     if (isMobile) {
       return "60vh";
@@ -1312,6 +1071,18 @@ const ApartmentMap = ({
 
   return (
     <div className="relative">
+      {/* Loading indicator for proximity scores */}
+      {loadingProximityScores && (
+        <div className="absolute top-4 right-4 z-[1000] bg-white rounded-lg shadow-lg p-3 border">
+          <div className="flex items-center space-x-2">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+            <span className="text-sm text-gray-600">
+              คำนวณคะแนนความใกล้เคียง... ({proximityProgress}%)
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Loading indicator for nearby places */}
       {loadingNearby && (
         <div className="absolute top-4 left-4 z-[1000] bg-white rounded-lg shadow-lg p-3 border">
