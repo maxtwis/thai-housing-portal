@@ -15,7 +15,37 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
-// Proximity Score Calculation Functions
+// On-demand proximity scoring (only when apartment is clicked)
+const calculateOnDemandProximityScore = async (property, callback) => {
+  if (!property.latitude || !property.longitude) {
+    callback(0);
+    return;
+  }
+
+  const categories = ['restaurant', 'convenience', 'school', 'health', 'transport'];
+  let totalScore = 0;
+  let categoryCount = 0;
+
+  for (const category of categories) {
+    try {
+      const nearbyCount = await fetchNearbyCount(category, property.latitude, property.longitude, 1000);
+      const categoryScore = calculateCategoryScore(nearbyCount, category);
+      totalScore += categoryScore;
+      categoryCount++;
+      
+      // Add delay to respect API limits
+      await new Promise(resolve => setTimeout(resolve, 500));
+    } catch (error) {
+      console.error(`Error fetching ${category} data:`, error);
+      // Continue with other categories even if one fails
+    }
+  }
+
+  const finalScore = categoryCount > 0 ? Math.round(totalScore / categoryCount) : 0;
+  callback(finalScore);
+};
+
+// Fetch nearby count for a specific category
 const fetchNearbyCount = async (category, lat, lng, radius = 1000) => {
   const query = buildOverpassQuery(category, lat, lng, radius);
   
@@ -29,6 +59,25 @@ const fetchNearbyCount = async (category, lat, lng, radius = 1000) => {
     });
 
     if (!response.ok) {
+      if (response.status === 429) {
+        // Rate limited - wait and retry once
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        const retryResponse = await fetch('https://overpass-api.de/api/interpreter', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: query,
+        });
+        
+        if (!retryResponse.ok) {
+          throw new Error(`Overpass API error: ${retryResponse.status}`);
+        }
+        
+        const retryData = await retryResponse.json();
+        return retryData.elements ? retryData.elements.length : 0;
+      }
+      
       throw new Error(`Overpass API error: ${response.status}`);
     }
 
@@ -41,7 +90,7 @@ const fetchNearbyCount = async (category, lat, lng, radius = 1000) => {
 };
 
 const buildOverpassQuery = (category, lat, lng, radius) => {
-  const timeout = 15;
+  const timeout = 10; // Reduced timeout
   switch(category) {
     case 'restaurant':
       return `[out:json][timeout:${timeout}];(node["amenity"~"^(restaurant|cafe|fast_food)$"](around:${radius},${lat},${lng});way["amenity"~"^(restaurant|cafe|fast_food)$"](around:${radius},${lat},${lng}););out count;`;
@@ -76,90 +125,6 @@ const calculateCategoryScore = (count, category) => {
   return 0;
 };
 
-const calculateProximityScore = async (property, radius = 1000) => {
-  if (!property.latitude || !property.longitude) return 0;
-
-  const categories = ['restaurant', 'convenience', 'school', 'health', 'transport'];
-  let totalScore = 0;
-  let categoryCount = 0;
-
-  for (const category of categories) {
-    try {
-      const nearbyCount = await fetchNearbyCount(category, property.latitude, property.longitude, radius);
-      const categoryScore = calculateCategoryScore(nearbyCount, category);
-      totalScore += categoryScore;
-      categoryCount++;
-      // Add small delay to avoid overwhelming the API
-      await new Promise(resolve => setTimeout(resolve, 100));
-    } catch (error) {
-      console.error(`Error fetching ${category} data:`, error);
-    }
-  }
-
-  return categoryCount > 0 ? Math.round(totalScore / categoryCount) : 0;
-};
-
-// Proximity Score Manager for batched processing
-class ProximityScoreManager {
-  constructor(maxConcurrent = 3, delayBetweenRequests = 200) {
-    this.queue = [];
-    this.processing = new Set();
-    this.maxConcurrent = maxConcurrent;
-    this.delay = delayBetweenRequests;
-    this.cache = new Map();
-  }
-
-  async calculateScore(property, callback) {
-    const cacheKey = `${property.latitude}_${property.longitude}`;
-    
-    // Check cache first (1 hour cache)
-    if (this.cache.has(cacheKey)) {
-      const cached = this.cache.get(cacheKey);
-      if (Date.now() - cached.timestamp < 60 * 60 * 1000) {
-        callback(property.id, cached.score);
-        return;
-      }
-    }
-
-    // Add to queue
-    this.queue.push({ property, callback });
-    this.processQueue();
-  }
-
-  async processQueue() {
-    if (this.processing.size >= this.maxConcurrent || this.queue.length === 0) {
-      return;
-    }
-
-    const { property, callback } = this.queue.shift();
-    const requestId = `${property.id}_${Date.now()}`;
-    this.processing.add(requestId);
-
-    try {
-      const score = await calculateProximityScore(property);
-      const cacheKey = `${property.latitude}_${property.longitude}`;
-      
-      // Cache the result
-      this.cache.set(cacheKey, {
-        score,
-        timestamp: Date.now()
-      });
-
-      callback(property.id, score);
-    } catch (error) {
-      console.error(`Error calculating proximity score for ${property.id}:`, error);
-      callback(property.id, 0);
-    } finally {
-      this.processing.delete(requestId);
-      
-      // Process next item after delay
-      setTimeout(() => {
-        this.processQueue();
-      }, this.delay);
-    }
-  }
-}
-
 const ApartmentMap = ({ 
   apartmentData, 
   colorScheme = 'priceRange', 
@@ -176,57 +141,12 @@ const ApartmentMap = ({
   const nearbyLayersRef = useRef({});
   const isInitialLoad = useRef(true);
   const hasZoomedToMarker = useRef(false);
-  const proximityManagerRef = useRef(null);
+  const currentPopupMarker = useRef(null);
   
   const [loadingNearby, setLoadingNearby] = useState(false);
   const [nearbyNotification, setNearbyNotification] = useState(null);
   const [proximityScores, setProximityScores] = useState({});
-  const [loadingProximityScores, setLoadingProximityScores] = useState(false);
-  const [proximityProgress, setProximityProgress] = useState(0);
-
-  // Initialize proximity score manager
-  useEffect(() => {
-    if (!proximityManagerRef.current) {
-      proximityManagerRef.current = new ProximityScoreManager(2, 300); // Conservative settings
-    }
-  }, []);
-
-  // Calculate proximity scores when apartment data loads
-  useEffect(() => {
-    const loadProximityScores = async () => {
-      if (!apartmentData || apartmentData.length === 0 || !proximityManagerRef.current) return;
-      
-      setLoadingProximityScores(true);
-      setProximityProgress(0);
-      const newScores = {};
-      let completed = 0;
-
-      const updateScore = (propertyId, score) => {
-        newScores[propertyId] = score;
-        completed++;
-        const progress = Math.round((completed / Math.min(apartmentData.length, 20)) * 100); // Limit to first 20 for demo
-        setProximityProgress(progress);
-        setProximityScores({...newScores});
-
-        if (completed >= Math.min(apartmentData.length, 20)) {
-          setLoadingProximityScores(false);
-        }
-      };
-
-      // Calculate for subset to avoid API limits
-      const dataToProcess = apartmentData.slice(0, 20); // Process first 20 properties
-      
-      dataToProcess.forEach(property => {
-        if (property.latitude && property.longitude) {
-          proximityManagerRef.current.calculateScore(property, updateScore);
-        } else {
-          updateScore(property.id, 0);
-        }
-      });
-    };
-
-    loadProximityScores();
-  }, [apartmentData]);
+  const [calculatingProximity, setCalculatingProximity] = useState(null); // Track which property is being calculated
 
   // Initialize map
   useEffect(() => {
@@ -303,7 +223,7 @@ const ApartmentMap = ({
         if (proximityScore >= 80) return '#10b981'; // High
         if (proximityScore >= 60) return '#f59e0b'; // Medium
         if (proximityScore >= 40) return '#ef4444'; // Low
-        return '#6b7280'; // Very low
+        return '#6b7280'; // Very low or not calculated
       
       default:
         return '#3b82f6'; // Default blue
@@ -333,10 +253,41 @@ const ApartmentMap = ({
     return '#6b7280'; // gray
   };
 
-  // Enhanced popup content generator with proximity score
+  // Calculate proximity score on-demand when apartment is clicked
+  const calculateProximityForProperty = async (property) => {
+    if (proximityScores[property.id]) {
+      // Already calculated
+      return;
+    }
+
+    setCalculatingProximity(property.id);
+    
+    try {
+      await calculateOnDemandProximityScore(property, (score) => {
+        setProximityScores(prev => ({
+          ...prev,
+          [property.id]: score
+        }));
+        
+        // Update the popup if it's currently open for this property
+        if (currentPopupMarker.current && currentPopupMarker.current.propertyData.id === property.id) {
+          const newPopupContent = generatePopupContent(currentPopupMarker.current.propertyData);
+          currentPopupMarker.current.setPopupContent(newPopupContent);
+        }
+        
+        setCalculatingProximity(null);
+      });
+    } catch (error) {
+      console.error('Error calculating proximity score:', error);
+      setCalculatingProximity(null);
+    }
+  };
+
+  // Enhanced popup content generator with dynamic proximity score
   const generatePopupContent = (property) => {
     const amenityScore = calculateFacilityScore ? calculateFacilityScore(property) : 0;
     const proximityScore = proximityScores[property.id] || null;
+    const isCalculating = calculatingProximity === property.id;
     
     // Helper functions
     const formatPriceRange = () => {
@@ -487,13 +438,13 @@ const ApartmentMap = ({
                   font-size: 16px; 
                   color: #94a3b8;
                   margin-bottom: 4px;
-                ">⏳</div>
+                ">${isCalculating ? '⏳' : '📍'}</div>
                 <div style="
                   font-size: 10px; 
                   color: #64748b; 
                   font-weight: 500;
                   line-height: 1.2;
-                ">กำลังคำนวณ...</div>
+                ">${isCalculating ? 'กำลังคำนวณ...' : 'คลิกเพื่อคำนวณ'}</div>
               </div>
             `}
           </div>
@@ -744,6 +695,9 @@ const ApartmentMap = ({
       });
 
       if (!response.ok) {
+        if (response.status === 429) {
+          throw new Error('Too many requests. Please wait a moment and try again.');
+        }
         throw new Error(`Overpass API error: ${response.status}`);
       }
 
@@ -978,6 +932,14 @@ const ApartmentMap = ({
           onApartmentSelect(property);
         }
         
+        // Store reference to current popup marker
+        currentPopupMarker.current = marker;
+        
+        // Start calculating proximity score if not already calculated
+        if (!proximityScores[property.id] && calculatingProximity !== property.id) {
+          calculateProximityForProperty(property);
+        }
+        
         if (pinnedMarkerRef.current) {
           mapRef.current.removeLayer(pinnedMarkerRef.current);
         }
@@ -990,6 +952,7 @@ const ApartmentMap = ({
         pinnedMarker.openPopup();
         
         pinnedMarkerRef.current = pinnedMarker;
+        currentPopupMarker.current = pinnedMarker;
         
         if (!hasZoomedToMarker.current) {
           mapRef.current.setView([property.latitude, property.longitude], 15, {
@@ -1071,13 +1034,13 @@ const ApartmentMap = ({
 
   return (
     <div className="relative">
-      {/* Loading indicator for proximity scores */}
-      {loadingProximityScores && (
+      {/* Loading indicator for proximity calculation */}
+      {calculatingProximity && (
         <div className="absolute top-4 right-4 z-[1000] bg-white rounded-lg shadow-lg p-3 border">
           <div className="flex items-center space-x-2">
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
             <span className="text-sm text-gray-600">
-              คำนวณคะแนนความใกล้เคียง... ({proximityProgress}%)
+              กำลังคำนวณคะแนนความใกล้เคียง...
             </span>
           </div>
         </div>

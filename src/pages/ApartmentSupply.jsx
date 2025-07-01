@@ -81,7 +81,7 @@ const ApartmentSupply = () => {
     return totalAmenities > 0 ? Math.round((availableAmenities / totalAmenities) * 100) : 0;
   };
 
-  // Filter properties with proximity scores
+  // Filter properties with proximity scores (updated for on-demand approach)
   const getFilteredData = (proximityScores = {}) => {
     if (!apartmentData || !Array.isArray(apartmentData)) return [];
 
@@ -129,15 +129,19 @@ const ApartmentSupply = () => {
         }
       }
 
-      // NEW: Proximity score filter
+      // Proximity score filter (only filter if score exists)
       if (filters.proximityScore !== 'all') {
-        const proximityScore = proximityScores[property.id] || 0;
-        const [minScore, maxScore] = filters.proximityScore.split('-').map(Number);
-        if (maxScore) {
-          if (proximityScore < minScore || proximityScore > maxScore) return false;
-        } else {
-          if (proximityScore < minScore) return false;
+        const proximityScore = proximityScores[property.id];
+        // Only apply filter if the property has a calculated proximity score
+        if (proximityScore !== undefined) {
+          const [minScore, maxScore] = filters.proximityScore.split('-').map(Number);
+          if (maxScore) {
+            if (proximityScore < minScore || proximityScore > maxScore) return false;
+          } else {
+            if (proximityScore < minScore) return false;
+          }
         }
+        // If no proximity score calculated yet, include the property (don't filter out)
       }
 
       // Required amenities filter
@@ -576,7 +580,7 @@ const ApartmentSupply = () => {
                   </select>
                 </div>
 
-                {/* NEW: Proximity Score Filter */}
+                {/* Proximity Score Filter */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700">คะแนนความใกล้เคียงสถานที่ (%)</label>
                   <select 
@@ -592,7 +596,7 @@ const ApartmentSupply = () => {
                     <option value="0-19">ไกลมาก (0-19%)</option>
                   </select>
                   <div className="mt-1 text-xs text-gray-500">
-                    อิงจากความใกล้เคียงกับร้านอาหาร ร้านสะดวกซื้อ โรงเรียน โรงพยาบาล และขนส่งสาธารณะ
+                    คลิกที่อพาร์ตเมนต์เพื่อคำนวณคะแนนความใกล้เคียงกับร้านอาหาร ร้านสะดวกซื้อ โรงเรียน โรงพยาบาล และขนส่งสาธารณะ
                   </div>
                 </div>
 
