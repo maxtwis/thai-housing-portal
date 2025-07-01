@@ -15,36 +15,6 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
-// On-demand proximity scoring (only when apartment is clicked)
-const calculateOnDemandProximityScore = async (property, callback) => {
-  if (!property.latitude || !property.longitude) {
-    callback(0);
-    return;
-  }
-
-  const categories = ['restaurant', 'convenience', 'school', 'health', 'transport'];
-  let totalScore = 0;
-  let categoryCount = 0;
-
-  for (const category of categories) {
-    try {
-      const nearbyCount = await fetchNearbyCount(category, property.latitude, property.longitude, 1000);
-      const categoryScore = calculateCategoryScore(nearbyCount, category);
-      totalScore += categoryScore;
-      categoryCount++;
-      
-      // Add delay to respect API limits
-      await new Promise(resolve => setTimeout(resolve, 500));
-    } catch (error) {
-      console.error(`Error fetching ${category} data:`, error);
-      // Continue with other categories even if one fails
-    }
-  }
-
-  const finalScore = categoryCount > 0 ? Math.round(totalScore / categoryCount) : 0;
-  callback(finalScore);
-};
-
 // Fetch nearby count for a specific category
 const fetchNearbyCount = async (category, lat, lng, radius = 1000) => {
   const query = buildOverpassQuery(category, lat, lng, radius);
@@ -147,6 +117,74 @@ const ApartmentMap = ({
   const [nearbyNotification, setNearbyNotification] = useState(null);
   const [proximityScores, setProximityScores] = useState({});
   const [calculatingProximity, setCalculatingProximity] = useState(null); // Track which property is being calculated
+
+  // Calculate proximity score on-demand when apartment is clicked
+  const calculateProximityForProperty = async (property) => {
+    if (proximityScores[property.id]) {
+      // Already calculated
+      return;
+    }
+
+    setCalculatingProximity(property.id);
+    
+    try {
+      console.log(`Starting proximity calculation for ${property.apartment_name || property.name}`);
+      
+      const categories = ['restaurant', 'convenience', 'school', 'health', 'transport'];
+      let totalScore = 0;
+      let categoryCount = 0;
+
+      for (const category of categories) {
+        try {
+          console.log(`Fetching ${category} data...`);
+          const nearbyCount = await fetchNearbyCount(category, property.latitude, property.longitude, 1000);
+          const categoryScore = calculateCategoryScore(nearbyCount, category);
+          totalScore += categoryScore;
+          categoryCount++;
+          console.log(`${category}: ${nearbyCount} places, score: ${categoryScore}`);
+          
+          // Add delay to respect API limits
+          await new Promise(resolve => setTimeout(resolve, 800));
+        } catch (error) {
+          console.error(`Error fetching ${category} data:`, error);
+          // Continue with other categories even if one fails
+        }
+      }
+
+      const finalScore = categoryCount > 0 ? Math.round(totalScore / categoryCount) : 0;
+      console.log(`Final proximity score: ${finalScore}%`);
+      
+      // Update the proximity scores state
+      setProximityScores(prev => {
+        const newScores = {
+          ...prev,
+          [property.id]: finalScore
+        };
+        console.log('Updated proximity scores:', newScores);
+        return newScores;
+      });
+      
+      // Force update the popup if it's currently open for this property
+      setTimeout(() => {
+        if (currentPopupMarker.current && currentPopupMarker.current.propertyData.id === property.id) {
+          console.log('Updating popup content with new proximity score');
+          const newPopupContent = generatePopupContent(currentPopupMarker.current.propertyData);
+          currentPopupMarker.current.setPopupContent(newPopupContent);
+          
+          // If the popup is open, refresh it
+          if (currentPopupMarker.current.isPopupOpen()) {
+            currentPopupMarker.current.openPopup();
+          }
+        }
+        
+        setCalculatingProximity(null);
+      }, 100);
+      
+    } catch (error) {
+      console.error('Error calculating proximity score:', error);
+      setCalculatingProximity(null);
+    }
+  };
 
   // Initialize map
   useEffect(() => {
@@ -253,41 +291,17 @@ const ApartmentMap = ({
     return '#6b7280'; // gray
   };
 
-  // Calculate proximity score on-demand when apartment is clicked
-  const calculateProximityForProperty = async (property) => {
-    if (proximityScores[property.id]) {
-      // Already calculated
-      return;
-    }
-
-    setCalculatingProximity(property.id);
-    
-    try {
-      await calculateOnDemandProximityScore(property, (score) => {
-        setProximityScores(prev => ({
-          ...prev,
-          [property.id]: score
-        }));
-        
-        // Update the popup if it's currently open for this property
-        if (currentPopupMarker.current && currentPopupMarker.current.propertyData.id === property.id) {
-          const newPopupContent = generatePopupContent(currentPopupMarker.current.propertyData);
-          currentPopupMarker.current.setPopupContent(newPopupContent);
-        }
-        
-        setCalculatingProximity(null);
-      });
-    } catch (error) {
-      console.error('Error calculating proximity score:', error);
-      setCalculatingProximity(null);
-    }
-  };
-
   // Enhanced popup content generator with dynamic proximity score
   const generatePopupContent = (property) => {
     const amenityScore = calculateFacilityScore ? calculateFacilityScore(property) : 0;
-    const proximityScore = proximityScores[property.id] || null;
+    const proximityScore = proximityScores[property.id];
     const isCalculating = calculatingProximity === property.id;
+    
+    console.log(`Generating popup for ${property.apartment_name || property.name}:`, {
+      proximityScore,
+      isCalculating,
+      hasScore: proximityScore !== undefined
+    });
     
     // Helper functions
     const formatPriceRange = () => {
@@ -405,7 +419,7 @@ const ApartmentMap = ({
             </div>
 
             <!-- Proximity Score -->
-            ${proximityScore !== null ? `
+            ${proximityScore !== undefined ? `
               <div style="
                 background: linear-gradient(90deg, rgba(${getScoreColor(proximityScore).slice(1)}, 0.1) 0%, rgba(${getScoreColor(proximityScore).slice(1)}, 0.05) 100%);
                 border: 1px solid rgba(${getScoreColor(proximityScore).slice(1)}, 0.2);
@@ -428,23 +442,23 @@ const ApartmentMap = ({
               </div>
             ` : `
               <div style="
-                background: #f8fafc;
-                border: 1px solid #e2e8f0;
+                background: ${isCalculating ? '#fef3c7' : '#f8fafc'};
+                border: 1px solid ${isCalculating ? '#f59e0b' : '#e2e8f0'};
                 border-radius: 8px;
                 padding: 12px;
                 text-align: center;
               ">
                 <div style="
                   font-size: 16px; 
-                  color: #94a3b8;
+                  color: ${isCalculating ? '#f59e0b' : '#94a3b8'};
                   margin-bottom: 4px;
                 ">${isCalculating ? '⏳' : '📍'}</div>
                 <div style="
                   font-size: 10px; 
-                  color: #64748b; 
+                  color: ${isCalculating ? '#92400e' : '#64748b'}; 
                   font-weight: 500;
                   line-height: 1.2;
-                ">${isCalculating ? 'กำลังคำนวณ...' : 'คลิกเพื่อคำนวณ'}</div>
+                ">${isCalculating ? 'กำลังคำนวณ...' : 'รอการคำนวณ'}</div>
               </div>
             `}
           </div>
@@ -928,17 +942,14 @@ const ApartmentMap = ({
       marker.bindPopup(generatePopupContent(property), popupOptions);
 
       marker.on('click', (e) => {
+        console.log('Marker clicked for property:', property.apartment_name || property.name);
+        
         if (onApartmentSelect) {
           onApartmentSelect(property);
         }
         
         // Store reference to current popup marker
         currentPopupMarker.current = marker;
-        
-        // Start calculating proximity score if not already calculated
-        if (!proximityScores[property.id] && calculatingProximity !== property.id) {
-          calculateProximityForProperty(property);
-        }
         
         if (pinnedMarkerRef.current) {
           mapRef.current.removeLayer(pinnedMarkerRef.current);
@@ -953,6 +964,12 @@ const ApartmentMap = ({
         
         pinnedMarkerRef.current = pinnedMarker;
         currentPopupMarker.current = pinnedMarker;
+        
+        // Start calculating proximity score AFTER popup is shown
+        if (!proximityScores[property.id] && calculatingProximity !== property.id) {
+          console.log('Starting proximity calculation...');
+          calculateProximityForProperty(property);
+        }
         
         if (!hasZoomedToMarker.current) {
           mapRef.current.setView([property.latitude, property.longitude], 15, {
