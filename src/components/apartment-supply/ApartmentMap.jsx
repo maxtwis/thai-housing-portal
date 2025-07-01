@@ -21,7 +21,8 @@ const ApartmentMap = ({
   isMobile, 
   onApartmentSelect, 
   selectedApartment,
-  calculateFacilityScore
+  calculateFacilityScore,
+  onPopupUpdate // New prop to trigger popup updates
 }) => {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
@@ -140,10 +141,17 @@ const ApartmentMap = ({
     map.addLayer(markerCluster);
     mapRef.current = map;
 
-    // Expose methods to window for popup buttons
+    // Expose popup update function to parent component
     window.apartmentMapInstance = {
       showNearbyPlaces,
-      clearNearbyPlaces
+      clearNearbyPlaces,
+      updateOpenPopup: (property) => {
+        if (pinnedMarkerRef.current && pinnedMarkerRef.current.isPopupOpen()) {
+          console.log('Force updating popup content for:', property.name);
+          const newContent = generatePopupContent(property);
+          pinnedMarkerRef.current.setPopupContent(newContent);
+        }
+      }
     };
 
     return () => {

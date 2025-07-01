@@ -84,13 +84,24 @@ const ApartmentSupply = () => {
     return Math.round((availableAmenities / totalAmenities) * 100);
   };
 
-  // Calculate proximity score on-demand for selected property (improved)
+  // Calculate proximity score on-demand for selected property (improved with direct popup update)
   const calculateProximityScoreOnDemand = async (property) => {
     if (!property || proximityCache.has(property.id)) {
       return proximityCache.get(property.id) || null;
     }
 
     console.log('Starting proximity calculation for:', property.name, 'at', property.latitude, property.longitude);
+
+    // Create a function to update popup immediately when score is ready
+    const updatePopupDirectly = (score) => {
+      const updatedProperty = { ...property, proximityScore: score };
+      
+      // Update via global window function
+      if (window.apartmentMapInstance && window.apartmentMapInstance.updateOpenPopup) {
+        console.log('Directly updating popup with score:', score);
+        window.apartmentMapInstance.updateOpenPopup(updatedProperty);
+      }
+    };
 
     try {
       const lat = property.latitude;
@@ -142,7 +153,10 @@ const ApartmentSupply = () => {
           const fallbackScore = 50;
           proximityCache.set(property.id, fallbackScore);
           
-          // Update property immediately
+          // Update popup immediately with fallback score
+          updatePopupDirectly(fallbackScore);
+          
+          // Also update state
           setApartmentData(prevData => {
             const newData = prevData.map(prop => 
               prop.id === property.id 
@@ -248,7 +262,10 @@ const ApartmentSupply = () => {
       
       proximityCache.set(property.id, finalScore);
       
-      // Update the property in the main data array and trigger popup update
+      // Update popup immediately with calculated score
+      updatePopupDirectly(finalScore);
+      
+      // Also update state
       setApartmentData(prevData => {
         const newData = prevData.map(prop => 
           prop.id === property.id 
@@ -256,12 +273,6 @@ const ApartmentSupply = () => {
             : prop
         );
         calculateStatistics(newData);
-        
-        // Force a re-render which will trigger the popup update
-        setTimeout(() => {
-          console.log('Property data updated, popup should refresh automatically');
-        }, 100);
-        
         return newData;
       });
       
@@ -288,7 +299,10 @@ const ApartmentSupply = () => {
       
       proximityCache.set(property.id, fallbackScore);
       
-      // Update the property in the main data array and trigger popup update
+      // Update popup immediately with fallback score
+      updatePopupDirectly(fallbackScore);
+      
+      // Also update state
       setApartmentData(prevData => {
         const newData = prevData.map(prop => 
           prop.id === property.id 
@@ -296,12 +310,6 @@ const ApartmentSupply = () => {
             : prop
         );
         calculateStatistics(newData);
-        
-        // Force a re-render which will trigger the popup update
-        setTimeout(() => {
-          console.log('Property data updated with fallback score, popup should refresh automatically');
-        }, 100);
-        
         return newData;
       });
       
