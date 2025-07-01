@@ -84,7 +84,7 @@ const ApartmentSupply = () => {
     return Math.round((availableAmenities / totalAmenities) * 100);
   };
 
-  // Calculate proximity score for a property (new function)
+  // Calculate proximity score for a property (updated with better rate limiting)
   const calculateProximityScore = async (property) => {
     if (!property.latitude || !property.longitude || proximityCache.has(property.id)) {
       return proximityCache.get(property.id) || 0;
@@ -95,67 +95,96 @@ const ApartmentSupply = () => {
       const lng = property.longitude;
       const searchRadius = 500; // 500m radius for proximity check
       
-      const amenityCategories = [
-        {
-          key: 'restaurant',
-          query: `[out:json][timeout:10];(node["amenity"~"^(restaurant|cafe|fast_food)$"](around:${searchRadius},${lat},${lng}););out count;`,
-          weight: 15 // 15% weight
-        },
-        {
-          key: 'convenience', 
-          query: `[out:json][timeout:10];(node["shop"~"^(convenience|supermarket)$"](around:${searchRadius},${lat},${lng}););out count;`,
-          weight: 20 // 20% weight
-        },
-        {
-          key: 'transport',
-          query: `[out:json][timeout:10];(node["public_transport"](around:${searchRadius},${lat},${lng});node["highway"="bus_stop"](around:${searchRadius},${lat},${lng}););out count;`,
-          weight: 25 // 25% weight
-        },
-        {
-          key: 'health',
-          query: `[out:json][timeout:10];(node["amenity"~"^(hospital|clinic|pharmacy)$"](around:${searchRadius},${lat},${lng}););out count;`,
-          weight: 20 // 20% weight  
-        },
-        {
-          key: 'school',
-          query: `[out:json][timeout:10];(node["amenity"~"^(school|university)$"](around:${searchRadius},${lat},${lng}););out count;`,
-          weight: 20 // 20% weight
+      // Single combined query to reduce API calls
+      const combinedQuery = `
+        [out:json][timeout:30];
+        (
+          // Restaurants and food
+          node["amenity"~"^(restaurant|cafe|fast_food)$"](around:${searchRadius},${lat},${lng});
+          // Convenience stores
+          node["shop"~"^(convenience|supermarket)$"](around:${searchRadius},${lat},${lng});
+          // Transport
+          node["public_transport"](around:${searchRadius},${lat},${lng});
+          node["highway"="bus_stop"](around:${searchRadius},${lat},${lng});
+          node["railway"="station"](around:${searchRadius},${lat},${lng});
+          // Healthcare
+          node["amenity"~"^(hospital|clinic|pharmacy)$"](around:${searchRadius},${lat},${lng});
+          // Education
+          node["amenity"~"^(school|university)$"](around:${searchRadius},${lat},${lng});
+        );
+        out count;
+      `;
+
+      const response = await fetch('https://overpass-api.de/api/interpreter', {
+        method: 'POST',
+        body: combinedQuery,
+        headers: {
+          'Content-Type': 'text/plain'
         }
-      ];
+      });
+
+      if (!response.ok) {
+        if (response.status === 429) {
+          console.warn('Rate limited by Overpass API, using fallback score');
+          proximityCache.set(property.id, 50); // Fallback score
+          return 50;
+        }
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      // Count different types of amenities
+      const counts = {
+        restaurant: 0,
+        convenience: 0,
+        transport: 0,
+        health: 0,
+        education: 0
+      };
+
+      if (data.elements) {
+        data.elements.forEach(element => {
+          const tags = element.tags || {};
+          
+          // Categorize amenities
+          if (tags.amenity === 'restaurant' || tags.amenity === 'cafe' || tags.amenity === 'fast_food') {
+            counts.restaurant++;
+          } else if (tags.shop === 'convenience' || tags.shop === 'supermarket') {
+            counts.convenience++;
+          } else if (tags.public_transport || tags.highway === 'bus_stop' || tags.railway === 'station') {
+            counts.transport++;
+          } else if (tags.amenity === 'hospital' || tags.amenity === 'clinic' || tags.amenity === 'pharmacy') {
+            counts.health++;
+          } else if (tags.amenity === 'school' || tags.amenity === 'university') {
+            counts.education++;
+          }
+        });
+      }
+
+      // Calculate weighted score
+      const weights = {
+        transport: 25,    // 25%
+        convenience: 20,  // 20%
+        health: 20,       // 20%
+        restaurant: 15,   // 15%
+        education: 20     // 20%
+      };
 
       let totalScore = 0;
-      let completedQueries = 0;
 
-      for (const category of amenityCategories) {
-        try {
-          const response = await fetch('https://overpass-api.de/api/interpreter', {
-            method: 'POST',
-            body: category.query,
-          });
+      Object.keys(counts).forEach(category => {
+        const count = counts[category];
+        let categoryScore = 0;
+        
+        // Score based on count
+        if (count === 0) categoryScore = 0;
+        else if (count <= 2) categoryScore = 50;
+        else if (count <= 5) categoryScore = 75;
+        else categoryScore = 100;
 
-          if (response.ok) {
-            const data = await response.json();
-            const count = data.elements ? data.elements.length : 0;
-            
-            // Score calculation: normalize count and apply weight
-            // 0 places = 0%, 1-2 places = 50%, 3-5 places = 75%, 6+ places = 100%
-            let categoryScore = 0;
-            if (count === 0) categoryScore = 0;
-            else if (count <= 2) categoryScore = 50;
-            else if (count <= 5) categoryScore = 75;
-            else categoryScore = 100;
-
-            totalScore += (categoryScore * category.weight) / 100;
-            completedQueries++;
-          }
-        } catch (error) {
-          console.warn(`Error querying ${category.key}:`, error);
-          completedQueries++;
-        }
-
-        // Small delay to avoid overwhelming the API
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
+        totalScore += (categoryScore * weights[category]) / 100;
+      });
 
       const finalScore = Math.round(totalScore);
       proximityCache.set(property.id, finalScore);
@@ -163,8 +192,17 @@ const ApartmentSupply = () => {
 
     } catch (error) {
       console.error('Error calculating proximity score:', error);
-      proximityCache.set(property.id, 0);
-      return 0;
+      // Use a default score based on location (Bangkok city center = higher score)
+      const bangkokCenter = { lat: 13.7563, lng: 100.5018 };
+      const distance = Math.sqrt(
+        Math.pow(property.latitude - bangkokCenter.lat, 2) + 
+        Math.pow(property.longitude - bangkokCenter.lng, 2)
+      );
+      
+      // Closer to city center = higher score
+      const fallbackScore = Math.max(20, Math.min(80, Math.round(80 - (distance * 1000))));
+      proximityCache.set(property.id, fallbackScore);
+      return fallbackScore;
     }
   };
 
@@ -379,24 +417,34 @@ const ApartmentSupply = () => {
     loadApartmentData();
   }, [selectedProvince]); // Re-load when province changes
 
-  // Calculate proximity scores in background for better UX
+  // Calculate proximity scores in background for better UX (updated with better rate limiting)
   const calculateProximityScoresInBackground = async (properties) => {
     if (!properties || properties.length === 0) return;
     
     setIsCalculatingProximity(true);
     setProximityProgress(0);
     
-    const batchSize = 5; // Process 5 properties at a time to avoid API limits
+    const batchSize = 3; // Reduced from 5 to 3 to be more conservative with API
+    const delayBetweenBatches = 2000; // Increased to 2 seconds between batches
     const totalBatches = Math.ceil(properties.length / batchSize);
     let updatedProperties = [...properties];
+    
+    console.log(`Starting proximity calculation for ${properties.length} properties in ${totalBatches} batches`);
     
     for (let i = 0; i < totalBatches; i++) {
       const startIdx = i * batchSize;
       const endIdx = Math.min(startIdx + batchSize, properties.length);
       const batch = properties.slice(startIdx, endIdx);
       
-      // Calculate proximity scores for this batch
+      console.log(`Processing batch ${i + 1}/${totalBatches} (properties ${startIdx + 1}-${endIdx})`);
+      
+      // Calculate proximity scores for this batch with delays between each property
       const proximityPromises = batch.map(async (property, index) => {
+        // Add delay between properties in the same batch
+        if (index > 0) {
+          await new Promise(resolve => setTimeout(resolve, 500)); // 500ms between properties
+        }
+        
         const proximityScore = await calculateProximityScore(property);
         return {
           ...property,
@@ -404,26 +452,33 @@ const ApartmentSupply = () => {
         };
       });
       
-      const updatedBatch = await Promise.all(proximityPromises);
-      
-      // Update the properties array
-      for (let j = 0; j < updatedBatch.length; j++) {
-        updatedProperties[startIdx + j] = updatedBatch[j];
-      }
-      
-      // Update progress
-      const progress = Math.round(((i + 1) / totalBatches) * 100);
-      setProximityProgress(progress);
-      
-      // Update the state periodically
-      if (i % 3 === 0 || i === totalBatches - 1) {
+      try {
+        const updatedBatch = await Promise.all(proximityPromises);
+        
+        // Update the properties array
+        for (let j = 0; j < updatedBatch.length; j++) {
+          updatedProperties[startIdx + j] = updatedBatch[j];
+        }
+        
+        // Update progress
+        const progress = Math.round(((i + 1) / totalBatches) * 100);
+        setProximityProgress(progress);
+        
+        // Update the state every batch
         setApartmentData([...updatedProperties]);
         calculateStatistics(updatedProperties);
-      }
-      
-      // Small delay between batches to be respectful to the API
-      if (i < totalBatches - 1) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        console.log(`Completed batch ${i + 1}/${totalBatches} - Progress: ${progress}%`);
+        
+        // Longer delay between batches to respect API limits
+        if (i < totalBatches - 1) {
+          console.log(`Waiting ${delayBetweenBatches}ms before next batch...`);
+          await new Promise(resolve => setTimeout(resolve, delayBetweenBatches));
+        }
+        
+      } catch (error) {
+        console.error(`Error processing batch ${i + 1}:`, error);
+        // Continue with next batch even if this one fails
       }
     }
     
@@ -862,7 +917,10 @@ const ApartmentSupply = () => {
                         ></div>
                       </div>
                       <p className="text-xs text-gray-500 mt-1">
-                        ใช้ข้อมูลจาก OpenStreetMap
+                        ใช้ข้อมูลจาก OpenStreetMap (ใช้เวลาประมาณ 2-3 นาที)
+                      </p>
+                      <p className="text-xs text-orange-600 mt-1">
+                        หากมีข้อผิดพลาด API จะใช้คะแนนประมาณการ
                       </p>
                     </div>
                   )}
