@@ -30,6 +30,7 @@ const ApartmentMap = ({
   const markerClusterRef = useRef(null);
   const pinnedMarkerRef = useRef(null); // For temporarily pinned marker
   const preservePinnedMarker = useRef(false); // Flag to prevent marker clearing
+  const isMarkerSwitching = useRef(false); // Flag to indicate marker switching in progress
   const nearbyLayersRef = useRef({});
   const isInitialLoad = useRef(true);
   const hasZoomedToMarker = useRef(false);
@@ -75,15 +76,22 @@ const ApartmentMap = ({
       // Just let Leaflet handle it naturally
     });
 
-    // Handle popup close - more conservative cleanup
+    // Handle popup close - optimized for fast switching
     map.on('popupclose', function(e) {
       console.log('Popup closed event triggered');
       
-      // Don't clean up immediately - wait longer to see if it's just a state update
+      // If we're in the middle of switching markers, ignore this close event
+      if (isMarkerSwitching.current) {
+        console.log('Ignoring popup close - marker switching in progress');
+        return;
+      }
+      
+      // Short delay to distinguish between switching and actual closing
       setTimeout(() => {
-        // Only clean up if no marker is pinned or if popup is really closed
-        if (pinnedMarkerRef.current && !pinnedMarkerRef.current.isPopupOpen() && !preservePinnedMarker.current) {
+        // Only clean up if not switching and popup is really closed
+        if (pinnedMarkerRef.current && !pinnedMarkerRef.current.isPopupOpen() && !isMarkerSwitching.current) {
           console.log('Cleaning up closed popup');
+          preservePinnedMarker.current = false;
           
           // Remove from map and add back to cluster
           if (mapRef.current.hasLayer(pinnedMarkerRef.current)) {
@@ -94,9 +102,9 @@ const ApartmentMap = ({
           pinnedMarkerRef.current = null;
           console.log('Pinned marker restored to cluster');
         } else {
-          console.log('Popup close ignored - marker still active or preservation flag set');
+          console.log('Popup close ignored - marker still active or switching');
         }
-      }, 500); // Longer delay to prevent premature cleanup
+      }, 100); // Reduced delay for faster response
     });
 
     // Initialize marker cluster group with custom options
@@ -1171,34 +1179,33 @@ const ApartmentMap = ({
         
         L.DomEvent.stopPropagation(e);
         
+        // Set switching flag to prevent popup close cleanup
+        isMarkerSwitching.current = true;
+        
         // Immediately clean up any existing pinned marker
         if (pinnedMarkerRef.current && pinnedMarkerRef.current !== marker) {
-          console.log('Cleaning up previous pinned marker');
+          console.log('Switching to new marker - cleaning up previous');
           
-          // Force close any existing popup
+          // Force close any existing popup without triggering cleanup
           mapRef.current.closePopup();
           
-          // Remove from map
+          // Remove from map and add back to cluster
           if (mapRef.current.hasLayer(pinnedMarkerRef.current)) {
             mapRef.current.removeLayer(pinnedMarkerRef.current);
             markerClusterRef.current.addLayer(pinnedMarkerRef.current);
           }
-          
-          // Clear everything immediately
-          preservePinnedMarker.current = false;
-          pinnedMarkerRef.current = null;
         }
         
         // Remove marker from cluster and add to map
         markerClusterRef.current.removeLayer(marker);
         marker.addTo(mapRef.current);
         
-        // Set as pinned marker
+        // Set as pinned marker immediately
         pinnedMarkerRef.current = marker;
         pinnedMarkerRef.current.propertyData = property;
         hasZoomedToMarker.current = true;
         
-        // Set preservation flag immediately to prevent cleanup
+        // Set preservation flag immediately
         preservePinnedMarker.current = true;
         console.log('PINNED: New marker pinned for:', property.name);
         
@@ -1208,6 +1215,12 @@ const ApartmentMap = ({
         marker.openPopup();
         
         console.log('Opening popup for:', property.name);
+        
+        // Clear switching flag after popup is open
+        setTimeout(() => {
+          isMarkerSwitching.current = false;
+          console.log('Marker switching completed');
+        }, 50);
         
         // Trigger property selection and auto-calculate proximity
         if (onApartmentSelect) {
