@@ -75,16 +75,15 @@ const ApartmentMap = ({
       // Just let Leaflet handle it naturally
     });
 
-    // Handle popup close - simplified
+    // Handle popup close - more conservative cleanup
     map.on('popupclose', function(e) {
       console.log('Popup closed event triggered');
       
-      // Don't immediately clean up - wait to see if it's a marker switch
+      // Don't clean up immediately - wait longer to see if it's just a state update
       setTimeout(() => {
-        // Only clean up if no new marker was pinned in the meantime
-        if (pinnedMarkerRef.current && !pinnedMarkerRef.current.isPopupOpen()) {
+        // Only clean up if no marker is pinned or if popup is really closed
+        if (pinnedMarkerRef.current && !pinnedMarkerRef.current.isPopupOpen() && !preservePinnedMarker.current) {
           console.log('Cleaning up closed popup');
-          preservePinnedMarker.current = false;
           
           // Remove from map and add back to cluster
           if (mapRef.current.hasLayer(pinnedMarkerRef.current)) {
@@ -94,8 +93,10 @@ const ApartmentMap = ({
           
           pinnedMarkerRef.current = null;
           console.log('Pinned marker restored to cluster');
+        } else {
+          console.log('Popup close ignored - marker still active or preservation flag set');
         }
-      }, 100);
+      }, 500); // Longer delay to prevent premature cleanup
     });
 
     // Initialize marker cluster group with custom options
@@ -1097,7 +1098,7 @@ const ApartmentMap = ({
   // Effect to update popup when apartment data changes (for real-time updates)
   useEffect(() => {
     // Don't update markers if we have a pinned marker with an open popup
-    if (preservePinnedMarker.current && pinnedMarkerRef.current && pinnedMarkerRef.current.isPopupOpen()) {
+    if (preservePinnedMarker.current && pinnedMarkerRef.current) {
       console.log('PRESERVING POPUP: Skipping marker update - popup is open, preserving pinned marker');
       
       // Just update the marker styles for the selected apartment
@@ -1197,6 +1198,8 @@ const ApartmentMap = ({
         pinnedMarkerRef.current.propertyData = property;
         hasZoomedToMarker.current = true;
         
+        // Set preservation flag immediately to prevent cleanup
+        preservePinnedMarker.current = true;
         console.log('PINNED: New marker pinned for:', property.name);
         
         // Open popup immediately
@@ -1205,14 +1208,6 @@ const ApartmentMap = ({
         marker.openPopup();
         
         console.log('Opening popup for:', property.name);
-        
-        // Set preservation flag after a short delay
-        setTimeout(() => {
-          if (pinnedMarkerRef.current && pinnedMarkerRef.current.isPopupOpen()) {
-            preservePinnedMarker.current = true;
-            console.log('SECURED: Protection enabled for:', property.name);
-          }
-        }, 300);
         
         // Trigger property selection and auto-calculate proximity
         if (onApartmentSelect) {
