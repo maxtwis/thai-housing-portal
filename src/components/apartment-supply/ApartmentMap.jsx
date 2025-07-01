@@ -146,10 +146,17 @@ const ApartmentMap = ({
       showNearbyPlaces,
       clearNearbyPlaces,
       updateOpenPopup: (property) => {
+        console.log('updateOpenPopup called for:', property.name);
+        console.log('pinnedMarkerRef.current exists:', !!pinnedMarkerRef.current);
+        console.log('popup is open:', !!(pinnedMarkerRef.current && pinnedMarkerRef.current.isPopupOpen()));
+        
         if (pinnedMarkerRef.current && pinnedMarkerRef.current.isPopupOpen()) {
           console.log('Force updating popup content for:', property.name);
           const newContent = generatePopupContent(property);
           pinnedMarkerRef.current.setPopupContent(newContent);
+          console.log('Popup content updated successfully');
+        } else {
+          console.warn('Cannot update popup - either no pinned marker or popup is closed');
         }
       }
     };

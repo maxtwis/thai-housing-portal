@@ -96,10 +96,40 @@ const ApartmentSupply = () => {
     const updatePopupDirectly = (score) => {
       const updatedProperty = { ...property, proximityScore: score };
       
-      // Update via global window function
+      console.log('Attempting to update popup directly...');
+      console.log('window.apartmentMapInstance exists:', !!window.apartmentMapInstance);
+      console.log('updateOpenPopup function exists:', !!(window.apartmentMapInstance && window.apartmentMapInstance.updateOpenPopup));
+      
+      // Try multiple approaches to ensure popup updates
+      let updateAttempted = false;
+      
+      // Method 1: Direct function call
       if (window.apartmentMapInstance && window.apartmentMapInstance.updateOpenPopup) {
-        console.log('Directly updating popup with score:', score);
+        console.log('Method 1: Calling updateOpenPopup with score:', score);
         window.apartmentMapInstance.updateOpenPopup(updatedProperty);
+        updateAttempted = true;
+      }
+      
+      // Method 2: Try again after small delay in case timing is an issue
+      setTimeout(() => {
+        if (window.apartmentMapInstance && window.apartmentMapInstance.updateOpenPopup) {
+          console.log('Method 2: Delayed call to updateOpenPopup with score:', score);
+          window.apartmentMapInstance.updateOpenPopup(updatedProperty);
+          updateAttempted = true;
+        }
+      }, 100);
+      
+      // Method 3: Try one more time with longer delay
+      setTimeout(() => {
+        if (window.apartmentMapInstance && window.apartmentMapInstance.updateOpenPopup) {
+          console.log('Method 3: Final attempt to updateOpenPopup with score:', score);
+          window.apartmentMapInstance.updateOpenPopup(updatedProperty);
+          updateAttempted = true;
+        }
+      }, 500);
+      
+      if (!updateAttempted) {
+        console.warn('updateOpenPopup function not available, popup will not update in real-time');
       }
     };
 
