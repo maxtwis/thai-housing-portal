@@ -1144,7 +1144,13 @@ const ApartmentMap = ({
 
     console.log('Updating clustered markers, selectedApartment:', selectedApartment?.name);
 
+    // Clear all existing markers to prevent duplicates
     markerClusterRef.current.clearLayers();
+    markersRef.current.forEach(marker => {
+      if (mapRef.current.hasLayer(marker)) {
+        mapRef.current.removeLayer(marker);
+      }
+    });
     markersRef.current = [];
 
     apartmentData.forEach(property => {
@@ -1180,8 +1186,11 @@ const ApartmentMap = ({
         L.DomEvent.stopPropagation(e);
         
         if (pinnedMarkerRef.current && pinnedMarkerRef.current !== marker) {
-          mapRef.current.removeLayer(pinnedMarkerRef.current);
-          markerClusterRef.current.addLayer(pinnedMarkerRef.current);
+          // Remove any existing pinned marker to prevent duplicates
+          if (mapRef.current.hasLayer(pinnedMarkerRef.current)) {
+            mapRef.current.removeLayer(pinnedMarkerRef.current);
+          }
+          // Don't add back to cluster if it's a different marker - let it be cleaned up
         }
         
         markerClusterRef.current.removeLayer(marker);
