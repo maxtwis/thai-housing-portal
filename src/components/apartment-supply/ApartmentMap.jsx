@@ -31,7 +31,8 @@ const fetchNearbyCount = async (category, lat, lng, radius = 1000) => {
     if (!response.ok) {
       if (response.status === 429) {
         // Rate limited - wait and retry once
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        console.log(`Rate limited for ${category}, waiting 3s...`);
+        await new Promise(resolve => setTimeout(resolve, 3000));
         const retryResponse = await fetch('https://overpass-api.de/api/interpreter', {
           method: 'POST',
           headers: {
@@ -48,6 +49,29 @@ const fetchNearbyCount = async (category, lat, lng, radius = 1000) => {
         return retryData.elements ? retryData.elements.length : 0;
       }
       
+      if (response.status === 504) {
+        // Gateway timeout - try with smaller radius
+        console.log(`Timeout for ${category}, trying smaller radius...`);
+        const smallerRadius = Math.floor(radius * 0.7); // 70% of original radius
+        const fallbackQuery = buildOverpassQuery(category, lat, lng, smallerRadius);
+        
+        const fallbackResponse = await fetch('https://overpass-api.de/api/interpreter', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: fallbackQuery,
+        });
+        
+        if (fallbackResponse.ok) {
+          const fallbackData = await fallbackResponse.json();
+          const count = fallbackData.elements ? fallbackData.elements.length : 0;
+          console.log(`Fallback success for ${category}: ${count} places in ${smallerRadius}m radius`);
+          // Scale up the count to approximate the original radius
+          return Math.round(count * 1.4); // Rough approximation
+        }
+      }
+      
       throw new Error(`Overpass API error: ${response.status}`);
     }
 
@@ -60,7 +84,7 @@ const fetchNearbyCount = async (category, lat, lng, radius = 1000) => {
 };
 
 const buildOverpassQuery = (category, lat, lng, radius) => {
-  const timeout = 15; // Increased timeout for better reliability
+  const timeout = 10; // Reduced timeout to fail faster
   switch(category) {
     case 'restaurant':
       return `[out:json][timeout:${timeout}];(node["amenity"~"^(restaurant|cafe|fast_food)$"](around:${radius},${lat},${lng});way["amenity"~"^(restaurant|cafe|fast_food)$"](around:${radius},${lat},${lng}););out geom;`;
@@ -130,9 +154,11 @@ const ApartmentMap = ({
     try {
       console.log(`Starting proximity calculation for ${property.apartment_name || property.name}`);
       
-      const categories = ['restaurant', 'convenience', 'school', 'health', 'transport'];
+      // Order categories by complexity (simpler queries first to fail fast)
+      const categories = ['convenience', 'health', 'school', 'transport', 'restaurant'];
       let totalScore = 0;
       let categoryCount = 0;
+      let completedCategories = [];
 
       for (const category of categories) {
         try {
@@ -141,20 +167,34 @@ const ApartmentMap = ({
           const categoryScore = calculateCategoryScore(nearbyCount, category);
           totalScore += categoryScore;
           categoryCount++;
+          completedCategories.push({ category, score: categoryScore, count: nearbyCount });
+          
           console.log(`${category}: ${nearbyCount} places found, score: ${categoryScore}%`);
           
-          // Add delay to respect API limits (reduced for faster calculation)
-          await new Promise(resolve => setTimeout(resolve, 400));
+          // Update with partial score every 2 categories for faster feedback
+          if (categoryCount === 2 || categoryCount === 4) {
+            const partialScore = Math.round(totalScore / categoryCount);
+            setProximityScores(prev => ({
+              ...prev,
+              [property.id]: partialScore
+            }));
+            console.log(`Partial score after ${categoryCount} categories: ${partialScore}%`);
+          }
+          
+          // Shorter delay for faster processing
+          await new Promise(resolve => setTimeout(resolve, 300));
         } catch (error) {
-          console.error(`Error fetching ${category} data:`, error);
-          // Continue with other categories even if one fails
+          console.error(`Skipping ${category} due to error:`, error.message);
+          // Continue with other categories - don't let one failure stop everything
+          // Add a small delay even for failed requests to avoid overwhelming the API
+          await new Promise(resolve => setTimeout(resolve, 200));
         }
       }
 
       const finalScore = categoryCount > 0 ? Math.round(totalScore / categoryCount) : 0;
       console.log(`Final proximity score: ${finalScore}%`);
       
-      // Update the proximity scores state
+      // Update with final score
       setProximityScores(prev => {
         const newScores = {
           ...prev,
