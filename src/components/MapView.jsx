@@ -102,25 +102,26 @@ const MapView = ({ activeProvince, onProvinceChange, onProvinceHover }) => {
           
           // Style function for GeoJSON features
           const style = (feature) => {
-            const provinceId = feature.properties.id;
-            const isActive = parseInt(provinceId) === activeProvince;
-            const isWanted = wantedProvinceIds.includes(parseInt(provinceId));
+            const provinceId = parseInt(feature.properties.id);
+            const isActive = provinceId === activeProvince;
+            const isWanted = wantedProvinceIds.includes(provinceId);
             
+            // Only style wanted provinces (others are filtered out anyway)
             if (isWanted) {
               return {
                 fillColor: isActive ? '#3182CE' : '#9AE6B4',
-                weight: isActive ? 3 : 1,
-                opacity: 0.8,
-                color: '#2C5282',
-                fillOpacity: 0.5
+                weight: isActive ? 4 : 2, // Thicker borders for better visibility
+                opacity: 1,
+                color: isActive ? '#1E40AF' : '#2C5282',
+                fillOpacity: isActive ? 0.8 : 0.6
               };
             } else {
+              // This shouldn't be reached due to filter, but just in case
               return {
-                fillColor: '#F7FAFC',
-                weight: 0.5,
-                opacity: 0.7,
-                color: '#CBD5E0',
-                fillOpacity: 0.1
+                fillColor: 'transparent',
+                weight: 0,
+                opacity: 0,
+                fillOpacity: 0
               };
             }
           };
@@ -128,40 +129,44 @@ const MapView = ({ activeProvince, onProvinceChange, onProvinceHover }) => {
           // Add GeoJSON layer
           const provinceLayer = L.geoJSON(geojsonData, {
             style: style,
+            filter: (feature) => {
+              // ONLY show provinces that are in our wanted list
+              return wantedProvinceIds.includes(parseInt(feature.properties.id));
+            },
             onEachFeature: (feature, layer) => {
               // Debug: Log the feature properties to understand the data structure
               console.log('GeoJSON feature:', feature.properties);
               
-              // Always add click events, then check inside the handler
+              // Always add click events for our filtered provinces
               layer.on('click', (e) => {
                 console.log('Polygon clicked! Feature properties:', feature.properties);
                 console.log('Wanted province IDs:', wantedProvinceIds);
                 
-                const provinceId = feature.properties.id;
+                const provinceId = parseInt(feature.properties.id);
                 console.log('Province ID from click:', provinceId);
                 
-                if (provinceId && wantedProvinceIds.includes(parseInt(provinceId))) {
-                  console.log('Valid province clicked, changing to:', parseInt(provinceId));
-                  onProvinceChange(parseInt(provinceId));
+                if (wantedProvinceIds.includes(provinceId)) {
+                  console.log('Valid province clicked, changing to:', provinceId);
+                  onProvinceChange(provinceId);
                 } else {
                   console.log('Province not in wanted list. Available IDs:', wantedProvinceIds);
                 }
                 
                 // Prevent event bubbling
-                e.originalEvent.stopPropagation();
+                L.DomEvent.stopPropagation(e);
               });
               
               // Add hover effects
               layer.on('mouseover', () => {
                 layer.setStyle({
-                  weight: 2,
-                  color: '#2C5282',
-                  fillOpacity: 0.7
+                  weight: 3,
+                  color: '#1E40AF',
+                  fillOpacity: 0.8
                 });
                 
                 // Call hover handler if provided
-                if (onProvinceHover && wantedProvinceIds.includes(parseInt(feature.properties.id))) {
-                  onProvinceHover(feature.properties.id);
+                if (onProvinceHover) {
+                  onProvinceHover(parseInt(feature.properties.id));
                 }
               });
               
@@ -253,21 +258,29 @@ const MapView = ({ activeProvince, onProvinceChange, onProvinceHover }) => {
           console.log('Fitting bounds to selected province');
           const bounds = selectedLayer.getBounds();
           console.log('Province bounds:', bounds);
-          map.fitBounds(bounds, {
-            padding: [30, 30], // Increased padding
-            maxZoom: 7, // Reduced max zoom for better view
-            animate: true,
-            duration: 1.2 // Slightly longer animation
-          });
+          
+          // Special handling for edge provinces like เชียงใหม่
+          const currentProvince = provinces.find(p => p.id === activeProvince);
+          console.log('Current province info:', currentProvince);
+          
+          // For edge provinces, use a larger padding and better zoom constraints
+          if (activeProvince === 50) { // เชียงใหม่
+            map.fitBounds(bounds, {
+              padding: [50, 50], // Larger padding for edge provinces
+              maxZoom: 6, // Lower max zoom to see more context
+              animate: true,
+              duration: 1.5
+            });
+          } else {
+            map.fitBounds(bounds, {
+              padding: [30, 30], // Standard padding
+              maxZoom: 7, // Normal max zoom
+              animate: true,
+              duration: 1.2
+            });
+          }
         } else {
           console.log('No selected layer found for province ID:', activeProvince);
-          console.log('Available province IDs in GeoJSON:', 
-            Array.from(new Set(
-              Array.from(provinceLayerRef.current.getLayers()).map(layer => 
-                layer.feature?.properties?.id
-              )
-            ))
-          );
         }
       } catch (err) {
         console.error('Error updating GeoJSON styles:', err);
