@@ -16,6 +16,7 @@ const POPULATION_AGE_RESOURCE_ID = 'b22dd69b-790f-475b-9c6a-c346fbb40daa';
 const INCOME_RESOURCE_ID = '6a63d6c9-792c-450a-8f82-60e025bee415';
 const EXPENDITURE_RESOURCE_ID = '98eb6fce-d04e-44e6-b3af-408ad2957653';
 const HOUSEHOLD_RESOURCE_ID = '94b9e62e-7182-47b0-91b9-7c7400d990cc';
+const HOUSING_AFFORDABILITY_RESOURCE_ID = '73ff152b-02fc-4468-a93b-1b29b53186eb';
 
 // Individual query hooks
 export const useHousingSupplyData = (provinceId) => {
@@ -28,6 +29,32 @@ export const useHousingSupplyData = (provinceId) => {
         sort: 'year asc'
       });
       return result;
+    },
+    enabled: !!provinceId,
+    staleTime: 5 * 60 * 1000,
+    cacheTime: 10 * 60 * 1000,
+  });
+};
+
+export const useHousingAffordabilityData = (provinceId) => {
+  return useQuery({
+    queryKey: ['housing-affordability', provinceId],
+    queryFn: async () => {
+      const result = await getCkanData(HOUSING_AFFORDABILITY_RESOURCE_ID, {
+        filters: JSON.stringify({ geo_id: provinceId }),
+        limit: 1000,
+        sort: 'Quintile asc, house_type asc'
+      });
+      
+      // Filter out house_type 6 as requested
+      const filteredRecords = result.records.filter(record => 
+        record.house_type && parseInt(record.house_type) <= 5
+      );
+      
+      return {
+        ...result,
+        records: filteredRecords
+      };
     },
     enabled: !!provinceId,
     staleTime: 5 * 60 * 1000,
@@ -190,6 +217,7 @@ export const useAllProvinceData = (provinceId) => {
   const populationAge = usePopulationAgeData(provinceId);
   const policy = usePolicyData(provinceId);
   const housingSupply = useHousingSupplyData(provinceId);
+  const housingAffordability = useHousingAffordabilityData(provinceId);
   const expenditureQueries = useAllExpenditureData(provinceId);
   
   return {
@@ -199,13 +227,14 @@ export const useAllProvinceData = (provinceId) => {
     populationAge,
     policy,
     housingSupply,
+    housingAffordability,
     expenditure: expenditureQueries,
     isLoading: population.isLoading || household.isLoading || income.isLoading || 
                populationAge.isLoading || policy.isLoading || housingSupply.isLoading ||
-               expenditureQueries.some(q => q.isLoading),
+               housingAffordability.isLoading || expenditureQueries.some(q => q.isLoading),
     isError: population.isError || household.isError || income.isError || 
              populationAge.isError || policy.isError || housingSupply.isError ||
-             expenditureQueries.some(q => q.isError),
+             housingAffordability.isError || expenditureQueries.some(q => q.isError),
   };
 };
 
@@ -294,6 +323,27 @@ export const usePrefetchProvinceData = () => {
             sort: 'year asc'
           });
           return result;
+        },
+        staleTime: 5 * 60 * 1000,
+      }),
+      queryClient.prefetchQuery({
+        queryKey: ['housing-affordability', provinceId],
+        queryFn: async () => {
+          const result = await getCkanData(HOUSING_AFFORDABILITY_RESOURCE_ID, {
+            filters: JSON.stringify({ geo_id: provinceId }),
+            limit: 1000,
+            sort: 'Quintile asc, house_type asc'
+          });
+          
+          // Filter out house_type 6 as requested
+          const filteredRecords = result.records.filter(record => 
+            record.house_type && parseInt(record.house_type) <= 5
+          );
+          
+          return {
+            ...result,
+            records: filteredRecords
+          };
         },
         staleTime: 5 * 60 * 1000,
       }),

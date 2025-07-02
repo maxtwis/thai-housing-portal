@@ -16,6 +16,7 @@ import TotalHousingChart from '../components/charts/TotalHousingChart';
 import PolicyTable from '../components/charts/PolicyTable';
 import PolicyChart from '../components/charts/PolicyChart';
 import PopulationAgeChart from '../components/charts/PopulationAgeChart';
+import HousingAffordabilityChart from '../components/charts/HousingAffordabilityChart';
 
 const Dashboard = () => {
   const [activeProvince, setActiveProvince] = useState(10); // Default to Bangkok
@@ -30,54 +31,63 @@ const Dashboard = () => {
     populationAge,
     policy,
     housingSupply,
+    housingAffordability,
     expenditure,
     isLoading,
-    isError
+    isError,
   } = useAllProvinceData(activeProvince);
   
-  // Get prefetch function
+  // Prefetch hook
   const { prefetchProvince } = usePrefetchProvinceData();
   
-  // Add preloader for instant province switching
-  const { getCacheStats } = useProvincePreloader(activeProvince);
+  // Use the preloader hook for background prefetching
+  useProvincePreloader();
   
-  // Get current province name
-  const provinceName = provinces.find(p => p.id === activeProvince)?.name || '';
+  // URL parameters
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const provinceParam = urlParams.get('province');
+    const topicParam = urlParams.get('topic');
+    
+    if (provinceParam) {
+      const provinceId = parseInt(provinceParam);
+      if (provinces.find(p => p.id === provinceId)) {
+        setActiveProvince(provinceId);
+      }
+    }
+    
+    if (topicParam && ['demographics', 'housing', 'affordability', 'policy'].includes(topicParam)) {
+      setActiveTopic(topicParam);
+    }
+  }, []);
+
+  // Update URL when province or topic changes
+  useEffect(() => {
+    const url = new URL(window.location);
+    url.searchParams.set('province', activeProvince.toString());
+    url.searchParams.set('topic', activeTopic);
+    window.history.replaceState({}, '', url);
+  }, [activeProvince, activeTopic]);
   
-  const handleProvinceChange = (geoId) => {
-    setActiveProvince(parseInt(geoId));
+  const provinceName = provinces.find(p => p.id === activeProvince)?.name || 'Unknown Province';
+  
+  // Prefetch data for other provinces on hover
+  const handleProvinceHover = (provinceId) => {
+    if (provinceId !== activeProvince) {
+      prefetchProvince(provinceId);
+    }
   };
   
-  // Prefetch data for other provinces to make switching instant
-  useEffect(() => {
-    const otherProvinces = provinces.filter(p => p.id !== activeProvince);
-    
-    // Prefetch data for other provinces with a delay to not interfere with current loading
-    const prefetchOthers = async () => {
-      for (const province of otherProvinces) {
-        // Stagger the prefetch requests to be nice to the server
-        setTimeout(() => {
-          prefetchProvince(province.id);
-        }, 1000 + (province.id * 500));
-      }
-    };
-    
-    // Only prefetch after the current province data is loaded
-    if (!isLoading && !isError) {
-      prefetchOthers();
-    }
-  }, [activeProvince, isLoading, isError, prefetchProvince]);
-  
-  // Get filtered policies based on the selected filter
+  // Get filtered policies based on current filter
   const getFilteredPolicies = () => {
-    if (!policyFilter || !policy.data?.length) return policy.data || [];
+    if (!policy.data) return [];
     
-    if (policyFilter.startsWith('status:')) {
+    if (policyFilter && policyFilter.startsWith('status:')) {
       const status = policyFilter.split(':')[1];
       return policy.data.filter(p => p.Status === status);
     }
     
-    if (policyFilter.startsWith('type:')) {
+    if (policyFilter && policyFilter.startsWith('type:')) {
       const type = policyFilter.split(':')[1];
       return policy.data.filter(p => 
         p['3S Model'] && p['3S Model'].includes(type)
@@ -150,7 +160,8 @@ const Dashboard = () => {
             {population.isFetching && <span className="text-blue-600">📊 Updating population...</span>}
             {household.isFetching && <span className="text-blue-600">🏠 Updating households...</span>}
             {income.isFetching && <span className="text-blue-600">💰 Updating income...</span>}
-            {housingSupply.isFetching && <span className="text-blue-600">🏘️ Updating housing...</span>}
+            {housingSupply.isFetching && <span className="text-blue-600">🏘️ Updating housing supply...</span>}
+            {housingAffordability.isFetching && <span className="text-blue-600">💳 Updating affordability...</span>}
             {policy.isFetching && <span className="text-blue-600">📋 Updating policies...</span>}
           </div>
         )}
@@ -165,6 +176,7 @@ const Dashboard = () => {
         >
           <option value="demographics">Demographics</option>
           <option value="housing">Housing Supply</option>
+          <option value="affordability">Housing Affordability</option>
           <option value="policy">Policy</option>
         </select>
       </div>
@@ -204,6 +216,15 @@ const Dashboard = () => {
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
             >
               HOUSING SUPPLY
+            </button>
+            <button 
+              onClick={() => setActiveTopic('affordability')}
+              className={`px-4 py-2 rounded-t-md text-xs font-bold mr-1 whitespace-nowrap
+                ${activeTopic === 'affordability' 
+                  ? 'bg-blue-800 text-white' 
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+            >
+              HOUSING AFFORDABILITY
             </button>
             <button 
               onClick={() => setActiveTopic('policy')}
@@ -264,31 +285,71 @@ const Dashboard = () => {
           )}
                       
           {/* Housing Content */}
-            {activeTopic === 'housing' && (
-              <div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <HousingSupplyChart 
-                    provinceName={provinceName}
-                    provinceId={activeProvince}
-                  />
-                  <HousingDistributionChart 
-                    provinceName={provinceName}
-                    provinceId={activeProvince}
-                  />
+          {activeTopic === 'housing' && (
+            <div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <HousingSupplyChart 
+                  provinceName={provinceName}
+                  provinceId={activeProvince}
+                />
+                <HousingDistributionChart 
+                  provinceName={provinceName}
+                  provinceId={activeProvince}
+                />
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <HousingUnitsChart 
+                  provinceName={provinceName}
+                  provinceId={activeProvince}
+                />
+                <TotalHousingChart 
+                  provinceName={provinceName}
+                  provinceId={activeProvince}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Housing Affordability Content */}
+          {activeTopic === 'affordability' && (
+            <div className="grid grid-cols-1 gap-4">
+              <HousingAffordabilityChart 
+                provinceName={provinceName} 
+                provinceId={activeProvince} 
+              />
+              
+              {/* Additional affordability metrics */}
+              <div className="bg-white p-4 rounded-lg shadow">
+                <h3 className="text-sm font-semibold text-gray-800 mb-3">
+                  Understanding Housing Affordability
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                  <div className="bg-blue-50 p-3 rounded border border-blue-200">
+                    <h4 className="font-semibold text-blue-800 mb-1">Total Housing Burden</h4>
+                    <p className="text-blue-700">
+                      Percentage of household income spent on all housing-related expenses
+                    </p>
+                  </div>
+                  <div className="bg-green-50 p-3 rounded border border-green-200">
+                    <h4 className="font-semibold text-green-800 mb-1">Rent-to-Income Ratio</h4>
+                    <p className="text-green-700">
+                      Percentage of household income spent specifically on rental payments
+                    </p>
+                  </div>
+                  <div className="bg-yellow-50 p-3 rounded border border-yellow-200">
+                    <h4 className="font-semibold text-yellow-800 mb-1">Mortgage-to-Income Ratio</h4>
+                    <p className="text-yellow-700">
+                      Percentage of household income spent on mortgage payments
+                    </p>
+                  </div>
                 </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <HousingUnitsChart 
-                    provinceName={provinceName}
-                    provinceId={activeProvince}
-                  />
-                  <TotalHousingChart 
-                    provinceName={provinceName}
-                    provinceId={activeProvince}
-                  />
+                <div className="mt-3 p-2 bg-gray-50 rounded text-xs text-gray-600">
+                  <p><strong>Note:</strong> Housing is considered affordable when it costs no more than 30% of household income. Higher ratios indicate housing affordability challenges.</p>
                 </div>
               </div>
-            )}
+            </div>
+          )}
           
           {/* Policy Content */}
           {activeTopic === 'policy' && (
@@ -319,133 +380,89 @@ const Dashboard = () => {
               <div className="mb-4">
                 <PolicyTable 
                   policies={filteredPolicies} 
-                  provinceName={provinceName} 
+                  provinceName={provinceName}
+                  onFilterChange={setPolicyFilter}
+                  activeFilter={policyFilter}
                 />
               </div>
             </div>
           )}
         </div>
-        
-        {/* Right side - Map and Info */}
+
+        {/* Right side - Map and Summary */}
         <div className="w-full md:w-5/12">
-          {/* Map with province dropdown */}
-          <div className="bg-white p-4 rounded-lg shadow mb-4">
-            <div className="mb-3">
-              <select 
-                className="w-full p-2 border rounded shadow-sm bg-white text-gray-800"
-                value={activeProvince}
-                onChange={(e) => handleProvinceChange(e.target.value)}
-              >
-                {provinces.map((province) => (
-                  <option key={province.id} value={province.id}>
-                    {province.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <MapView 
-              activeProvince={activeProvince} 
-              onProvinceChange={handleProvinceChange} 
+          {/* Map Section */}
+          <div className="mb-6">
+            <MapView
+              provinces={provinces}
+              activeProvince={activeProvince}
+              onProvinceChange={setActiveProvince}
+              onProvinceHover={handleProvinceHover}
             />
-            <div className="mt-2 text-center">
-              <p className="text-sm font-medium text-gray-800">จังหวัด{provinceName}</p>
-            </div>
           </div>
-          
-          {/* Key Metrics Bar */}
+
+          {/* Summary Metrics */}
           {!isLoading && !isError && (
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <div className="bg-blue-50 p-3 rounded-lg shadow">
-                <p className="text-xs text-gray-500">Population (Latest)</p>
-                <p className="text-lg font-bold text-blue-800">
-                  {new Intl.NumberFormat('th-TH').format(metrics.population)} คน
-                </p>
-                {population.isFetching && <span className="text-xs text-blue-600">🔄</span>}
-              </div>
-              <div className="bg-green-50 p-3 rounded-lg shadow">
-                <p className="text-xs text-gray-500">Households (Latest)</p>
-                <p className="text-lg font-bold text-green-800">
-                  {new Intl.NumberFormat('th-TH').format(metrics.households)} ครัวเรือน
-                </p>
-                {household.isFetching && <span className="text-xs text-blue-600">🔄</span>}
-              </div>
-              <div className="bg-purple-50 p-3 rounded-lg shadow">
-                <p className="text-xs text-gray-500">Median Income</p>
-                <p className="text-lg font-bold text-purple-800">
-                  {new Intl.NumberFormat('th-TH').format(metrics.income)} บาท
-                </p>
-                {income.isFetching && <span className="text-xs text-blue-600">🔄</span>}
-              </div>
-              <div className="bg-amber-50 p-3 rounded-lg shadow">
-                <p className="text-xs text-gray-500">Income Growth</p>
-                <p className="text-lg font-bold text-amber-800">
-                  {metrics.incomeGrowth.toFixed(1)}%
-                </p>
+            <div className="bg-white rounded-lg shadow p-4 mb-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                {provinceName} Overview
+              </h3>
+              
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Population</span>
+                  <span className="font-medium">
+                    {metrics.population.toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Households</span>
+                  <span className="font-medium">
+                    {metrics.households.toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Median Income</span>
+                  <span className="font-medium">
+                    ฿{metrics.income.toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Income Growth</span>
+                  <span className={`font-medium ${metrics.incomeGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {metrics.incomeGrowth >= 0 ? '+' : ''}{metrics.incomeGrowth.toFixed(1)}%
+                  </span>
+                </div>
               </div>
             </div>
           )}
-          
+
           {/* Policy Summary */}
-          {!isLoading && !isError && policy.data && policy.data.length > 0 && (
-            <div className="bg-white p-0 rounded-lg shadow mb-4">
-              <div className="px-3 py-2 border-b border-gray-200">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-sm font-semibold text-gray-800">Housing Policy Summary</h3>
-                  <div className="flex items-center space-x-2">
-                    {policyFilter && (
-                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                        Filtered
-                      </span>
-                    )}
-                    {policy.isFetching && <span className="text-xs text-blue-600">🔄</span>}
-                  </div>
+          {policy.data && policy.data.length > 0 && (
+            <div className="bg-white rounded-lg shadow p-4">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                Policy Summary
+              </h3>
+              
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Total Policies</span>
+                  <span className="font-medium">{policy.data.length}</span>
                 </div>
-              </div>
-              <div className="p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-gray-500">Active Policies:</span>
-                  <span className="text-sm font-medium text-green-600">
-                    {filteredPolicies.filter(p => p.Status === 'Active').length}
-                    {policyFilter && (
-                      <span className="text-xs text-gray-500 ml-1">
-                        / {policy.data.filter(p => p.Status === 'Active').length}
-                      </span>
-                    )}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-gray-500">Pending Policies:</span>
-                  <span className="text-sm font-medium text-yellow-600">
-                    {filteredPolicies.filter(p => p.Status === 'Pending').length}
-                    {policyFilter && (
-                      <span className="text-xs text-gray-500 ml-1">
-                        / {policy.data.filter(p => p.Status === 'Pending').length}
-                      </span>
-                    )}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-500">Total Housing Policies:</span>
-                  <span className="text-sm font-medium">
-                    {filteredPolicies.length}
-                    {policyFilter && (
-                      <span className="text-xs text-gray-500 ml-1">
-                        / {policy.data.length}
-                      </span>
-                    )}
-                  </span>
-                </div>
-                <div className="mt-3 pt-3 border-t border-gray-100">
-                  <p className="text-xs text-gray-600 mb-1">Policy Types:</p>
+                
+                {/* Policy type breakdown */}
+                <div className="pt-2">
+                  <p className="text-xs font-medium text-gray-700 mb-2">By Type:</p>
                   <div className="flex flex-wrap gap-1">
-                    {['S1: Supply', 'S2: Subsidy', 'S3: Stability'].map((type) => {
-                      const typeCode = type.split(':')[0].trim();
-                      const count = filteredPolicies.filter(p => p['3S Model'] && p['3S Model'].includes(type)).length;
-                      const totalCount = policy.data.filter(p => p['3S Model'] && p['3S Model'].includes(type)).length;
+                    {['S1', 'S2', 'S3'].map(typeCode => {
+                      const count = policy.data.filter(p => 
+                        p['3S Model'] && p['3S Model'].includes(typeCode)
+                      ).length;
+                      const totalCount = policy.data.length;
                       
-                      return count > 0 || (policyFilter && totalCount > 0) ? (
+                      return count > 0 ? (
                         <span 
-                          key={type} 
+                          key={typeCode} 
                           className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
                             policyFilter === `type:${typeCode}` 
                               ? 'bg-blue-200 text-blue-800' 
@@ -491,6 +508,12 @@ const Dashboard = () => {
                   <span>Housing:</span>
                   <span className={`${housingSupply.isStale ? 'text-orange-600' : 'text-green-600'}`}>
                     {housingSupply.isLoading ? 'Loading...' : housingSupply.isStale ? 'Stale' : 'Fresh'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Affordability:</span>
+                  <span className={`${housingAffordability.isStale ? 'text-orange-600' : 'text-green-600'}`}>
+                    {housingAffordability.isLoading ? 'Loading...' : housingAffordability.isStale ? 'Stale' : 'Fresh'}
                   </span>
                 </div>
                 <div className="flex justify-between">
