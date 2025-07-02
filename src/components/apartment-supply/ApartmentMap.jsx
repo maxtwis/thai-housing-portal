@@ -828,11 +828,8 @@ const ApartmentMap = ({
         nearbyLayersRef.current[category] = layerGroup;
         layerGroup.addTo(mapRef.current);
         
-        setTimeout(() => {
-          if (mapRef.current) {
-            mapRef.current.closePopup();
-          }
-        }, 100);
+        // DON'T close the popup - this was causing the proximity score to disappear!
+        // The popup should stay open with the proximity score visible
         
         showNearbyNotification(category, data.elements.length);
       } else {
