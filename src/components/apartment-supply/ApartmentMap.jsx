@@ -60,18 +60,18 @@ const fetchNearbyCount = async (category, lat, lng, radius = 1000) => {
 };
 
 const buildOverpassQuery = (category, lat, lng, radius) => {
-  const timeout = 10; // Reduced timeout
+  const timeout = 15; // Increased timeout for better reliability
   switch(category) {
     case 'restaurant':
-      return `[out:json][timeout:${timeout}];(node["amenity"~"^(restaurant|cafe|fast_food)$"](around:${radius},${lat},${lng});way["amenity"~"^(restaurant|cafe|fast_food)$"](around:${radius},${lat},${lng}););out count;`;
+      return `[out:json][timeout:${timeout}];(node["amenity"~"^(restaurant|cafe|fast_food)$"](around:${radius},${lat},${lng});way["amenity"~"^(restaurant|cafe|fast_food)$"](around:${radius},${lat},${lng}););out geom;`;
     case 'convenience':
-      return `[out:json][timeout:${timeout}];(node["shop"~"^(convenience|supermarket)$"](around:${radius},${lat},${lng});way["shop"~"^(convenience|supermarket)$"](around:${radius},${lat},${lng}););out count;`;
+      return `[out:json][timeout:${timeout}];(node["shop"~"^(convenience|supermarket)$"](around:${radius},${lat},${lng});way["shop"~"^(convenience|supermarket)$"](around:${radius},${lat},${lng}););out geom;`;
     case 'school':
-      return `[out:json][timeout:${timeout}];(node["amenity"~"^(school|university|kindergarten)$"](around:${radius},${lat},${lng});way["amenity"~"^(school|university|kindergarten)$"](around:${radius},${lat},${lng}););out count;`;
+      return `[out:json][timeout:${timeout}];(node["amenity"~"^(school|university|kindergarten)$"](around:${radius},${lat},${lng});way["amenity"~"^(school|university|kindergarten)$"](around:${radius},${lat},${lng}););out geom;`;
     case 'health':
-      return `[out:json][timeout:${timeout}];(node["amenity"~"^(hospital|clinic|doctors|dentist|pharmacy)$"](around:${radius},${lat},${lng});node["healthcare"](around:${radius},${lat},${lng});node["shop"="chemist"](around:${radius},${lat},${lng});way["amenity"~"^(hospital|clinic|doctors|dentist|pharmacy)$"](around:${radius},${lat},${lng});way["healthcare"](around:${radius},${lat},${lng}););out count;`;
+      return `[out:json][timeout:${timeout}];(node["amenity"~"^(hospital|clinic|doctors|dentist|pharmacy)$"](around:${radius},${lat},${lng});node["healthcare"](around:${radius},${lat},${lng});node["shop"="chemist"](around:${radius},${lat},${lng});way["amenity"~"^(hospital|clinic|doctors|dentist|pharmacy)$"](around:${radius},${lat},${lng});way["healthcare"](around:${radius},${lat},${lng}););out geom;`;
     case 'transport':
-      return `[out:json][timeout:${timeout}];(node["public_transport"](around:${radius},${lat},${lng});node["highway"="bus_stop"](around:${radius},${lat},${lng});node["amenity"="bus_station"](around:${radius},${lat},${lng});node["railway"="station"](around:${radius},${lat},${lng});way["public_transport"](around:${radius},${lat},${lng});way["amenity"="bus_station"](around:${radius},${lat},${lng}););out count;`;
+      return `[out:json][timeout:${timeout}];(node["public_transport"](around:${radius},${lat},${lng});node["highway"="bus_stop"](around:${radius},${lat},${lng});node["amenity"="bus_station"](around:${radius},${lat},${lng});node["railway"="station"](around:${radius},${lat},${lng});way["public_transport"](around:${radius},${lat},${lng});way["amenity"="bus_station"](around:${radius},${lat},${lng}););out geom;`;
     default:
       return buildOverpassQuery('restaurant', lat, lng, radius);
   }
@@ -141,7 +141,7 @@ const ApartmentMap = ({
           const categoryScore = calculateCategoryScore(nearbyCount, category);
           totalScore += categoryScore;
           categoryCount++;
-          console.log(`${category}: ${nearbyCount} places, score: ${categoryScore}`);
+          console.log(`${category}: ${nearbyCount} places found, score: ${categoryScore}%`);
           
           // Add delay to respect API limits
           await new Promise(resolve => setTimeout(resolve, 800));
@@ -286,7 +286,10 @@ const ApartmentMap = ({
     console.log(`Generating popup for ${property.apartment_name || property.name}:`, {
       proximityScore,
       isCalculating,
-      hasScore: proximityScore !== undefined
+      hasScore: proximityScore !== undefined,
+      calculatingProximityState: calculatingProximity,
+      proximityScoresKeys: Object.keys(proximityScores),
+      propertyId: property.id
     });
     
     // Helper functions
