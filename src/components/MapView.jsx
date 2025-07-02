@@ -232,10 +232,8 @@ const MapView = ({ activeProvince, onProvinceChange, onProvinceHover }) => {
       } catch (err) {
         console.error('Error updating GeoJSON styles:', err);
       }
-    }
-    
-    // Update markers (if visible) - fallback behavior
-    if (!usingGeoJSON && markersRef.current && markersRef.current.length > 0) {
+    } else if (!usingGeoJSON && markersRef.current && markersRef.current.length > 0) {
+      // ONLY update markers if we're NOT using GeoJSON
       markersRef.current.forEach(({ marker, province }) => {
         const isActive = province.id === activeProvince;
         
@@ -258,7 +256,7 @@ const MapView = ({ activeProvince, onProvinceChange, onProvinceHover }) => {
         marker.setIcon(customIcon);
       });
       
-      // For markers, use flyTo with improved coordinates and zoom
+      // For markers ONLY, use flyTo with improved coordinates and zoom
       const selectedProvince = provinces.find(p => p.id === activeProvince);
       if (selectedProvince) {
         map.flyTo([selectedProvince.lat, selectedProvince.lon], 7.5, {
