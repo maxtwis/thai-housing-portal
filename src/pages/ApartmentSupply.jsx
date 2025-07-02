@@ -10,8 +10,8 @@ const ApartmentSupply = () => {
   const [isMobile, setIsMobile] = useState(false);
   const [showFilters, setShowFilters] = useState(true);
   
-  // Province selection state
-  const [selectedProvince, setSelectedProvince] = useState(10); // Default to Bangkok
+  // Province selection state - now defaults to all provinces
+  const [selectedProvince, setSelectedProvince] = useState(null); // null = all provinces
 
   // Available provinces (matching Housing Profile)
   const provinces = [
@@ -81,11 +81,16 @@ const ApartmentSupply = () => {
     return totalAmenities > 0 ? Math.round((availableAmenities / totalAmenities) * 100) : 0;
   };
 
-  // Filter properties with proximity scores (updated for on-demand approach)
+  // Filter properties with proximity scores (updated for all provinces)
   const getFilteredData = (proximityScores = {}) => {
     if (!apartmentData || !Array.isArray(apartmentData)) return [];
 
     return apartmentData.filter(property => {
+      // Province filter (now used as a filter, not data loader)
+      if (selectedProvince && selectedProvince !== 'all') {
+        if (property.province_code !== selectedProvince) return false;
+      }
+
       // Price filter
       if (filters.priceRange !== 'all') {
         const [minPrice, maxPrice] = filters.priceRange.split('-').map(Number);
@@ -284,25 +289,24 @@ const ApartmentSupply = () => {
     });
   };
 
-  // Load apartment data
+  // Load apartment data from all provinces
   useEffect(() => {
     const loadApartmentData = async () => {
       setLoading(true);
       setError(null);
       
       try {
-        console.log('Loading apartment data for province:', selectedProvince);
+        console.log('Loading apartment data from all provinces...');
         
         const resourceId = 'b6dbb8e0-1194-4eeb-945d-e883b3275b35';
-        const apiFilters = selectedProvince ? { province_code: selectedProvince } : {};
         
+        // Load all data without province filter
         const result = await getCkanData(resourceId, {
-          filters: JSON.stringify(apiFilters),
-          limit: 50000,
+          limit: 50000, // High limit to get all records
           sort: 'name asc'
         });
         
-        console.log('Raw apartment data:', result);
+        console.log('Raw apartment data from all provinces:', result);
         
         if (result && result.records && Array.isArray(result.records)) {
           // Process and validate data using the same structure as useApartmentQueries.js
@@ -317,7 +321,7 @@ const ApartmentSupply = () => {
             
             // Location info
             province: record.province || '',
-            province_code: parseInt(record.province_code) || selectedProvince,
+            province_code: parseInt(record.province_code) || null,
             district: record.district || '',
             subdistrict: record.subdistrict || '',
             street: record.street || '',
@@ -372,12 +376,25 @@ const ApartmentSupply = () => {
             !isNaN(property.latitude) && !isNaN(property.longitude)
           );
           
-          console.log(`Processed ${processedData.length} valid property records`);
+          console.log(`Processed ${processedData.length} valid property records from all provinces`);
+          
+          // Group by province for statistics
+          const provinceStats = {};
+          processedData.forEach(property => {
+            const provinceName = property.province || 'ไม่ระบุ';
+            if (!provinceStats[provinceName]) {
+              provinceStats[provinceName] = 0;
+            }
+            provinceStats[provinceName]++;
+          });
+          
+          console.log('Properties by province:', provinceStats);
+          
           setApartmentData(processedData);
           calculateStatistics(processedData);
         } else {
           console.error('Invalid data structure received:', result);
-          setError('ไม่พบข้อมูลอพาร์ตเมนต์ในจังหวัดที่เลือก');
+          setError('ไม่พบข้อมูลอพาร์ตเมนต์');
           setApartmentData([]);
         }
       } catch (error) {
@@ -390,7 +407,7 @@ const ApartmentSupply = () => {
     };
 
     loadApartmentData();
-  }, [selectedProvince]);
+  }, []); // Remove selectedProvince dependency to load all data
 
   // Handle apartment selection
   const handleApartmentSelect = (apartment) => {
@@ -473,13 +490,18 @@ const ApartmentSupply = () => {
                 <h3 className="font-semibold text-gray-800 mb-3">เลือกจังหวัด</h3>
                 <select 
                   className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  value={selectedProvince}
-                  onChange={(e) => setSelectedProvince(parseInt(e.target.value))}
+                  value={selectedProvince || 'all'}
+                  onChange={(e) => setSelectedProvince(e.target.value === 'all' ? null : parseInt(e.target.value))}
                 >
+                  <option value="all">ทุกจังหวัด</option>
                   {provinces.map(province => (
                     <option key={province.id} value={province.id}>{province.name}</option>
                   ))}
                 </select>
+                <div className="mt-2 text-xs text-gray-500">
+                  แสดงข้อมูลจาก {filteredData.length.toLocaleString()} อพาร์ตเมนต์
+                  {selectedProvince ? ` ใน${provinces.find(p => p.id === selectedProvince)?.name}` : ' ทุกจังหวัด'}
+                </div>
               </div>
 
               {/* Color Scheme Selection */}
