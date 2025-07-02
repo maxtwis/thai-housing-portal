@@ -171,18 +171,25 @@ const ApartmentMap = ({
           
           console.log(`${category}: ${nearbyCount} places found, score: ${categoryScore}%`);
           
-          // Update with partial score every 2 categories for faster feedback
-          if (categoryCount === 2 || categoryCount === 4) {
+          // Update with partial score strategically
+          if (categoryCount === 2) {
             const partialScore = Math.round(totalScore / categoryCount);
             setProximityScores(prev => ({
               ...prev,
               [property.id]: partialScore
             }));
             console.log(`Partial score after ${categoryCount} categories: ${partialScore}%`);
+            
+            // Early exit optimization: if we already have perfect score with good sample size
+            if (partialScore === 100 && categoryCount >= 3) {
+              console.log(`Early exit: Perfect score achieved with ${categoryCount} categories`);
+              break;
+            }
           }
           
-          // Shorter delay for faster processing
-          await new Promise(resolve => setTimeout(resolve, 300));
+          // Dynamic delay based on area density
+          const delay = nearbyCount > 50 ? 200 : 300; // Shorter delay for high-density areas
+          await new Promise(resolve => setTimeout(resolve, delay));
         } catch (error) {
           console.error(`Skipping ${category} due to error:`, error.message);
           // Continue with other categories - don't let one failure stop everything
@@ -192,7 +199,7 @@ const ApartmentMap = ({
       }
 
       const finalScore = categoryCount > 0 ? Math.round(totalScore / categoryCount) : 0;
-      console.log(`Final proximity score: ${finalScore}%`);
+      console.log(`✅ Final proximity score: ${finalScore}% (calculated from ${categoryCount} categories)`);
       
       // Update with final score
       setProximityScores(prev => {
@@ -200,7 +207,7 @@ const ApartmentMap = ({
           ...prev,
           [property.id]: finalScore
         };
-        console.log('Updated proximity scores:', newScores);
+        console.log('💾 Score cached - subsequent clicks will be instant');
         return newScores;
       });
       
