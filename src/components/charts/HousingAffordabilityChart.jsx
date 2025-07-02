@@ -41,9 +41,9 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
   
   // Available metrics
   const metrics = {
-    'Total_Hburden': 'Total Housing Burden',
-    'Exp_hbrent': 'Rent-to-Income Ratio',
-    'Exp_hbmort': 'Mortgage-to-Income Ratio'
+    'Total_Hburden': 'อัตราส่วนค่าใช้จ่ายที่อยู่อาศัยรวม',
+    'Exp_hbrent': 'อัตราส่วนค่าเช่าต่อรายได้',
+    'Exp_hbmort': 'อัตราส่วนค่างวดต่อรายได้'
   };
 
   // Process data for chart
@@ -118,13 +118,13 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
       <div className="bg-white p-0 rounded-lg shadow">
         <div className="px-3 py-2 border-b border-gray-200">
           <div className="flex justify-between items-center">
-            <h2 className="text-sm font-semibold text-gray-800">Housing Affordability by Income Quintile</h2>
+            <h2 className="text-sm font-semibold text-gray-800">ความสามารถในการจ่ายค่าที่อยู่อาศัยตามกลุ่มรายได้</h2>
           </div>
         </div>
         <div className="px-2 py-1 h-52 flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
-            <p className="mt-3 text-gray-600">Loading affordability data...</p>
+            <p className="mt-3 text-gray-600">กำลังโหลดข้อมูลความสามารถในการจ่าย...</p>
           </div>
         </div>
       </div>
@@ -137,14 +137,14 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
       <div className="bg-white p-0 rounded-lg shadow">
         <div className="px-3 py-2 border-b border-gray-200">
           <div className="flex justify-between items-center">
-            <h2 className="text-sm font-semibold text-gray-800">Housing Affordability by Income Quintile</h2>
+            <h2 className="text-sm font-semibold text-gray-800">ความสามารถในการจ่ายค่าที่อยู่อาศัยตามกลุ่มรายได้</h2>
             <ExportButton data={[]} filename={`affordability_${provinceName}`} />
           </div>
         </div>
         <div className="px-2 py-1 h-52 flex items-center justify-center">
           <div className="text-center">
             <div className="text-red-500 mb-2">⚠️</div>
-            <p className="text-gray-600">Error loading data</p>
+            <p className="text-gray-600">เกิดข้อผิดพลาดในการโหลดข้อมูล</p>
             <p className="text-xs text-gray-500 mt-1">{error.message}</p>
           </div>
         </div>
@@ -156,7 +156,7 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
     <div className="bg-white p-0 rounded-lg shadow">
       <div className="px-3 py-2 border-b border-gray-200">
         <div className="flex justify-between items-center mb-3">
-          <h2 className="text-sm font-semibold text-gray-800">Housing Affordability by Income Quintile</h2>
+          <h2 className="text-sm font-semibold text-gray-800">ความสามารถในการจ่ายค่าที่อยู่อาศัยตามกลุ่มรายได้</h2>
           <ExportButton data={chartData} filename={`affordability_${provinceName}_${selectedDemandType}`} />
         </div>
         
@@ -164,7 +164,7 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="flex items-center gap-2">
             <label className="text-xs font-medium text-gray-700">
-              Demand Type:
+              กลุ่มผู้มีความต้องการ:
             </label>
             <select
               value={selectedDemandType}
@@ -179,7 +179,7 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
           
           <div className="flex items-center gap-2">
             <label className="text-xs font-medium text-gray-700">
-              Metric:
+              ตัวชี้วัด:
             </label>
             <select
               value={selectedMetric}
@@ -230,8 +230,8 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
           <div className="h-72 flex items-center justify-center text-gray-500">
             <div className="text-center">
               <div className="text-gray-400 mb-2">📊</div>
-              <p className="text-sm">No data available for {selectedDemandType}</p>
-              <p className="text-xs text-gray-400 mt-1">Try selecting a different demand type</p>
+              <p className="text-sm">ไม่มีข้อมูลสำหรับ {selectedDemandType}</p>
+              <p className="text-xs text-gray-400 mt-1">ลองเลือกกลุ่มผู้มีความต้องการอื่น</p>
             </div>
           </div>
         )}
@@ -239,7 +239,7 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
         {/* Loading indicator for background updates */}
         {isFetching && !isLoading && (
           <div className="text-xs text-blue-600 mt-2 px-1">
-            🔄 Updating data...
+            🔄 กำลังอัปเดตข้อมูล...
           </div>
         )}
       </div>
@@ -248,20 +248,20 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
       <div className="px-3 py-2 border-t border-gray-100 bg-gray-50 text-xs text-gray-600">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <p><strong>Current Selection:</strong></p>
-            <p>• Demand Type: {selectedDemandType}</p>
-            <p>• Metric: {metrics[selectedMetric]}</p>
-            <p>• Province: {provinceName}</p>
+            <p><strong>การเลือกปัจจุบัน:</strong></p>
+            <p>• กลุ่มผู้มีความต้องการ: {selectedDemandType}</p>
+            <p>• ตัวชี้วัด: {metrics[selectedMetric]}</p>
+            <p>• จังหวัด: {provinceName}</p>
           </div>
           <div>
-            <p><strong>Chart Legend:</strong></p>
-            <p>• X-axis: Income quintiles (Q1=lowest, Q5=highest)</p>
-            <p>• Y-axis: Percentage of income spent on housing</p>
-            <p>• Stacked colors: Different housing types</p>
+            <p><strong>คำอธิบายแผนภูมิ:</strong></p>
+            <p>• แกน X: กลุ่มรายได้ (Q1=น้อยที่สุด, Q5=มากที่สุด)</p>
+            <p>• แกน Y: เปอร์เซ็นต์รายได้ที่ใช้จ่ายสำหรับที่อยู่อาศัย</p>
+            <p>• สีในแท่ง: ประเภทที่อยู่อาศัยต่างๆ</p>
           </div>
         </div>
         <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
-          <p><strong>Affordability Benchmark:</strong> Housing costs more than 30% of income indicate affordability challenges</p>
+          <p><strong>มาตรฐานความสามารถในการจ่าย:</strong> ค่าใช้จ่ายที่อยู่อาศัยมากกว่า 30% ของรายได้ แสดงถึงปัญหาความสามารถในการจ่าย</p>
         </div>
       </div>
     </div>
