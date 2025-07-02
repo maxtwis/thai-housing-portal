@@ -102,8 +102,9 @@ const MapView = ({ activeProvince, onProvinceChange, onProvinceHover }) => {
           
           // Style function for GeoJSON features
           const style = (feature) => {
-            const isActive = feature.properties.id === activeProvince;
-            const isWanted = wantedProvinceIds.includes(feature.properties.id);
+            const provinceId = feature.properties.id;
+            const isActive = parseInt(provinceId) === activeProvince;
+            const isWanted = wantedProvinceIds.includes(parseInt(provinceId));
             
             if (isWanted) {
               return {
@@ -128,28 +129,45 @@ const MapView = ({ activeProvince, onProvinceChange, onProvinceHover }) => {
           const provinceLayer = L.geoJSON(geojsonData, {
             style: style,
             onEachFeature: (feature, layer) => {
-              if (wantedProvinceIds.includes(feature.properties.id)) {
-                layer.on('click', () => {
-                  onProvinceChange(feature.properties.id);
+              // Debug: Log the feature properties to understand the data structure
+              console.log('GeoJSON feature:', feature.properties);
+              
+              // Always add click events, then check inside the handler
+              layer.on('click', (e) => {
+                console.log('Polygon clicked! Feature properties:', feature.properties);
+                console.log('Wanted province IDs:', wantedProvinceIds);
+                
+                const provinceId = feature.properties.id;
+                console.log('Province ID from click:', provinceId);
+                
+                if (provinceId && wantedProvinceIds.includes(parseInt(provinceId))) {
+                  console.log('Valid province clicked, changing to:', parseInt(provinceId));
+                  onProvinceChange(parseInt(provinceId));
+                } else {
+                  console.log('Province not in wanted list. Available IDs:', wantedProvinceIds);
+                }
+                
+                // Prevent event bubbling
+                e.originalEvent.stopPropagation();
+              });
+              
+              // Add hover effects
+              layer.on('mouseover', () => {
+                layer.setStyle({
+                  weight: 2,
+                  color: '#2C5282',
+                  fillOpacity: 0.7
                 });
                 
-                layer.on('mouseover', () => {
-                  layer.setStyle({
-                    weight: 2,
-                    color: '#2C5282',
-                    fillOpacity: 0.7
-                  });
-                  
-                  // Call hover handler if provided
-                  if (onProvinceHover) {
-                    onProvinceHover(feature.properties.id);
-                  }
-                });
-                
-                layer.on('mouseout', () => {
-                  provinceLayer.resetStyle(layer);
-                });
-              }
+                // Call hover handler if provided
+                if (onProvinceHover && wantedProvinceIds.includes(parseInt(feature.properties.id))) {
+                  onProvinceHover(feature.properties.id);
+                }
+              });
+              
+              layer.on('mouseout', () => {
+                provinceLayer.resetStyle(layer);
+              });
             }
           }).addTo(map);
           
@@ -201,11 +219,22 @@ const MapView = ({ activeProvince, onProvinceChange, onProvinceHover }) => {
         // Re-style all features and find the selected layer
         provinceLayerRef.current.eachLayer((layer) => {
           const feature = layer.feature;
-          const isActive = feature.properties.id === activeProvince;
-          const isWanted = wantedProvinceIds.includes(feature.properties.id);
+          const provinceId = feature.properties.id;
+          const isActive = parseInt(provinceId) === activeProvince;
+          const isWanted = wantedProvinceIds.includes(parseInt(provinceId));
+          
+          // Debug logging
+          console.log('Processing layer:', {
+            provinceId: provinceId,
+            activeProvince: activeProvince,
+            isActive: isActive,
+            isWanted: isWanted,
+            provinceName: feature.properties.NAME_1 || feature.properties.NL_NAME_1
+          });
           
           if (isActive && isWanted) {
             selectedLayer = layer;
+            console.log('Found selected layer for province:', activeProvince);
           }
           
           if (isWanted) {
@@ -221,13 +250,24 @@ const MapView = ({ activeProvince, onProvinceChange, onProvinceHover }) => {
         
         // If we found the selected layer, fit bounds to it with better options
         if (selectedLayer) {
+          console.log('Fitting bounds to selected province');
           const bounds = selectedLayer.getBounds();
+          console.log('Province bounds:', bounds);
           map.fitBounds(bounds, {
-            padding: [20, 20], // Add some padding around the province
-            maxZoom: 8, // Don't zoom in too much
+            padding: [30, 30], // Increased padding
+            maxZoom: 7, // Reduced max zoom for better view
             animate: true,
-            duration: 1.0 // Smooth animation
+            duration: 1.2 // Slightly longer animation
           });
+        } else {
+          console.log('No selected layer found for province ID:', activeProvince);
+          console.log('Available province IDs in GeoJSON:', 
+            Array.from(new Set(
+              Array.from(provinceLayerRef.current.getLayers()).map(layer => 
+                layer.feature?.properties?.id
+              )
+            ))
+          );
         }
       } catch (err) {
         console.error('Error updating GeoJSON styles:', err);
