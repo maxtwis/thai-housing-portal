@@ -258,6 +258,22 @@ const ApartmentMap = ({
 
     map.addLayer(markerClusterRef.current);
     mapRef.current = map;
+    
+    // Add click handler to close popups when clicking on map (not on markers)
+    map.on('click', function(e) {
+      // Only close if clicking on empty map area (not on markers)
+      if (!e.originalEvent.target.closest('.leaflet-marker-icon') && 
+          !e.originalEvent.target.closest('.leaflet-popup')) {
+        map.closePopup();
+        // Also remove pinned marker when clicking elsewhere
+        if (pinnedMarkerRef.current) {
+          mapRef.current.removeLayer(pinnedMarkerRef.current);
+          pinnedMarkerRef.current = null;
+          currentPopupMarker.current = null;
+        }
+      }
+    });
+    
     window.apartmentMapInstance = {
       showNearbyPlaces,
       clearNearbyPlaces
@@ -403,6 +419,25 @@ const ApartmentMap = ({
           position: relative;
           overflow: hidden;
         ">
+          <!-- Close button -->
+          <button onclick="this.closest('.leaflet-popup').querySelector('.leaflet-popup-close-button').click();" style="
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+          ">✕</button>
+          
           <div style="position: absolute; top: -50%; right: -50%; width: 100px; height: 100px; background: rgba(255,255,255,0.1); border-radius: 50%;"></div>
           <div style="position: relative; z-index: 1;">
             <h3 style="
@@ -410,6 +445,7 @@ const ApartmentMap = ({
               font-size: 18px; 
               font-weight: 700;
               text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+              padding-right: 30px;
             ">${property.apartment_name || property.name || 'ไม่ระบุชื่อ'}</h3>
             <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
               <span style="font-size: 14px; opacity: 0.9;">📍</span>
@@ -960,7 +996,7 @@ const ApartmentMap = ({
 
       const popupOptions = {
         closeButton: true,
-        autoClose: false,
+        autoClose: true, // Changed to true so popup closes when clicking elsewhere
         closeOnEscapeKey: true,
         maxWidth: 340,
         minWidth: 300,
