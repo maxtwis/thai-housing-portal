@@ -133,7 +133,6 @@ const ApartmentMap = ({
       const categories = ['restaurant', 'convenience', 'school', 'health', 'transport'];
       let totalScore = 0;
       let categoryCount = 0;
-      let completedCategories = [];
 
       for (const category of categories) {
         try {
@@ -142,19 +141,7 @@ const ApartmentMap = ({
           const categoryScore = calculateCategoryScore(nearbyCount, category);
           totalScore += categoryScore;
           categoryCount++;
-          completedCategories.push({ category, score: categoryScore, count: nearbyCount });
-          
           console.log(`${category}: ${nearbyCount} places found, score: ${categoryScore}%`);
-          
-          // Update with partial score every 2 categories for faster feedback
-          if (categoryCount === 2 || categoryCount === 4) {
-            const partialScore = Math.round(totalScore / categoryCount);
-            setProximityScores(prev => ({
-              ...prev,
-              [property.id]: partialScore
-            }));
-            console.log(`Partial score after ${categoryCount} categories: ${partialScore}%`);
-          }
           
           // Add delay to respect API limits (reduced for faster calculation)
           await new Promise(resolve => setTimeout(resolve, 400));
@@ -167,7 +154,7 @@ const ApartmentMap = ({
       const finalScore = categoryCount > 0 ? Math.round(totalScore / categoryCount) : 0;
       console.log(`Final proximity score: ${finalScore}%`);
       
-      // Update with final score
+      // Update the proximity scores state
       setProximityScores(prev => {
         const newScores = {
           ...prev,
