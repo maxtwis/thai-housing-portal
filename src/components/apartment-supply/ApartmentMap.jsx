@@ -15,6 +15,34 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
+// Helper function to adjust color brightness
+const adjustColorBrightness = (color, percent) => {
+  const hex = color.replace('#', '');
+  const r = parseInt(hex.substr(0, 2), 16);
+  const g = parseInt(hex.substr(2, 2), 16);
+  const b = parseInt(hex.substr(4, 2), 16);
+  
+  const newR = Math.max(0, Math.min(255, r + (r * percent / 100)));
+  const newG = Math.max(0, Math.min(255, g + (g * percent / 100)));
+  const newB = Math.max(0, Math.min(255, b + (b * percent / 100)));
+  
+  return '#' + Math.round(newR).toString(16).padStart(2, '0') + 
+               Math.round(newG).toString(16).padStart(2, '0') + 
+               Math.round(newB).toString(16).padStart(2, '0');
+};
+
+// Helper function to calculate distance between two points
+const calculateDistance = (lat1, lng1, lat2, lng2) => {
+  const R = 6371; // Earth's radius in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLng/2) * Math.sin(dLng/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return Math.round(R * c * 1000); // Distance in meters, rounded
+};
+
 // Fetch nearby count for a specific category
 const fetchNearbyCount = async (category, lat, lng, radius = 1000) => {
   const query = buildOverpassQuery(category, lat, lng, radius);
@@ -836,17 +864,126 @@ const ApartmentMap = ({
 
             const placeName = place.tags?.name || place.tags?.brand || 'ไม่ระบุชื่อ';
             const placeType = getDetailedPlaceType(place, category);
+            const placeAddress = place.tags?.['addr:street'] || place.tags?.['addr:full'] || '';
+            const placePhone = place.tags?.phone || place.tags?.['contact:phone'] || '';
+            const placeWebsite = place.tags?.website || place.tags?.['contact:website'] || '';
+            const placeOpeningHours = place.tags?.opening_hours || '';
             
-            marker.bindPopup(`
-              <div style="font-family: 'Inter', sans-serif; max-width: 200px;">
-                <h4 style="margin: 0 0 8px 0; color: #374151; font-size: 14px; font-weight: 600;">
-                  ${style.icon} ${placeName}
-                </h4>
-                <p style="margin: 0; color: #6b7280; font-size: 12px;">
-                  ${placeType}
-                </p>
+            // Create enhanced popup content
+            const popupContent = `
+              <div style="
+                max-width: 280px; 
+                padding: 0; 
+                font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                background: white;
+                border-radius: 12px;
+                overflow: hidden;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+              ">
+                <!-- Header Section -->
+                <div style="
+                  background: linear-gradient(135deg, ${style.color} 0%, ${adjustColorBrightness(style.color, -20)} 100%);
+                  padding: 12px;
+                  color: white;
+                  position: relative;
+                ">
+                  <div style="position: absolute; top: -20px; right: -20px; width: 60px; height: 60px; background: rgba(255,255,255,0.1); border-radius: 50%;"></div>
+                  <div style="position: relative; z-index: 1;">
+                    <h4 style="
+                      margin: 0 0 4px 0; 
+                      font-size: 16px; 
+                      font-weight: 700;
+                      text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+                      line-height: 1.2;
+                    ">${style.icon} ${placeName}</h4>
+                    <div style="
+                      font-size: 12px; 
+                      opacity: 0.9;
+                      font-weight: 500;
+                    ">${placeType}</div>
+                  </div>
+                </div>
+
+                <!-- Content Section -->
+                <div style="padding: 12px;">
+                  ${placeAddress ? `
+                    <div style="
+                      background: #f8fafc; 
+                      padding: 8px 10px; 
+                      border-radius: 6px; 
+                      margin-bottom: 8px; 
+                      border-left: 3px solid ${style.color};
+                      font-size: 12px;
+                    ">
+                      <span style="color: #64748b;">📍 </span>
+                      <span style="color: #334155; font-weight: 500;">${placeAddress}</span>
+                    </div>
+                  ` : ''}
+                  
+                  ${placePhone ? `
+                    <div style="
+                      background: #f0fdf4; 
+                      padding: 8px 10px; 
+                      border-radius: 6px; 
+                      margin-bottom: 8px; 
+                      border-left: 3px solid #22c55e;
+                      font-size: 12px;
+                    ">
+                      <span style="color: #16a34a;">📞 </span>
+                      <span style="color: #15803d; font-weight: 500;">${placePhone}</span>
+                    </div>
+                  ` : ''}
+                  
+                  ${placeOpeningHours ? `
+                    <div style="
+                      background: #fef3c7; 
+                      padding: 8px 10px; 
+                      border-radius: 6px; 
+                      margin-bottom: 8px; 
+                      border-left: 3px solid #f59e0b;
+                      font-size: 12px;
+                    ">
+                      <span style="color: #d97706;">🕒 </span>
+                      <span style="color: #92400e; font-weight: 500;">${placeOpeningHours}</span>
+                    </div>
+                  ` : ''}
+
+                  ${placeWebsite ? `
+                    <a href="${placeWebsite}" target="_blank" rel="noopener noreferrer" 
+                       style="
+                         display: block;
+                         background: ${style.color}; 
+                         color: white; 
+                         text-decoration: none;
+                         padding: 8px 12px; 
+                         border-radius: 8px; 
+                         font-size: 11px; 
+                         font-weight: 500;
+                         text-align: center;
+                         margin-top: 8px;
+                         transition: all 0.2s;
+                       ">
+                       🔗 เยี่ยมชมเว็บไซต์
+                    </a>
+                  ` : ''}
+
+                  <!-- Distance Info -->
+                  <div style="
+                    background: #f1f5f9; 
+                    padding: 6px 8px; 
+                    border-radius: 4px; 
+                    margin-top: 8px;
+                    text-align: center;
+                    font-size: 10px;
+                    color: #64748b;
+                  ">
+                    ระยะทางประมาณ ${calculateDistance(searchCenter.lat, searchCenter.lng, markerLat, markerLng)} ม.
+                  </div>
+                </div>
               </div>
-            `);
+            `;
+            
+            marker.bindPopup(popupContent);
 
             marker.on('mouseover', function() {
               this.setStyle({
@@ -923,43 +1060,50 @@ const ApartmentMap = ({
     const tags = place.tags || {};
     
     if (category === 'health') {
-      if (tags.amenity === 'hospital') return 'โรงพยาบาล';
-      if (tags.amenity === 'clinic') return 'คลินิก';
-      if (tags.amenity === 'doctors') return 'คลินิกแพทย์';
-      if (tags.amenity === 'dentist') return 'คลินิกทันตกรรม';
-      if (tags.amenity === 'pharmacy' || tags.shop === 'chemist') return 'ร้านขายยา';
-      if (tags.healthcare === 'hospital') return 'โรงพยาบาล';
-      if (tags.healthcare === 'clinic') return 'คลินิก';
-      return 'สถานพยาบาล';
+      if (tags.amenity === 'hospital') return '🏥 โรงพยาบาล';
+      if (tags.amenity === 'clinic') return '🏥 คลินิก';
+      if (tags.amenity === 'doctors') return '👨‍⚕️ คลินิกแพทย์';
+      if (tags.amenity === 'dentist') return '🦷 คลินิกทันตกรรม';
+      if (tags.amenity === 'pharmacy' || tags.shop === 'chemist') return '💊 ร้านขายยา';
+      if (tags.healthcare === 'hospital') return '🏥 โรงพยาบาล';
+      if (tags.healthcare === 'clinic') return '🏥 คลินิก';
+      return '⚕️ สถานพยาบาล';
     }
     
     if (category === 'restaurant') {
-      if (tags.amenity === 'restaurant') return 'ร้านอาหาร';
-      if (tags.amenity === 'cafe') return 'ร้านกาแฟ';
-      if (tags.amenity === 'fast_food') return 'ฟาสต์ฟูด';
-      return 'ร้านอาหาร';
+      if (tags.amenity === 'restaurant') return '🍽️ ร้านอาหาร';
+      if (tags.amenity === 'cafe') return '☕ ร้านกาแฟ';
+      if (tags.amenity === 'fast_food') return '🍔 ฟาสต์ฟูด';
+      if (tags.cuisine) return `🍽️ ร้านอาหาร${tags.cuisine}`;
+      return '🍽️ ร้านอาหาร';
     }
     
     if (category === 'convenience') {
-      if (tags.shop === 'convenience') return 'ร้านสะดวกซื้อ';
-      if (tags.shop === 'supermarket') return 'ซูเปอร์มาร์เก็ต';
-      if (tags.brand === '7-Eleven') return 'เซเว่น อีเลฟเว่น';
-      if (tags.brand === 'Family Mart') return 'แฟมิลี่มาร์ท';
-      return 'ร้านสะดวกซื้อ';
+      if (tags.shop === 'convenience') return '🏪 ร้านสะดวกซื้อ';
+      if (tags.shop === 'supermarket') return '🛒 ซูเปอร์มาร์เก็ต';
+      if (tags.brand === '7-Eleven' || tags.name?.includes('7-Eleven')) return '🏪 เซเว่น อีเลฟเว่น';
+      if (tags.brand === 'Family Mart' || tags.name?.includes('Family')) return '🏪 แฟมิลี่มาร์ท';
+      if (tags.brand === 'Lotus' || tags.name?.includes('Lotus')) return '🛒 โลตัส';
+      if (tags.brand === 'Big C' || tags.name?.includes('Big C')) return '🛒 บิ๊กซี';
+      return '🏪 ร้านสะดวกซื้อ';
     }
     
     if (category === 'school') {
-      if (tags.amenity === 'school') return 'โรงเรียน';
-      if (tags.amenity === 'university') return 'มหาวิทยาลัย';
-      if (tags.amenity === 'kindergarten') return 'โรงเรียนอนุบาล';
-      return 'สถานศึกษา';
+      if (tags.amenity === 'school') return '🎓 โรงเรียน';
+      if (tags.amenity === 'university') return '🎓 มหาวิทยาลัย';
+      if (tags.amenity === 'kindergarten') return '👶 โรงเรียนอนุบาล';
+      if (tags['school:type'] === 'primary') return '🎓 โรงเรียนประถม';
+      if (tags['school:type'] === 'secondary') return '🎓 โรงเรียนมัธยม';
+      return '🎓 สถานศึกษา';
     }
     
     if (category === 'transport') {
-      if (tags.highway === 'bus_stop') return 'ป้ายรถเมล์';
-      if (tags.amenity === 'bus_station') return 'สถานีขนส่ง';
-      if (tags.railway === 'station') return 'สถานีรถไฟ';
-      return 'ขนส่งสาธารณะ';
+      if (tags.highway === 'bus_stop') return '🚌 ป้ายรถเมล์';
+      if (tags.amenity === 'bus_station') return '🚌 สถานีขนส่ง';
+      if (tags.railway === 'station') return '🚇 สถานีรถไฟ';
+      if (tags.public_transport === 'platform') return '🚇 ชานชาลา';
+      if (tags.amenity === 'taxi') return '🚕 จุดแท็กซี่';
+      return '🚌 ขนส่งสาธารณะ';
     }
     
     return getCategoryName(category);
