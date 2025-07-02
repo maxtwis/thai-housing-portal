@@ -164,21 +164,7 @@ const ApartmentMap = ({
         return newScores;
       });
       
-      // Force update the popup if it's currently open for this property
-      setTimeout(() => {
-        if (currentPopupMarker.current && currentPopupMarker.current.propertyData.id === property.id) {
-          console.log('Updating popup content with new proximity score');
-          const newPopupContent = generatePopupContent(currentPopupMarker.current.propertyData);
-          currentPopupMarker.current.setPopupContent(newPopupContent);
-          
-          // If the popup is open, refresh it
-          if (currentPopupMarker.current.isPopupOpen()) {
-            currentPopupMarker.current.openPopup();
-          }
-        }
-        
-        setCalculatingProximity(null);
-      }, 100);
+      setCalculatingProximity(null);
       
     } catch (error) {
       console.error('Error calculating proximity score:', error);
@@ -1034,6 +1020,16 @@ const ApartmentMap = ({
     }, 100);
 
   }, [selectedApartment, apartmentData]);
+
+  // Update popup content when proximity scores change
+  useEffect(() => {
+    if (currentPopupMarker.current && currentPopupMarker.current.isPopupOpen()) {
+      const property = currentPopupMarker.current.propertyData;
+      const newPopupContent = generatePopupContent(property);
+      currentPopupMarker.current.setPopupContent(newPopupContent);
+      console.log('Popup updated due to proximity score change');
+    }
+  }, [proximityScores, calculatingProximity]);
 
   // Reset zoom flag when filters change
   useEffect(() => {
