@@ -350,19 +350,40 @@ const ApartmentMap = ({
     }
   };
 
-  // Create marker style
-  const createSimpleMarker = (property, isSelected, isHovered) => {
+  // Create marker style with Google Material Icon
+  const createApartmentMarker = (property, isSelected, isHovered) => {
     const markerColor = getMarkerColor(property, colorScheme);
-    const size = isSelected ? 12 : (isHovered ? 10 : 8);
-
-    return {
-      radius: size,
-      fillColor: markerColor,
-      color: '#ffffff',
-      weight: isSelected ? 3 : 2,
-      opacity: 1,
-      fillOpacity: 0.9
-    };
+    const size = isSelected ? 32 : (isHovered ? 28 : 24);
+    const iconSize = isSelected ? 18 : (isHovered ? 16 : 14);
+    
+    return L.divIcon({
+      className: 'custom-apartment-marker',
+      html: `
+        <div style="
+          width: ${size}px;
+          height: ${size}px;
+          background: ${markerColor};
+          border: 2px solid #ffffff;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+          transition: all 0.2s ease;
+          cursor: pointer;
+        ">
+          <span class="material-symbols-outlined" style="
+            font-size: ${iconSize}px;
+            color: white;
+            font-weight: 700;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+          ">apartment</span>
+        </div>
+      `,
+      iconSize: [size, size],
+      iconAnchor: [size/2, size/2],
+      popupAnchor: [0, -size/2]
+    });
   };
 
   // Score color helper
@@ -1136,9 +1157,9 @@ const ApartmentMap = ({
       if (!property.latitude || !property.longitude) return;
 
       const isSelected = selectedApartment && selectedApartment.id === property.id;
-      const markerOptions = createSimpleMarker(property, isSelected, false);
+      const markerIcon = createApartmentMarker(property, isSelected, false);
       
-      const marker = L.circleMarker([property.latitude, property.longitude], markerOptions);
+      const marker = L.marker([property.latitude, property.longitude], { icon: markerIcon });
 
       marker.propertyData = property;
       marker.isHovered = false;
@@ -1185,8 +1206,8 @@ const ApartmentMap = ({
           mapRef.current.removeLayer(pinnedMarkerRef.current);
         }
         
-        const pinnedMarkerOptions = createSimpleMarker(property, true, false);
-        const pinnedMarker = L.circleMarker([property.latitude, property.longitude], pinnedMarkerOptions);
+        const pinnedMarkerIcon = createApartmentMarker(property, true, false);
+        const pinnedMarker = L.marker([property.latitude, property.longitude], { icon: pinnedMarkerIcon });
         pinnedMarker.propertyData = property;
         
         // Create popup with smart auto-pan for initial view
@@ -1239,14 +1260,14 @@ const ApartmentMap = ({
 
       marker.on('mouseover', (e) => {
         marker.isHovered = true;
-        const hoveredOptions = createSimpleMarker(property, isSelected, true);
-        marker.setStyle(hoveredOptions);
+        const hoveredIcon = createApartmentMarker(property, isSelected, true);
+        marker.setIcon(hoveredIcon);
       });
 
       marker.on('mouseout', (e) => {
         marker.isHovered = false;
-        const normalOptions = createSimpleMarker(property, isSelected, false);
-        marker.setStyle(normalOptions);
+        const normalIcon = createApartmentMarker(property, isSelected, false);
+        marker.setIcon(normalIcon);
       });
 
       markersRef.current.push(marker);
@@ -1270,8 +1291,8 @@ const ApartmentMap = ({
         const property = pinnedMarkerRef.current.propertyData;
         const isSelected = property.id === selectedApartment.id;
         const isHovered = pinnedMarkerRef.current.isHovered || false;
-        const updatedOptions = createSimpleMarker(property, isSelected, isHovered);
-        pinnedMarkerRef.current.setStyle(updatedOptions);
+        const updatedIcon = createApartmentMarker(property, isSelected, isHovered);
+        pinnedMarkerRef.current.setIcon(updatedIcon);
         return;
       }
 
@@ -1284,8 +1305,8 @@ const ApartmentMap = ({
         if (property) {
           const isSelected = property.id === selectedApartment.id;
           const isHovered = marker.isHovered || false;
-          const updatedOptions = createSimpleMarker(property, isSelected, isHovered);
-          marker.setStyle(updatedOptions);
+          const updatedIcon = createApartmentMarker(property, isSelected, isHovered);
+          marker.setIcon(updatedIcon);
         }
       });
     }, 100);
@@ -1318,7 +1339,10 @@ const ApartmentMap = ({
 
   return (
     <div className="relative">
-      {/* CSS for non-blocking popup */}
+      {/* Google Material Icons CSS */}
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&icon_names=apartment" />
+      
+      {/* CSS for non-blocking popup and custom markers */}
       <style jsx>{`
         .non-blocking-popup .leaflet-popup-content-wrapper {
           pointer-events: auto;
@@ -1331,6 +1355,13 @@ const ApartmentMap = ({
         }
         .leaflet-popup {
           pointer-events: auto;
+        }
+        .custom-apartment-marker {
+          background: transparent !important;
+          border: none !important;
+        }
+        .custom-apartment-marker div:hover {
+          transform: scale(1.1);
         }
       `}</style>
 
