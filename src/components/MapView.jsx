@@ -15,7 +15,8 @@ const MapView = ({ activeProvince, onProvinceChange, onProvinceHover }) => {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const markersRef = useRef([]);
-  const provinceLayerRef = useRef(null);
+  const allProvincesLayerRef = useRef(null);
+  const targetProvincesLayerRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [usingGeoJSON, setUsingGeoJSON] = useState(false);
@@ -30,7 +31,7 @@ const MapView = ({ activeProvince, onProvinceChange, onProvinceHover }) => {
     // Create Leaflet map
     const map = L.map(mapContainerRef.current, {
       center: [13.7563, 100.5018], // Bangkok
-      zoom: 6,
+      zoom: 5, // Match Mapbox initial zoom
       zoomControl: true,
       attributionControl: true
     });
@@ -83,7 +84,7 @@ const MapView = ({ activeProvince, onProvinceChange, onProvinceHover }) => {
       return { marker, province };
     });
     
-    // Set map bounds to Thailand
+    // Set map bounds to Thailand (like Mapbox maxBounds)
     const bounds = L.latLngBounds(
       [5.6, 97.3], // Southwest
       [20.5, 105.6] // Northeast
@@ -100,85 +101,73 @@ const MapView = ({ activeProvince, onProvinceChange, onProvinceHover }) => {
         try {
           console.log('GeoJSON loaded, processing...');
           
-          // Style function for GeoJSON features
-          const style = (feature) => {
+          // Style function for ALL provinces background (like Mapbox all-provinces layer)
+          const backgroundStyle = () => ({
+            fillColor: '#F7FAFC',
+            weight: 0.5,
+            opacity: 0.7,
+            color: '#CBD5E0',
+            fillOpacity: 0.1
+          });
+          
+          // Add background layer for ALL provinces (equivalent to Mapbox all-provinces-fill)
+          allProvincesLayerRef.current = L.geoJSON(geojsonData, {
+            style: backgroundStyle,
+            interactive: false // Non-interactive background
+          }).addTo(map);
+          
+          // Style function for TARGET provinces (like Mapbox province-fills)
+          const targetStyle = (feature) => {
             const provinceId = parseInt(feature.properties.id);
             const isActive = provinceId === activeProvince;
-            const isWanted = wantedProvinceIds.includes(provinceId);
             
-            // Only style wanted provinces (others are filtered out anyway)
-            if (isWanted) {
-              return {
-                fillColor: isActive ? '#3182CE' : '#9AE6B4',
-                weight: isActive ? 4 : 2, // Thicker borders for better visibility
-                opacity: 1,
-                color: isActive ? '#1E40AF' : '#2C5282',
-                fillOpacity: isActive ? 0.8 : 0.6
-              };
-            } else {
-              // This shouldn't be reached due to filter, but just in case
-              return {
-                fillColor: 'transparent',
-                weight: 0,
-                opacity: 0,
-                fillOpacity: 0
-              };
-            }
+            return {
+              fillColor: isActive ? '#3182CE' : '#9AE6B4',
+              weight: isActive ? 3 : 1,
+              opacity: 0.8,
+              color: '#2C5282',
+              fillOpacity: 0.5
+            };
           };
           
-          // Add GeoJSON layer
-          const provinceLayer = L.geoJSON(geojsonData, {
-            style: style,
+          // Add layer for TARGET provinces only (equivalent to Mapbox province-fills + province-borders)
+          targetProvincesLayerRef.current = L.geoJSON(geojsonData, {
+            style: targetStyle,
             filter: (feature) => {
-              // ONLY show provinces that are in our wanted list
+              // ONLY show our 4 target provinces (like Mapbox filter)
               return wantedProvinceIds.includes(parseInt(feature.properties.id));
             },
             onEachFeature: (feature, layer) => {
-              // Debug: Log the feature properties to understand the data structure
-              console.log('GeoJSON feature:', feature.properties);
+              const provinceId = parseInt(feature.properties.id);
               
-              // Always add click events for our filtered provinces
+              // Add click events (like Mapbox click handler)
               layer.on('click', (e) => {
-                console.log('Polygon clicked! Feature properties:', feature.properties);
-                console.log('Wanted province IDs:', wantedProvinceIds);
-                
-                const provinceId = parseInt(feature.properties.id);
-                console.log('Province ID from click:', provinceId);
-                
-                if (wantedProvinceIds.includes(provinceId)) {
-                  console.log('Valid province clicked, changing to:', provinceId);
-                  onProvinceChange(provinceId);
-                } else {
-                  console.log('Province not in wanted list. Available IDs:', wantedProvinceIds);
-                }
-                
-                // Prevent event bubbling
+                console.log('Polygon clicked! Province ID:', provinceId);
+                onProvinceChange(provinceId);
                 L.DomEvent.stopPropagation(e);
               });
               
-              // Add hover effects
+              // Add hover effects (like Mapbox mouseenter/mouseleave)
               layer.on('mouseover', () => {
                 layer.setStyle({
                   weight: 3,
                   color: '#1E40AF',
-                  fillOpacity: 0.8
+                  fillOpacity: 0.7
                 });
                 
                 // Call hover handler if provided
                 if (onProvinceHover) {
-                  onProvinceHover(parseInt(feature.properties.id));
+                  onProvinceHover(provinceId);
                 }
               });
               
               layer.on('mouseout', () => {
-                provinceLayer.resetStyle(layer);
+                targetProvincesLayerRef.current.resetStyle(layer);
               });
             }
           }).addTo(map);
           
-          provinceLayerRef.current = provinceLayer;
-          
-          // Hide markers since GeoJSON loaded successfully
+          // Hide markers since GeoJSON loaded successfully (like Mapbox)
           markersRef.current.forEach(({ marker }) => {
             map.removeLayer(marker);
           });
@@ -211,82 +200,61 @@ const MapView = ({ activeProvince, onProvinceChange, onProvinceHover }) => {
     };
   }, []); // Empty dependency - only run once
   
-  // Update active province - FIXED VERSION
+  // Update active province (like Mapbox setPaintProperty)
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
     
-    // Update GeoJSON if we're using it
-    if (usingGeoJSON && provinceLayerRef.current) {
+    // Update GeoJSON layers if we're using them
+    if (usingGeoJSON && targetProvincesLayerRef.current) {
       try {
-        let selectedLayer = null;
-        
-        // Re-style all features and find the selected layer
-        provinceLayerRef.current.eachLayer((layer) => {
+        // Re-style target provinces layer (equivalent to Mapbox setPaintProperty)
+        targetProvincesLayerRef.current.eachLayer((layer) => {
           const feature = layer.feature;
-          const provinceId = feature.properties.id;
-          const isActive = parseInt(provinceId) === activeProvince;
-          const isWanted = wantedProvinceIds.includes(parseInt(provinceId));
+          const provinceId = parseInt(feature.properties.id);
+          const isActive = provinceId === activeProvince;
           
-          // Debug logging
-          console.log('Processing layer:', {
-            provinceId: provinceId,
-            activeProvince: activeProvince,
-            isActive: isActive,
-            isWanted: isWanted,
-            provinceName: feature.properties.NAME_1 || feature.properties.NL_NAME_1
+          layer.setStyle({
+            fillColor: isActive ? '#3182CE' : '#9AE6B4',
+            weight: isActive ? 3 : 1,
+            opacity: 0.8,
+            color: '#2C5282',
+            fillOpacity: 0.5
           });
-          
-          if (isActive && isWanted) {
-            selectedLayer = layer;
-            console.log('Found selected layer for province:', activeProvince);
-          }
-          
-          if (isWanted) {
-            layer.setStyle({
-              fillColor: isActive ? '#3182CE' : '#9AE6B4',
-              weight: isActive ? 3 : 1,
-              opacity: 0.8,
-              color: '#2C5282',
-              fillOpacity: 0.5
-            });
-          }
         });
         
-        // If we found the selected layer, fit bounds to it with better options
-        if (selectedLayer) {
-          console.log('Fitting bounds to selected province');
-          const bounds = selectedLayer.getBounds();
-          console.log('Province bounds:', bounds);
+        // Fly to selected province using bounds (like Mapbox flyTo but better)
+        const selectedProvince = provinces.find(p => p.id === activeProvince);
+        if (selectedProvince) {
+          // Find the layer for this province
+          let targetLayer = null;
+          targetProvincesLayerRef.current.eachLayer((layer) => {
+            if (parseInt(layer.feature.properties.id) === activeProvince) {
+              targetLayer = layer;
+            }
+          });
           
-          // Special handling for edge provinces like เชียงใหม่
-          const currentProvince = provinces.find(p => p.id === activeProvince);
-          console.log('Current province info:', currentProvince);
-          
-          // For edge provinces, use a larger padding and better zoom constraints
-          if (activeProvince === 50) { // เชียงใหม่
+          if (targetLayer) {
+            // Use fitBounds for better framing (better than simple flyTo)
+            const bounds = targetLayer.getBounds();
             map.fitBounds(bounds, {
-              padding: [50, 50], // Larger padding for edge provinces
-              maxZoom: 6, // Lower max zoom to see more context
+              padding: [40, 40],
+              maxZoom: 7,
               animate: true,
               duration: 1.5
             });
           } else {
-            map.fitBounds(bounds, {
-              padding: [30, 30], // Standard padding
-              maxZoom: 7, // Normal max zoom
-              animate: true,
-              duration: 1.2
+            // Fallback to coordinates if layer not found
+            map.flyTo([selectedProvince.lat, selectedProvince.lon], 7, {
+              duration: 1.5
             });
           }
-        } else {
-          console.log('No selected layer found for province ID:', activeProvince);
         }
       } catch (err) {
-        console.error('Error updating GeoJSON styles:', err);
+        console.error('Error updating province styles:', err);
       }
     } else if (!usingGeoJSON && markersRef.current && markersRef.current.length > 0) {
-      // ONLY update markers if we're NOT using GeoJSON
+      // Update markers if GeoJSON not available (fallback)
       markersRef.current.forEach(({ marker, province }) => {
         const isActive = province.id === activeProvince;
         
@@ -309,11 +277,11 @@ const MapView = ({ activeProvince, onProvinceChange, onProvinceHover }) => {
         marker.setIcon(customIcon);
       });
       
-      // For markers ONLY, use flyTo with improved coordinates and zoom
+      // Fly to province using coordinates
       const selectedProvince = provinces.find(p => p.id === activeProvince);
       if (selectedProvince) {
-        map.flyTo([selectedProvince.lat, selectedProvince.lon], 7.5, {
-          duration: 1.0
+        map.flyTo([selectedProvince.lat, selectedProvince.lon], 7, {
+          duration: 1.5
         });
       }
     }
