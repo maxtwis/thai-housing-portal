@@ -261,9 +261,14 @@ const ApartmentMap = ({
     
     // Add click handler to close popups when clicking on map (not on markers)
     map.on('click', function(e) {
-      // Only close if clicking on empty map area (not on markers)
-      if (!e.originalEvent.target.closest('.leaflet-marker-icon') && 
-          !e.originalEvent.target.closest('.leaflet-popup')) {
+      // Check if click is on map background (not on popup or markers)
+      const clickedElement = e.originalEvent.target;
+      const isMapBackground = clickedElement.classList.contains('leaflet-zoom-animated') || 
+                              clickedElement.classList.contains('leaflet-tile') ||
+                              clickedElement.tagName === 'svg' ||
+                              clickedElement.classList.contains('leaflet-container');
+      
+      if (isMapBackground) {
         map.closePopup();
         // Also remove pinned marker when clicking elsewhere
         if (pinnedMarkerRef.current) {
@@ -1001,10 +1006,10 @@ const ApartmentMap = ({
         maxWidth: 340,
         minWidth: 300,
         offset: [0, -8],
-        className: 'custom-apartment-popup',
-        autoPan: true,
+        className: 'custom-apartment-popup non-blocking-popup',
+        autoPan: false, // Disable auto-pan to reduce interference
         autoPanPadding: [50, 50],
-        keepInView: true,
+        keepInView: false, // Allow popup to go outside view
         maxHeight: 500
       };
 
@@ -1130,6 +1135,22 @@ const ApartmentMap = ({
 
   return (
     <div className="relative">
+      {/* CSS for non-blocking popup */}
+      <style jsx>{`
+        .non-blocking-popup .leaflet-popup-content-wrapper {
+          pointer-events: auto;
+        }
+        .non-blocking-popup .leaflet-popup-tip {
+          pointer-events: none;
+        }
+        .leaflet-popup-pane {
+          pointer-events: none;
+        }
+        .leaflet-popup {
+          pointer-events: auto;
+        }
+      `}</style>
+
       {/* Loading indicator for proximity calculation */}
       {calculatingProximity && (
         <div className="absolute top-4 right-4 z-[1000] bg-white rounded-lg shadow-lg p-3 border">
