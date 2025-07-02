@@ -7,7 +7,8 @@ import ExportButton from '../ExportButton';
 import { useHousingAffordabilityData } from '../../hooks/useCkanQueries';
 
 const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
-  const [selectedQuintile, setSelectedQuintile] = useState('all');
+  const [selectedDemandType, setSelectedDemandType] = useState('ผู้มีรายได้น้อย');
+  const [selectedMetric, setSelectedMetric] = useState('Total_Hburden');
   
   // Use React Query for data fetching
   const { 
@@ -26,69 +27,82 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
     5: 'ห้องแบ่งเช่า'
   };
 
+  // Color mapping for house types
+  const houseTypeColors = {
+    1: '#3B82F6', // Blue
+    2: '#10B981', // Green
+    3: '#F59E0B', // Yellow
+    4: '#EF4444', // Red
+    5: '#8B5CF6'  // Purple
+  };
+
+  // Available demand types
+  const demandTypes = ['ผู้มีรายได้น้อย', 'First Jobber', 'ผู้สูงอายุที่อาศัยอยู่คนเดียว'];
+  
+  // Available metrics
+  const metrics = {
+    'Total_Hburden': 'Total Housing Burden',
+    'Exp_hbrent': 'Rent-to-Income Ratio',
+    'Exp_hbmort': 'Mortgage-to-Income Ratio'
+  };
+
   // Process data for chart
   const chartData = useMemo(() => {
     if (!rawData || !rawData.records || !rawData.records.length) {
       return [];
     }
 
-    let filteredData = rawData.records.filter(item => {
-      const quintileMatch = selectedQuintile === 'all' || item.Quintile == selectedQuintile;
-      return quintileMatch;
-    });
+    // Filter by selected demand type
+    const filteredData = rawData.records.filter(item => 
+      item.demand_type === selectedDemandType
+    );
 
-    // Group by demand_type and calculate averages
-    const groupedData = {};
+    // Group by quintile
+    const groupedByQuintile = {};
     
-    filteredData.forEach(item => {
-      const demandType = item.demand_type;
-      if (!groupedData[demandType]) {
-        groupedData[demandType] = {
-          demand_type: demandType,
-          Total_Hburden: [],
-          Exp_hbrent: [],
-          Exp_hbmort: []
-        };
-      }
+    // Initialize quintiles Q1-Q5
+    for (let q = 1; q <= 5; q++) {
+      groupedByQuintile[q] = {
+        quintile: `Q${q}`,
+        quintileNumber: q
+      };
       
-      if (item.Total_Hburden !== null && !isNaN(parseFloat(item.Total_Hburden))) {
-        groupedData[demandType].Total_Hburden.push(parseFloat(item.Total_Hburden));
-      }
-      if (item.Exp_hbrent !== null && !isNaN(parseFloat(item.Exp_hbrent))) {
-        groupedData[demandType].Exp_hbrent.push(parseFloat(item.Exp_hbrent));
-      }
-      if (item.Exp_hbmort !== null && !isNaN(parseFloat(item.Exp_hbmort))) {
-        groupedData[demandType].Exp_hbmort.push(parseFloat(item.Exp_hbmort));
+      // Initialize house types
+      Object.keys(houseTypeMapping).forEach(houseTypeId => {
+        groupedByQuintile[q][houseTypeMapping[houseTypeId]] = 0;
+      });
+    }
+
+    // Process the data
+    filteredData.forEach(item => {
+      const quintile = parseInt(item.Quintile);
+      const houseType = parseInt(item.house_type);
+      const value = parseFloat(item[selectedMetric]);
+      
+      if (quintile >= 1 && quintile <= 5 && 
+          houseTypeMapping[houseType] && 
+          !isNaN(value) && value !== null) {
+        groupedByQuintile[quintile][houseTypeMapping[houseType]] = value;
       }
     });
 
-    // Calculate averages
-    return Object.values(groupedData).map(group => ({
-      demand_type: group.demand_type,
-      Total_Hburden: group.Total_Hburden.length > 0 
-        ? parseFloat((group.Total_Hburden.reduce((a, b) => a + b, 0) / group.Total_Hburden.length).toFixed(2))
-        : 0,
-      Exp_hbrent: group.Exp_hbrent.length > 0 
-        ? parseFloat((group.Exp_hbrent.reduce((a, b) => a + b, 0) / group.Exp_hbrent.length).toFixed(2))
-        : 0,
-      Exp_hbmort: group.Exp_hbmort.length > 0 
-        ? parseFloat((group.Exp_hbmort.reduce((a, b) => a + b, 0) / group.Exp_hbmort.length).toFixed(2))
-        : 0
-    }));
-  }, [rawData, selectedQuintile]);
+    // Convert to array and sort by quintile
+    return Object.values(groupedByQuintile).sort((a, b) => a.quintileNumber - b.quintileNumber);
+  }, [rawData, selectedDemandType, selectedMetric]);
 
   const customTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       return (
         <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
           <h4 className="font-semibold text-gray-800 mb-2 text-sm">{label}</h4>
+          <p className="text-xs text-gray-600 mb-2">{selectedDemandType} • {metrics[selectedMetric]}</p>
           {payload.map((entry, index) => (
             <div key={index} className="flex items-center gap-2 text-xs">
               <div 
                 className="w-2 h-2 rounded-full" 
                 style={{ backgroundColor: entry.color }}
               ></div>
-              <span className="text-gray-600">{entry.name}:</span>
+              <span className="text-gray-600">{entry.dataKey}:</span>
               <span className="font-medium">{entry.value}%</span>
             </div>
           ))}
@@ -104,7 +118,7 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
       <div className="bg-white p-0 rounded-lg shadow">
         <div className="px-3 py-2 border-b border-gray-200">
           <div className="flex justify-between items-center">
-            <h2 className="text-sm font-semibold text-gray-800">Housing Affordability by Demand Type</h2>
+            <h2 className="text-sm font-semibold text-gray-800">Housing Affordability by Income Quintile</h2>
           </div>
         </div>
         <div className="px-2 py-1 h-52 flex items-center justify-center">
@@ -123,7 +137,7 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
       <div className="bg-white p-0 rounded-lg shadow">
         <div className="px-3 py-2 border-b border-gray-200">
           <div className="flex justify-between items-center">
-            <h2 className="text-sm font-semibold text-gray-800">Housing Affordability by Demand Type</h2>
+            <h2 className="text-sm font-semibold text-gray-800">Housing Affordability by Income Quintile</h2>
             <ExportButton data={[]} filename={`affordability_${provinceName}`} />
           </div>
         </div>
@@ -142,44 +156,54 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
     <div className="bg-white p-0 rounded-lg shadow">
       <div className="px-3 py-2 border-b border-gray-200">
         <div className="flex justify-between items-center mb-3">
-          <h2 className="text-sm font-semibold text-gray-800">Housing Affordability by Demand Type</h2>
-          <ExportButton data={chartData} filename={`affordability_${provinceName}`} />
+          <h2 className="text-sm font-semibold text-gray-800">Housing Affordability by Income Quintile</h2>
+          <ExportButton data={chartData} filename={`affordability_${provinceName}_${selectedDemandType}`} />
         </div>
         
-        {/* Quintile selector */}
-        <div className="flex items-center gap-2">
-          <label className="text-xs font-medium text-gray-700">
-            Income Group:
-          </label>
-          <select
-            value={selectedQuintile}
-            onChange={(e) => setSelectedQuintile(e.target.value)}
-            className="text-xs px-2 py-1 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-          >
-            <option value="all">All Groups</option>
-            <option value="1">Q1 (Lowest Income)</option>
-            <option value="2">Q2</option>
-            <option value="3">Q3</option>
-            <option value="4">Q4</option>
-            <option value="5">Q5 (Highest Income)</option>
-          </select>
+        {/* Controls */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-medium text-gray-700">
+              Demand Type:
+            </label>
+            <select
+              value={selectedDemandType}
+              onChange={(e) => setSelectedDemandType(e.target.value)}
+              className="text-xs px-2 py-1 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 flex-1"
+            >
+              {demandTypes.map(type => (
+                <option key={type} value={type}>{type}</option>
+              ))}
+            </select>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-medium text-gray-700">
+              Metric:
+            </label>
+            <select
+              value={selectedMetric}
+              onChange={(e) => setSelectedMetric(e.target.value)}
+              className="text-xs px-2 py-1 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 flex-1"
+            >
+              {Object.entries(metrics).map(([key, label]) => (
+                <option key={key} value={key}>{label}</option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
       
       <div className="px-2 py-1">
         {chartData.length > 0 ? (
-          <ResponsiveContainer width="100%" height={250}>
+          <ResponsiveContainer width="100%" height={300}>
             <BarChart
               data={chartData}
-              margin={{ top: 10, right: 10, left: 10, bottom: 60 }}
+              margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
             >
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis 
-                dataKey="demand_type" 
-                angle={-45}
-                textAnchor="end"
-                height={60}
-                interval={0}
+                dataKey="quintile" 
                 fontSize={10}
               />
               <YAxis 
@@ -188,31 +212,26 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
               />
               <Tooltip content={customTooltip} />
               <Legend wrapperStyle={{ fontSize: '10px' }} />
-              <Bar 
-                dataKey="Total_Hburden" 
-                name="Total Housing Burden" 
-                fill="#3B82F6" 
-                radius={[1, 1, 0, 0]}
-              />
-              <Bar 
-                dataKey="Exp_hbrent" 
-                name="Rent-to-Income" 
-                fill="#10B981" 
-                radius={[1, 1, 0, 0]}
-              />
-              <Bar 
-                dataKey="Exp_hbmort" 
-                name="Mortgage-to-Income" 
-                fill="#F59E0B" 
-                radius={[1, 1, 0, 0]}
-              />
+              
+              {/* Create stacked bars for each house type */}
+              {Object.entries(houseTypeMapping).map(([houseTypeId, houseTypeName]) => (
+                <Bar 
+                  key={houseTypeId}
+                  dataKey={houseTypeName}
+                  name={houseTypeName}
+                  stackId="housing"
+                  fill={houseTypeColors[houseTypeId]}
+                  radius={houseTypeId === '5' ? [2, 2, 0, 0] : [0, 0, 0, 0]} // Only round the top of the last stack
+                />
+              ))}
             </BarChart>
           </ResponsiveContainer>
         ) : (
-          <div className="h-52 flex items-center justify-center text-gray-500">
+          <div className="h-72 flex items-center justify-center text-gray-500">
             <div className="text-center">
               <div className="text-gray-400 mb-2">📊</div>
-              <p className="text-sm">No data available for selected criteria</p>
+              <p className="text-sm">No data available for {selectedDemandType}</p>
+              <p className="text-xs text-gray-400 mt-1">Try selecting a different demand type</p>
             </div>
           </div>
         )}
@@ -227,12 +246,23 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
       
       {/* Info section */}
       <div className="px-3 py-2 border-t border-gray-100 bg-gray-50 text-xs text-gray-600">
-        <p><strong>Total Housing Burden:</strong> Total housing expenditure as % of income</p>
-        <p><strong>Rent-to-Income:</strong> Rental costs as % of income</p>
-        <p><strong>Mortgage-to-Income:</strong> Mortgage payments as % of income</p>
-        <p className="text-gray-500 mt-1">
-          Showing: {selectedQuintile === 'all' ? 'All income groups' : `Income group ${selectedQuintile}`} • {provinceName}
-        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <p><strong>Current Selection:</strong></p>
+            <p>• Demand Type: {selectedDemandType}</p>
+            <p>• Metric: {metrics[selectedMetric]}</p>
+            <p>• Province: {provinceName}</p>
+          </div>
+          <div>
+            <p><strong>Chart Legend:</strong></p>
+            <p>• X-axis: Income quintiles (Q1=lowest, Q5=highest)</p>
+            <p>• Y-axis: Percentage of income spent on housing</p>
+            <p>• Stacked colors: Different housing types</p>
+          </div>
+        </div>
+        <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
+          <p><strong>Affordability Benchmark:</strong> Housing costs more than 30% of income indicate affordability challenges</p>
+        </div>
       </div>
     </div>
   );
