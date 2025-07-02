@@ -1001,19 +1001,31 @@ const ApartmentMap = ({
 
       const popupOptions = {
         closeButton: true,
-        autoClose: true, // Changed to true so popup closes when clicking elsewhere
+        autoClose: true,
         closeOnEscapeKey: true,
         maxWidth: 340,
         minWidth: 300,
         offset: [0, -8],
         className: 'custom-apartment-popup non-blocking-popup',
-        autoPan: false, // Disable auto-pan to reduce interference
+        autoPan: true, // Enable auto-pan for initial display
         autoPanPadding: [50, 50],
-        keepInView: false, // Allow popup to go outside view
+        keepInView: true, // Keep popup in view initially
         maxHeight: 500
       };
 
       marker.bindPopup(generatePopupContent(property), popupOptions);
+
+      // Add popup open event to switch to non-blocking mode after display
+      marker.on('popupopen', function(e) {
+        setTimeout(() => {
+          const popup = e.popup;
+          if (popup && popup.options) {
+            popup.options.autoPan = false;
+            popup.options.keepInView = false;
+            console.log('Clustered popup switched to non-blocking mode');
+          }
+        }, 1000);
+      });
 
       marker.on('click', (e) => {
         console.log('Marker clicked for property:', property.apartment_name || property.name);
@@ -1032,12 +1044,39 @@ const ApartmentMap = ({
         const pinnedMarkerOptions = createSimpleMarker(property, true, false);
         const pinnedMarker = L.circleMarker([property.latitude, property.longitude], pinnedMarkerOptions);
         pinnedMarker.propertyData = property;
-        pinnedMarker.bindPopup(generatePopupContent(property), popupOptions);
+        
+        // Create popup with smart auto-pan for initial view
+        const smartPopupOptions = {
+          closeButton: true,
+          autoClose: true,
+          closeOnEscapeKey: true,
+          maxWidth: 340,
+          minWidth: 300,
+          offset: [0, -8],
+          className: 'custom-apartment-popup non-blocking-popup',
+          autoPan: true, // Enable auto-pan for initial display
+          autoPanPadding: [50, 50], // Padding to ensure full popup is visible
+          keepInView: true, // Keep popup in view initially
+          maxHeight: 500
+        };
+        
+        pinnedMarker.bindPopup(generatePopupContent(property), smartPopupOptions);
         pinnedMarker.addTo(mapRef.current);
         pinnedMarker.openPopup();
         
         pinnedMarkerRef.current = pinnedMarker;
         currentPopupMarker.current = pinnedMarker;
+        
+        // After popup is shown and positioned, switch to non-blocking mode
+        setTimeout(() => {
+          // Update popup options to be non-blocking after initial display
+          if (pinnedMarkerRef.current && pinnedMarkerRef.current.isPopupOpen()) {
+            const popup = pinnedMarkerRef.current.getPopup();
+            popup.options.autoPan = false;
+            popup.options.keepInView = false;
+            console.log('Popup switched to non-blocking mode - you can now move freely!');
+          }
+        }, 1000); // Wait 1 second for user to see the full popup
         
         // Start calculating proximity score AFTER popup is shown
         if (!proximityScores[property.id] && calculatingProximity !== property.id) {
