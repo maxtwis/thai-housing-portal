@@ -243,27 +243,6 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
           </div>
         )}
       </div>
-      
-      {/* Info section */}
-      <div className="px-3 py-2 border-t border-gray-100 bg-gray-50 text-xs text-gray-600">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <p><strong>การเลือกปัจจุบัน:</strong></p>
-            <p>• กลุ่มผู้มีความต้องการ: {selectedDemandType}</p>
-            <p>• ตัวชี้วัด: {metrics[selectedMetric]}</p>
-            <p>• จังหวัด: {provinceName}</p>
-          </div>
-          <div>
-            <p><strong>คำอธิบายแผนภูมิ:</strong></p>
-            <p>• แกน X: กลุ่มรายได้ (Q1=น้อยที่สุด, Q5=มากที่สุด)</p>
-            <p>• แกน Y: เปอร์เซ็นต์รายได้ที่ใช้จ่ายสำหรับที่อยู่อาศัย</p>
-            <p>• สีในแท่ง: ประเภทที่อยู่อาศัยต่างๆ</p>
-          </div>
-        </div>
-        <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
-          <p><strong>มาตรฐานความสามารถในการจ่าย:</strong> ค่าใช้จ่ายที่อยู่อาศัยมากกว่า 30% ของรายได้ แสดงถึงปัญหาความสามารถในการจ่าย</p>
-        </div>
-      </div>
     </div>
   );
 };
