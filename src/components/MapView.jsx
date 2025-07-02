@@ -11,7 +11,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
-const MapView = ({ activeProvince, onProvinceChange }) => {
+const MapView = ({ activeProvince, onProvinceChange, onProvinceHover }) => {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const markersRef = useRef([]);
@@ -72,6 +72,13 @@ const MapView = ({ activeProvince, onProvinceChange }) => {
       marker.on('click', () => {
         onProvinceChange(province.id);
       });
+
+      // Add hover events if handler provided
+      if (onProvinceHover) {
+        marker.on('mouseover', () => {
+          onProvinceHover(province.id);
+        });
+      }
       
       return { marker, province };
     });
@@ -132,6 +139,11 @@ const MapView = ({ activeProvince, onProvinceChange }) => {
                     color: '#2C5282',
                     fillOpacity: 0.7
                   });
+                  
+                  // Call hover handler if provided
+                  if (onProvinceHover) {
+                    onProvinceHover(feature.properties.id);
+                  }
                 });
                 
                 layer.on('mouseout', () => {
@@ -176,7 +188,7 @@ const MapView = ({ activeProvince, onProvinceChange }) => {
     };
   }, []); // Empty dependency - only run once
   
-  // Update active province
+  // Update active province - FIXED VERSION
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -184,11 +196,17 @@ const MapView = ({ activeProvince, onProvinceChange }) => {
     // Update GeoJSON if we're using it
     if (usingGeoJSON && provinceLayerRef.current) {
       try {
-        // Re-style all features
+        let selectedLayer = null;
+        
+        // Re-style all features and find the selected layer
         provinceLayerRef.current.eachLayer((layer) => {
           const feature = layer.feature;
           const isActive = feature.properties.id === activeProvince;
           const isWanted = wantedProvinceIds.includes(feature.properties.id);
+          
+          if (isActive && isWanted) {
+            selectedLayer = layer;
+          }
           
           if (isWanted) {
             layer.setStyle({
@@ -200,12 +218,23 @@ const MapView = ({ activeProvince, onProvinceChange }) => {
             });
           }
         });
+        
+        // If we found the selected layer, fit bounds to it with better options
+        if (selectedLayer) {
+          const bounds = selectedLayer.getBounds();
+          map.fitBounds(bounds, {
+            padding: [20, 20], // Add some padding around the province
+            maxZoom: 8, // Don't zoom in too much
+            animate: true,
+            duration: 1.0 // Smooth animation
+          });
+        }
       } catch (err) {
         console.error('Error updating GeoJSON styles:', err);
       }
     }
     
-    // Update markers (if visible)
+    // Update markers (if visible) - fallback behavior
     if (!usingGeoJSON && markersRef.current && markersRef.current.length > 0) {
       markersRef.current.forEach(({ marker, province }) => {
         const isActive = province.id === activeProvince;
@@ -228,14 +257,12 @@ const MapView = ({ activeProvince, onProvinceChange }) => {
         
         marker.setIcon(customIcon);
       });
-    }
-    
-    // Fly to selected province
-    if (map) {
+      
+      // For markers, use flyTo with improved coordinates and zoom
       const selectedProvince = provinces.find(p => p.id === activeProvince);
       if (selectedProvince) {
-        map.flyTo([selectedProvince.lat, selectedProvince.lon], 7, {
-          duration: 1.5
+        map.flyTo([selectedProvince.lat, selectedProvince.lon], 7.5, {
+          duration: 1.0
         });
       }
     }
