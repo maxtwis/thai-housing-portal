@@ -2,20 +2,38 @@ import React from 'react';
 import { 
   PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer 
 } from 'recharts';
+import { processHousingSupplyData } from '../../utils/ckanClient';
+import { housingCategories } from '../../utils/dataUtils';
+import { useHousingSupplyData } from '../../hooks/useCkanQueries';
+import ExportButton from '../ExportButton';
 
-const HousingDistributionChart = ({ data, housingCategories }) => {
+const HousingDistributionChart = ({ provinceName, provinceId }) => {
+  // Use React Query for data fetching
+  const { 
+    data: rawData, 
+    isLoading, 
+    error
+  } = useHousingSupplyData(provinceId);
+  
   // Process the data for the pie chart
   const processedData = React.useMemo(() => {
-    if (!data || data.length === 0 || !housingCategories) {
+    if (!rawData || !rawData.records || !housingCategories) {
       return [];
     }
 
-    const latestYear = data[data.length - 1];
+    // Process the rawData
+    const processedSupplyData = processHousingSupplyData(rawData.records, housingCategories);
+    
+    if (processedSupplyData.length === 0) return [];
+    
+    // Get the latest year data
+    const latestYear = processedSupplyData[processedSupplyData.length - 1];
+    
     return housingCategories.map(category => ({
       name: category.name,
       value: latestYear[category.name] || 0
     })).filter(item => item.value > 0);
-  }, [data, housingCategories]);
+  }, [rawData]);
 
   // Shorter housing category names
   const shortNames = {
@@ -32,12 +50,53 @@ const HousingDistributionChart = ({ data, housingCategories }) => {
   // Get colors for each housing type
   const COLORS = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f'];
 
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="bg-white p-0 rounded-lg shadow">
+        <div className="px-3 py-2 border-b border-gray-200">
+          <div className="flex justify-between items-center">
+            <h2 className="text-sm font-semibold text-gray-800">Housing Distribution</h2>
+          </div>
+        </div>
+        <div className="px-2 py-1 h-52 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+            <p className="mt-3 text-gray-600">Loading housing data...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="bg-white p-0 rounded-lg shadow">
+        <div className="px-3 py-2 border-b border-gray-200">
+          <div className="flex justify-between items-center">
+            <h2 className="text-sm font-semibold text-gray-800">Housing Distribution</h2>
+          </div>
+        </div>
+        <div className="px-2 py-1 h-52 flex items-center justify-center">
+          <div className="text-center text-red-500">
+            <p>Failed to load data</p>
+            <p className="text-xs">{error.message}</p>
+          </div>
+        </div>
+        <div className="px-3 py-1 text-xs text-gray-500 border-t border-gray-200">
+          <p>Source: Thailand National Statistics Office</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!processedData || processedData.length === 0) {
     return (
       <div className="bg-white p-0 rounded-lg shadow">
         <div className="px-3 py-2 border-b border-gray-200">
           <div className="flex justify-between items-center">
-            <h2 className="text-sm font-semibold text-gray-800">Housing Distribution (Latest Year)</h2>
+            <h2 className="text-sm font-semibold text-gray-800">Housing Distribution</h2>
           </div>
         </div>
         <div className="px-2 py-1 h-52 flex items-center justify-center">
@@ -50,8 +109,9 @@ const HousingDistributionChart = ({ data, housingCategories }) => {
     );
   }
 
-  // Calculate latest year
-  const latestYear = data && data.length > 0 ? data[data.length - 1].year : '';
+  // Calculate latest year for display
+  const latestYear = rawData && rawData.records && rawData.records.length > 0 ? 
+    Math.max(...rawData.records.map(r => r.year)) : '';
 
   // Number formatter for tooltip
   const numberFormatter = (value) => {
@@ -102,7 +162,10 @@ const HousingDistributionChart = ({ data, housingCategories }) => {
     <div className="bg-white p-0 rounded-lg shadow">
       <div className="px-3 py-2 border-b border-gray-200">
         <div className="flex justify-between items-center">
-          <h2 className="text-sm font-semibold text-gray-800">Housing Distribution ({latestYear})</h2>
+          <h2 className="text-sm font-semibold text-gray-800">
+            Housing Distribution {latestYear ? `(${latestYear})` : ''}
+          </h2>
+          <ExportButton data={processedData} filename={`housing_distribution_${provinceName}`} />
         </div>
       </div>
       <div className="px-2 py-1" style={{ height: 224 }}>

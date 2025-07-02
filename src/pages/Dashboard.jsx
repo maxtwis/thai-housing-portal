@@ -1,10 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  provinces, getPopulationData, getHouseholdData, getIncomeData,
-  getExpenditureData, getHousingSupplyByYear, expenditureCategories,
-  housingCategories, quintiles, getPopulationAgeData
-} from '../utils/dataUtils';
-import { getPolicyData } from '../utils/policyUtils';
+import { provinces } from '../utils/dataUtils';
+import { useAllProvinceData, usePrefetchProvinceData } from '../hooks/useCkanQueries';
+import { useProvincePreloader } from '../hooks/useProvincePreloader';
 
 // Import chart components
 import MapView from '../components/MapView';
@@ -23,16 +20,26 @@ import PopulationAgeChart from '../components/charts/PopulationAgeChart';
 const Dashboard = () => {
   const [activeProvince, setActiveProvince] = useState(10); // Default to Bangkok
   const [activeTopic, setActiveTopic] = useState('demographics');
-  const [populationData, setPopulationData] = useState([]);
-  const [householdData, setHouseholdData] = useState([]);
-  const [incomeData, setIncomeData] = useState([]);
-  const [housingSupplyData, setHousingSupplyData] = useState([]);
-  const [expenditureData, setExpenditureData] = useState({});
-  const [policyData, setPolicyData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [policyFilter, setPolicyFilter] = useState(null);
-  const [populationAgeData, setPopulationAgeData] = useState([]);
+  
+  // Use React Query for all data
+  const {
+    population,
+    household,
+    income,
+    populationAge,
+    policy,
+    housingSupply,
+    expenditure,
+    isLoading,
+    isError
+  } = useAllProvinceData(activeProvince);
+  
+  // Get prefetch function
+  const { prefetchProvince } = usePrefetchProvinceData();
+  
+  // Add preloader for instant province switching
+  const { getCacheStats } = useProvincePreloader(activeProvince);
   
   // Get current province name
   const provinceName = provinces.find(p => p.id === activeProvince)?.name || '';
@@ -41,81 +48,70 @@ const Dashboard = () => {
     setActiveProvince(parseInt(geoId));
   };
   
-  // Fetch data when active province changes
+  // Prefetch data for other provinces to make switching instant
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      
-      try {
-        const [
-          populationResult,
-          householdResult,
-          incomeResult,
-          housingSupplyResult,
-          policyResult,
-          populationAgeResult
-        ] = await Promise.all([
-          getPopulationData(activeProvince),
-          getHouseholdData(activeProvince),
-          getIncomeData(activeProvince),
-          getHousingSupplyByYear(activeProvince),
-          getPolicyData(activeProvince),
-          getPopulationAgeData(activeProvince)
-        ]);
-        
-        // Fetch expenditure data for each quintile
-        const expenditureResults = {};
-        for (let i = 1; i <= 5; i++) {
-          expenditureResults[i] = await getExpenditureData(activeProvince, i);
-        }
-        
-        // Update state with all fetched data
-        setPopulationData(populationResult);
-        setHouseholdData(householdResult);
-        setIncomeData(incomeResult);
-        setHousingSupplyData(housingSupplyResult);
-        setExpenditureData(expenditureResults);
-        setPolicyData(policyResult);
-        setPopulationAgeData(populationAgeResult);
-        setLoading(false);
-      } catch (err) {
-        console.error('Error fetching data:', err);
-        setError('Failed to load data');
-        setLoading(false);
+    const otherProvinces = provinces.filter(p => p.id !== activeProvince);
+    
+    // Prefetch data for other provinces with a delay to not interfere with current loading
+    const prefetchOthers = async () => {
+      for (const province of otherProvinces) {
+        // Stagger the prefetch requests to be nice to the server
+        setTimeout(() => {
+          prefetchProvince(province.id);
+        }, 1000 + (province.id * 500));
       }
     };
     
-    fetchData();
-  }, [activeProvince]);
+    // Only prefetch after the current province data is loaded
+    if (!isLoading && !isError) {
+      prefetchOthers();
+    }
+  }, [activeProvince, isLoading, isError, prefetchProvince]);
   
   // Get filtered policies based on the selected filter
   const getFilteredPolicies = () => {
-    if (!policyFilter || !policyData.length) return policyData;
+    if (!policyFilter || !policy.data?.length) return policy.data || [];
     
     if (policyFilter.startsWith('status:')) {
       const status = policyFilter.split(':')[1];
-      return policyData.filter(policy => policy.Status === status);
+      return policy.data.filter(p => p.Status === status);
     }
     
     if (policyFilter.startsWith('type:')) {
       const type = policyFilter.split(':')[1];
-      return policyData.filter(policy => 
-        policy['3S Model'] && policy['3S Model'].includes(type)
+      return policy.data.filter(p => 
+        p['3S Model'] && p['3S Model'].includes(type)
       );
     }
     
-    return policyData;
-  }
+    return policy.data || [];
+  };
   
   const filteredPolicies = getFilteredPolicies();
   
-  // Display key metrics from latest data
+  // Convert expenditure queries result to the format expected by components
+  const getExpenditureData = () => {
+    const result = {};
+    expenditure.forEach((query, index) => {
+      const quintileId = index + 1;
+      if (query.data) {
+        result[quintileId] = query.data;
+      }
+    });
+    return result;
+  };
+  
+  // Get key metrics
   const getLatestMetrics = () => {
+    const populationData = population.data || [];
+    const householdData = household.data || [];
+    const incomeData = income.data || [];
+    
     if (!populationData.length || !householdData.length || !incomeData.length) {
       return { population: 0, households: 0, income: 0, incomeGrowth: 0 };
     }
     
-    const latestPopulation = populationData[populationData.length - 1]?.population || 0;
+    const latestPop = populationData[populationData.length - 1]?.population || 0;
     const latestHouseholds = householdData[householdData.length - 1]?.household || 0;
     const latestIncome = incomeData[incomeData.length - 1]?.income || 0;
     
@@ -124,7 +120,7 @@ const Dashboard = () => {
     const incomeGrowth = firstIncome ? ((latestIncome / firstIncome) - 1) * 100 : 0;
     
     return {
-      population: latestPopulation,
+      population: latestPop,
       households: latestHouseholds,
       income: latestIncome,
       incomeGrowth: incomeGrowth
@@ -136,13 +132,29 @@ const Dashboard = () => {
   return (
     <div className="container mx-auto px-4 py-4">
       <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">Housing Profile</h1>
-          <p className="text-gray-600 mt-2">
-            Explore province-level data, housing policies and frameworks.
-          </p>
+        <h1 className="text-2xl font-bold text-gray-800">Housing Profile</h1>
+        <p className="text-gray-600 mt-2">
+          Explore province-level data, housing policies and frameworks.
+        </p>
+        
+        {/* Loading indicator for overall data */}
+        {isLoading && (
+          <div className="mt-2 text-sm text-blue-600">
+            🔄 Loading data for {provinceName}...
+          </div>
+        )}
+        
+        {/* Cache status indicators */}
+        {!isLoading && !isError && (
+          <div className="mt-2 flex flex-wrap gap-2 text-xs">
+            {population.isFetching && <span className="text-blue-600">📊 Updating population...</span>}
+            {household.isFetching && <span className="text-blue-600">🏠 Updating households...</span>}
+            {income.isFetching && <span className="text-blue-600">💰 Updating income...</span>}
+            {housingSupply.isFetching && <span className="text-blue-600">🏘️ Updating housing...</span>}
+            {policy.isFetching && <span className="text-blue-600">📋 Updating policies...</span>}
+          </div>
+        )}
       </div>
-      
-      {/* Key Metrics Bar moved to right column */}
       
       {/* Topic Navigation - Mobile Drop-down */}
       <div className="md:hidden mb-4">
@@ -204,101 +216,82 @@ const Dashboard = () => {
             </button>
           </div>
           
-          {/* Loading state */}
-          {loading && (
-            <div className="flex items-center justify-center h-64">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
-                <p className="mt-3 text-gray-600">กำลังโหลดข้อมูล...</p>
-              </div>
-            </div>
-          )}
-          
-          {/* Error state */}
-          {error && (
-            <div className="flex items-center justify-center h-64">
-              <div className="text-center text-red-600">
-                <p>{error}</p>
-                <button 
-                  onClick={() => window.location.reload()}
-                  className="mt-3 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                >
-                  ลองใหม่
-                </button>
-              </div>
+          {/* Global error message */}
+          {isError && (
+            <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
+              <p className="font-medium">Failed to load some data</p>
+              <p className="text-sm mt-1">Please check your connection and try again.</p>
+              <button 
+                onClick={() => window.location.reload()}
+                className="mt-2 text-sm text-red-800 underline hover:no-underline"
+              >
+                Reload page
+              </button>
             </div>
           )}
           
           {/* Demographics Content */}
-          {!loading && !error && activeTopic === 'demographics' && (
+          {activeTopic === 'demographics' && (
             <div>
-              {/* First row of charts */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <PopulationChart 
-                  data={populationData} 
                   provinceName={provinceName} 
+                  provinceId={activeProvince}
                 />
-                  <PopulationAgeChart 
-                  data={populationAgeData}
+                <PopulationAgeChart 
                   provinceName={provinceName}
+                  provinceId={activeProvince}
                 />
               </div>
               
-              {/* Second row of charts */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <IncomeChart 
-                  data={incomeData} 
                   provinceName={provinceName} 
+                  provinceId={activeProvince}
                 />
                 <ExpenditureChart 
-                  data={expenditureData} 
                   provinceName={provinceName}
-                  expenditureCategories={expenditureCategories}
-                  quintiles={quintiles}
-                  rawExpenditureData={expenditureData}
+                  provinceId={activeProvince}
                 />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <HouseholdChart 
-                  data={householdData} 
+                <HouseholdChart 
                   provinceName={provinceName} 
+                  provinceId={activeProvince}
                 />
               </div>
             </div>
           )}
-          
+                      
           {/* Housing Content */}
-          {!loading && !error && activeTopic === 'housing' && (
-            <div>
-              {/* Housing charts row */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <HousingSupplyChart 
-                  data={housingSupplyData} 
-                  provinceName={provinceName}
-                  housingCategories={housingCategories}
-                />
-                <HousingDistributionChart 
-                  data={housingSupplyData}
-                  housingCategories={housingCategories}
-                />
+            {activeTopic === 'housing' && (
+              <div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <HousingSupplyChart 
+                    provinceName={provinceName}
+                    provinceId={activeProvince}
+                  />
+                  <HousingDistributionChart 
+                    provinceName={provinceName}
+                    provinceId={activeProvince}
+                  />
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <HousingUnitsChart 
+                    provinceName={provinceName}
+                    provinceId={activeProvince}
+                  />
+                  <TotalHousingChart 
+                    provinceName={provinceName}
+                    provinceId={activeProvince}
+                  />
+                </div>
               </div>
-              
-              {/* Additional housing charts row */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <HousingUnitsChart 
-                  data={housingSupplyData}
-                  housingCategories={housingCategories}
-                />
-                <TotalHousingChart 
-                  data={housingSupplyData}
-                  housingCategories={housingCategories}
-                />
-              </div>
-            </div>
-          )}
+            )}
           
           {/* Policy Content */}
-          {!loading && !error && activeTopic === 'policy' && (
+          {activeTopic === 'policy' && (
             <div>
               {/* Policy filter notice */}
               {policyFilter && (
@@ -315,10 +308,9 @@ const Dashboard = () => {
                 </div>
               )}
               
-              {/* Policy charts and tables */}
               <div className="mb-4">
                 <PolicyChart 
-                  policies={policyData} 
+                  policies={policy.data} 
                   onFilterChange={setPolicyFilter}
                   activeFilter={policyFilter}
                 />
@@ -360,26 +352,29 @@ const Dashboard = () => {
             </div>
           </div>
           
-          {/* Key Metrics Bar - Moved below map */}
-          {!loading && !error && (
+          {/* Key Metrics Bar */}
+          {!isLoading && !isError && (
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div className="bg-blue-50 p-3 rounded-lg shadow">
-                <p className="text-xs text-gray-500">Population (2023)</p>
+                <p className="text-xs text-gray-500">Population (Latest)</p>
                 <p className="text-lg font-bold text-blue-800">
                   {new Intl.NumberFormat('th-TH').format(metrics.population)} คน
                 </p>
+                {population.isFetching && <span className="text-xs text-blue-600">🔄</span>}
               </div>
               <div className="bg-green-50 p-3 rounded-lg shadow">
-                <p className="text-xs text-gray-500">Households (2023)</p>
+                <p className="text-xs text-gray-500">Households (Latest)</p>
                 <p className="text-lg font-bold text-green-800">
                   {new Intl.NumberFormat('th-TH').format(metrics.households)} ครัวเรือน
                 </p>
+                {household.isFetching && <span className="text-xs text-blue-600">🔄</span>}
               </div>
               <div className="bg-purple-50 p-3 rounded-lg shadow">
                 <p className="text-xs text-gray-500">Median Income</p>
                 <p className="text-lg font-bold text-purple-800">
                   {new Intl.NumberFormat('th-TH').format(metrics.income)} บาท
                 </p>
+                {income.isFetching && <span className="text-xs text-blue-600">🔄</span>}
               </div>
               <div className="bg-amber-50 p-3 rounded-lg shadow">
                 <p className="text-xs text-gray-500">Income Growth</p>
@@ -391,16 +386,19 @@ const Dashboard = () => {
           )}
           
           {/* Policy Summary */}
-          {!loading && !error && policyData.length > 0 && (
+          {!isLoading && !isError && policy.data && policy.data.length > 0 && (
             <div className="bg-white p-0 rounded-lg shadow mb-4">
               <div className="px-3 py-2 border-b border-gray-200">
                 <div className="flex justify-between items-center">
                   <h3 className="text-sm font-semibold text-gray-800">Housing Policy Summary</h3>
-                  {policyFilter && (
-                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                      Filtered
-                    </span>
-                  )}
+                  <div className="flex items-center space-x-2">
+                    {policyFilter && (
+                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                        Filtered
+                      </span>
+                    )}
+                    {policy.isFetching && <span className="text-xs text-blue-600">🔄</span>}
+                  </div>
                 </div>
               </div>
               <div className="p-3">
@@ -410,7 +408,7 @@ const Dashboard = () => {
                     {filteredPolicies.filter(p => p.Status === 'Active').length}
                     {policyFilter && (
                       <span className="text-xs text-gray-500 ml-1">
-                        / {policyData.filter(p => p.Status === 'Active').length}
+                        / {policy.data.filter(p => p.Status === 'Active').length}
                       </span>
                     )}
                   </span>
@@ -421,7 +419,7 @@ const Dashboard = () => {
                     {filteredPolicies.filter(p => p.Status === 'Pending').length}
                     {policyFilter && (
                       <span className="text-xs text-gray-500 ml-1">
-                        / {policyData.filter(p => p.Status === 'Pending').length}
+                        / {policy.data.filter(p => p.Status === 'Pending').length}
                       </span>
                     )}
                   </span>
@@ -432,7 +430,7 @@ const Dashboard = () => {
                     {filteredPolicies.length}
                     {policyFilter && (
                       <span className="text-xs text-gray-500 ml-1">
-                        / {policyData.length}
+                        / {policy.data.length}
                       </span>
                     )}
                   </span>
@@ -443,7 +441,7 @@ const Dashboard = () => {
                     {['S1: Supply', 'S2: Subsidy', 'S3: Stability'].map((type) => {
                       const typeCode = type.split(':')[0].trim();
                       const count = filteredPolicies.filter(p => p['3S Model'] && p['3S Model'].includes(type)).length;
-                      const totalCount = policyData.filter(p => p['3S Model'] && p['3S Model'].includes(type)).length;
+                      const totalCount = policy.data.filter(p => p['3S Model'] && p['3S Model'].includes(type)).length;
                       
                       return count > 0 || (policyFilter && totalCount > 0) ? (
                         <span 
@@ -473,6 +471,33 @@ const Dashboard = () => {
                       ) : null;
                     })}
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* React Query DevTools Info */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="bg-white p-3 rounded-lg shadow text-xs">
+              <h4 className="font-medium text-gray-800 mb-2">Query Cache Status</h4>
+              <div className="space-y-1 text-xs">
+                <div className="flex justify-between">
+                  <span>Population:</span>
+                  <span className={`${population.isStale ? 'text-orange-600' : 'text-green-600'}`}>
+                    {population.isLoading ? 'Loading...' : population.isStale ? 'Stale' : 'Fresh'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Housing:</span>
+                  <span className={`${housingSupply.isStale ? 'text-orange-600' : 'text-green-600'}`}>
+                    {housingSupply.isLoading ? 'Loading...' : housingSupply.isStale ? 'Stale' : 'Fresh'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Policy:</span>
+                  <span className={`${policy.isStale ? 'text-orange-600' : 'text-green-600'}`}>
+                    {policy.isLoading ? 'Loading...' : policy.isStale ? 'Stale' : 'Fresh'}
+                  </span>
                 </div>
               </div>
             </div>

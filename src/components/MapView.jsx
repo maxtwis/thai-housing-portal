@@ -1,15 +1,21 @@
 import React, { useEffect, useRef, useState } from 'react';
-import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css'; // Critical import for styles
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { provinces } from '../utils/dataUtils';
 
-// Public token that can use default styles
-mapboxgl.accessToken = 'pk.eyJ1IjoibmFwYXR0cnMiLCJhIjoiY203YnFwdmp1MDU0dTJrb3Fvbmhld2Z1cCJ9.rr4TE2vg3iIcpNqv9I2n5Q';
+// Fix for default markers in Leaflet with webpack
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
 
 const MapView = ({ activeProvince, onProvinceChange }) => {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const markersRef = useRef([]);
+  const provinceLayerRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [usingGeoJSON, setUsingGeoJSON] = useState(false);
@@ -21,175 +27,148 @@ const MapView = ({ activeProvince, onProvinceChange }) => {
   useEffect(() => {
     if (!mapContainerRef.current) return;
     
-    const initMap = new mapboxgl.Map({
-      container: mapContainerRef.current,
-      style: 'mapbox://styles/mapbox/light-v11',
-      center: [100.5018, 13.7563], // Bangkok
-      zoom: 5,
+    // Create Leaflet map
+    const map = L.map(mapContainerRef.current, {
+      center: [13.7563, 100.5018], // Bangkok
+      zoom: 6,
+      zoomControl: true,
       attributionControl: true
     });
     
-    // Store map reference
-    mapRef.current = initMap;
+    // Add tile layer (OpenStreetMap - free)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors',
+      maxZoom: 18
+    }).addTo(map);
     
-    initMap.on('load', () => {
-      console.log('Map loaded successfully');
+    // Store map reference
+    mapRef.current = map;
+    
+    // Add fallback markers 
+    markersRef.current = provinces.map(province => {
+      const isActive = province.id === activeProvince;
       
-      // Add fallback markers 
-      markersRef.current = provinces.map(province => {
-        const el = document.createElement('div');
-        el.className = 'province-marker';
-        el.style.width = '20px';
-        el.style.height = '20px';
-        el.style.borderRadius = '50%';
-        el.style.border = '2px solid #fff';
-        el.style.boxShadow = '0 0 10px rgba(0,0,0,0.3)';
-        el.style.cursor = 'pointer';
-        el.style.backgroundColor = province.id === activeProvince ? '#3182CE' : '#9AE6B4';
-        
-        el.addEventListener('click', () => {
-          onProvinceChange(province.id);
-        });
-        
-        const popup = new mapboxgl.Popup({ offset: 25 }).setText(province.name);
-        
-        const marker = new mapboxgl.Marker(el)
-          .setLngLat([province.lon, province.lat])
-          .setPopup(popup)
-          .addTo(initMap);
-          
-        return { marker, element: el, province };
+      // Create custom icon
+      const customIcon = L.divIcon({
+        className: 'province-marker',
+        html: `<div style="
+          width: ${isActive ? '28px' : '20px'}; 
+          height: ${isActive ? '28px' : '20px'}; 
+          border-radius: 50%; 
+          border: 2px solid #fff; 
+          box-shadow: 0 0 10px rgba(0,0,0,0.3); 
+          cursor: pointer;
+          background-color: ${isActive ? '#3182CE' : '#9AE6B4'};
+          z-index: ${isActive ? '10' : '1'};
+        "></div>`,
+        iconSize: [isActive ? 28 : 20, isActive ? 28 : 20],
+        iconAnchor: [isActive ? 14 : 10, isActive ? 14 : 10]
       });
       
-      // Now try to load GeoJSON
-      fetch('/data/map.geojson')
-        .then(response => {
-          if (!response.ok) throw new Error(`Failed to load GeoJSON: ${response.status}`);
-          return response.json();
-        })
-        .then(geojsonData => {
-          try {
-            console.log('GeoJSON loaded, processing...');
-            
-            // Add source with all provinces
-            initMap.addSource('all-provinces', {
-              type: 'geojson',
-              data: geojsonData
-            });
-            
-            // Add background for all Thai provinces
-            initMap.addLayer({
-              id: 'all-provinces-fill',
-              type: 'fill',
-              source: 'all-provinces',
-              paint: {
-                'fill-color': '#F7FAFC',
-                'fill-opacity': 0.1
-              }
-            });
-            
-            // Add outline for all Thai provinces
-            initMap.addLayer({
-              id: 'all-provinces-outline',
-              type: 'line',
-              source: 'all-provinces',
-              paint: {
-                'line-color': '#CBD5E0',
-                'line-width': 0.5,
-                'line-opacity': 0.7
-              }
-            });
-            
-            // Add fill layer for our selected provinces
-            initMap.addLayer({
-              id: 'province-fills',
-              type: 'fill',
-              source: 'all-provinces',
-              paint: {
-                'fill-color': [
-                  'match',
-                  ['get', 'id'],
-                  activeProvince, '#3182CE', // Active province - blue
-                  '#9AE6B4' // Inactive provinces - light green
-                ],
-                'fill-opacity': 0.5
-              },
-              filter: ['in', ['get', 'id'], ['literal', wantedProvinceIds]]
-            });
-            
-            // Add outline layer for our selected provinces
-            initMap.addLayer({
-              id: 'province-borders',
-              type: 'line',
-              source: 'all-provinces',
-              paint: {
-                'line-color': '#2C5282',
-                'line-width': [
-                  'match',
-                  ['get', 'id'],
-                  activeProvince, 3,
-                  1
-                ]
-              },
-              filter: ['in', ['get', 'id'], ['literal', wantedProvinceIds]]
-            });
-            
-            // Add click interaction
-            initMap.on('click', 'province-fills', (e) => {
-              if (e.features.length > 0) {
-                const clickedProvince = e.features[0].properties.id;
-                onProvinceChange(clickedProvince);
-              }
-            });
-            
-            // Change cursor on hover
-            initMap.on('mouseenter', 'province-fills', () => {
-              initMap.getCanvas().style.cursor = 'pointer';
-            });
-            
-            initMap.on('mouseleave', 'province-fills', () => {
-              initMap.getCanvas().style.cursor = '';
-            });
-            
-            // Hide markers since GeoJSON loaded successfully
-            markersRef.current.forEach(({ marker }) => {
-              marker.getElement().style.display = 'none';
-            });
-            
-            // Note that we're using GeoJSON now
-            setUsingGeoJSON(true);
-            console.log('GeoJSON setup completed successfully');
-          } catch (err) {
-            console.error('Error setting up GeoJSON layers:', err);
-            // We'll keep showing markers as fallback
-          }
-          
-          setLoading(false);
-        })
-        .catch(err => {
-          console.error('Error loading GeoJSON:', err);
-          // Keep using markers as fallback
-          setLoading(false);
-        });
-    });
-    
-    initMap.on('error', (e) => {
-      console.error('Mapbox error:', e);
-      setError(`Map error: ${e.error?.message || 'Unknown error'}`);
-      setLoading(false);
+      const marker = L.marker([province.lat, province.lon], { icon: customIcon })
+        .bindPopup(province.name)
+        .addTo(map);
+      
+      marker.on('click', () => {
+        onProvinceChange(province.id);
+      });
+      
+      return { marker, province };
     });
     
     // Set map bounds to Thailand
-    const bounds = [
-      [97.3, 5.6], // Southwest coordinates
-      [105.6, 20.5] // Northeast coordinates
-    ];
-    initMap.setMaxBounds(bounds);
+    const bounds = L.latLngBounds(
+      [5.6, 97.3], // Southwest
+      [20.5, 105.6] // Northeast
+    );
+    map.setMaxBounds(bounds);
+    
+    // Now try to load GeoJSON
+    fetch('/data/map.geojson')
+      .then(response => {
+        if (!response.ok) throw new Error(`Failed to load GeoJSON: ${response.status}`);
+        return response.json();
+      })
+      .then(geojsonData => {
+        try {
+          console.log('GeoJSON loaded, processing...');
+          
+          // Style function for GeoJSON features
+          const style = (feature) => {
+            const isActive = feature.properties.id === activeProvince;
+            const isWanted = wantedProvinceIds.includes(feature.properties.id);
+            
+            if (isWanted) {
+              return {
+                fillColor: isActive ? '#3182CE' : '#9AE6B4',
+                weight: isActive ? 3 : 1,
+                opacity: 0.8,
+                color: '#2C5282',
+                fillOpacity: 0.5
+              };
+            } else {
+              return {
+                fillColor: '#F7FAFC',
+                weight: 0.5,
+                opacity: 0.7,
+                color: '#CBD5E0',
+                fillOpacity: 0.1
+              };
+            }
+          };
+          
+          // Add GeoJSON layer
+          const provinceLayer = L.geoJSON(geojsonData, {
+            style: style,
+            onEachFeature: (feature, layer) => {
+              if (wantedProvinceIds.includes(feature.properties.id)) {
+                layer.on('click', () => {
+                  onProvinceChange(feature.properties.id);
+                });
+                
+                layer.on('mouseover', () => {
+                  layer.setStyle({
+                    weight: 2,
+                    color: '#2C5282',
+                    fillOpacity: 0.7
+                  });
+                });
+                
+                layer.on('mouseout', () => {
+                  provinceLayer.resetStyle(layer);
+                });
+              }
+            }
+          }).addTo(map);
+          
+          provinceLayerRef.current = provinceLayer;
+          
+          // Hide markers since GeoJSON loaded successfully
+          markersRef.current.forEach(({ marker }) => {
+            map.removeLayer(marker);
+          });
+          
+          setUsingGeoJSON(true);
+          console.log('GeoJSON setup completed successfully');
+        } catch (err) {
+          console.error('Error setting up GeoJSON layers:', err);
+        }
+        
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('Error loading GeoJSON:', err);
+        setLoading(false);
+      });
     
     // Clean up on unmount
     return () => {
       if (markersRef.current) {
-        markersRef.current.forEach(({ marker }) => marker.remove());
+        markersRef.current.forEach(({ marker }) => {
+          if (map.hasLayer(marker)) {
+            map.removeLayer(marker);
+          }
+        });
       }
       if (mapRef.current) {
         mapRef.current.remove();
@@ -203,37 +182,51 @@ const MapView = ({ activeProvince, onProvinceChange }) => {
     if (!map) return;
     
     // Update GeoJSON if we're using it
-    if (usingGeoJSON && map.getLayer('province-fills')) {
+    if (usingGeoJSON && provinceLayerRef.current) {
       try {
-        // Update province fill colors
-        map.setPaintProperty('province-fills', 'fill-color', [
-          'match',
-          ['get', 'id'],
-          activeProvince, '#3182CE', // Active province
-          '#9AE6B4' // Inactive provinces
-        ]);
-        
-        // Update province border widths
-        map.setPaintProperty('province-borders', 'line-width', [
-          'match',
-          ['get', 'id'],
-          activeProvince, 3,
-          1
-        ]);
+        // Re-style all features
+        provinceLayerRef.current.eachLayer((layer) => {
+          const feature = layer.feature;
+          const isActive = feature.properties.id === activeProvince;
+          const isWanted = wantedProvinceIds.includes(feature.properties.id);
+          
+          if (isWanted) {
+            layer.setStyle({
+              fillColor: isActive ? '#3182CE' : '#9AE6B4',
+              weight: isActive ? 3 : 1,
+              opacity: 0.8,
+              color: '#2C5282',
+              fillOpacity: 0.5
+            });
+          }
+        });
       } catch (err) {
         console.error('Error updating GeoJSON styles:', err);
       }
     }
     
     // Update markers (if visible)
-    if (markersRef.current && markersRef.current.length > 0) {
-      markersRef.current.forEach(({ element, province }) => {
-        if (element.style.display !== 'none') {
-          element.style.backgroundColor = province.id === activeProvince ? '#3182CE' : '#9AE6B4';
-          element.style.width = province.id === activeProvince ? '28px' : '20px';
-          element.style.height = province.id === activeProvince ? '28px' : '20px';
-          element.style.zIndex = province.id === activeProvince ? '10' : '1';
-        }
+    if (!usingGeoJSON && markersRef.current && markersRef.current.length > 0) {
+      markersRef.current.forEach(({ marker, province }) => {
+        const isActive = province.id === activeProvince;
+        
+        const customIcon = L.divIcon({
+          className: 'province-marker',
+          html: `<div style="
+            width: ${isActive ? '28px' : '20px'}; 
+            height: ${isActive ? '28px' : '20px'}; 
+            border-radius: 50%; 
+            border: 2px solid #fff; 
+            box-shadow: 0 0 10px rgba(0,0,0,0.3); 
+            cursor: pointer;
+            background-color: ${isActive ? '#3182CE' : '#9AE6B4'};
+            z-index: ${isActive ? '10' : '1'};
+          "></div>`,
+          iconSize: [isActive ? 28 : 20, isActive ? 28 : 20],
+          iconAnchor: [isActive ? 14 : 10, isActive ? 14 : 10]
+        });
+        
+        marker.setIcon(customIcon);
       });
     }
     
@@ -241,14 +234,12 @@ const MapView = ({ activeProvince, onProvinceChange }) => {
     if (map) {
       const selectedProvince = provinces.find(p => p.id === activeProvince);
       if (selectedProvince) {
-        map.flyTo({
-          center: [selectedProvince.lon, selectedProvince.lat],
-          zoom: 7,
-          duration: 1500
+        map.flyTo([selectedProvince.lat, selectedProvince.lon], 7, {
+          duration: 1.5
         });
       }
     }
-  }, [activeProvince, usingGeoJSON]); // Only depend on activeProvince and GeoJSON status
+  }, [activeProvince, usingGeoJSON]);
   
   return (
     <div className="relative w-full h-96 rounded-lg overflow-hidden shadow-md">

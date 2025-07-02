@@ -1,13 +1,19 @@
 import React, { useEffect, useRef, useState } from 'react';
-import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 
-mapboxgl.accessToken = 'pk.eyJ1IjoibmFwYXR0cnMiLCJhIjoiY203YnFwdmp1MDU0dTJrb3Fvbmhld2Z1cCJ9.rr4TE2vg3iIcpNqv9I2n5Q';
+// Fix for default markers in Leaflet with webpack
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
 
 const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect, selectedGrid }) => {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
-  const popupRef = useRef(null);
+  const hdsLayerRef = useRef(null);
   const legendRef = useRef(null);
 
   // Housing Delivery System categories
@@ -24,10 +30,9 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
   // Dynamic height calculation based on viewport
   const getMapHeight = () => {
     if (isMobile) {
-      return "60vh"; // Mobile height
+      return "60vh";
     } else {
-      // Desktop: Much taller map
-      return "calc(100vh - 150px)"; // Adjust this value as needed
+      return "calc(100vh - 150px)";
     }
   };
 
@@ -119,60 +124,58 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
   };
 
   // Color schemes for different attributes
-  const getColorExpression = () => {
+  const getColor = (feature) => {
+    const props = feature.properties;
+    
     const schemes = {
-      housingSystem: [
-        'case',
+      housingSystem: () => {
         // Find the dominant housing system for each grid
-        ['>', ['get', 'HDS_C1_num'], 
-         ['max', ['get', 'HDS_C2_num'], ['get', 'HDS_C3_num'], ['get', 'HDS_C4_num'], 
-          ['get', 'HDS_C5_num'], ['get', 'HDS_C6_num'], ['get', 'HDS_C7_num']]], '#d62728', // Red for informal settlements
-        ['>', ['get', 'HDS_C2_num'], 
-         ['max', ['get', 'HDS_C3_num'], ['get', 'HDS_C4_num'], 
-          ['get', 'HDS_C5_num'], ['get', 'HDS_C6_num'], ['get', 'HDS_C7_num']]], '#ff7f0e', // Orange for temporary tenure
-        ['>', ['get', 'HDS_C3_num'], 
-         ['max', ['get', 'HDS_C4_num'], ['get', 'HDS_C5_num'], ['get', 'HDS_C6_num'], ['get', 'HDS_C7_num']]], '#bcbd22', // Yellow-green for hidden population
-        ['>', ['get', 'HDS_C4_num'], 
-         ['max', ['get', 'HDS_C5_num'], ['get', 'HDS_C6_num'], ['get', 'HDS_C7_num']]], '#9467bd', // Purple for employee housing
-        ['>', ['get', 'HDS_C5_num'], 
-         ['max', ['get', 'HDS_C6_num'], ['get', 'HDS_C7_num']]], '#2ca02c', // Green for public housing
-        ['>', ['get', 'HDS_C6_num'], ['get', 'HDS_C7_num']], '#17becf', // Cyan for supported housing
-        ['>', ['get', 'HDS_C7_num'], 0], '#1f77b4', // Blue for private housing
-        '#808080' // Gray for no data
-      ],
-      populationDensity: [
-        'step',
-        ['get', 'Grid_POP'],
-        '#ffffcc',  // Very low density
-        500, '#c7e9b4',
-        1000, '#7fcdbb',
-        2000, '#41b6c4',
-        3000, '#2c7fb8',
-        5000, '#253494'  // Very high density
-      ],
-      housingDensity: [
-        'step',
-        ['get', 'Grid_House'],
-        '#fff5f0',  // Very low density
-        1000, '#fee0d2',
-        2000, '#fcbba1',
-        5000, '#fc9272',
-        10000, '#fb6a4a',
-        20000, '#de2d26',
-        50000, '#a50f15'  // Very high density
-      ],
-      gridClass: [
-        'match',
-        ['get', 'Grid_Class'],
-        1, '#ffffcc',
-        2, '#c7e9b4',
-        3, '#7fcdbb',
-        4, '#41b6c4',
-        5, '#253494',
-        '#808080'  // Default color for unknown classes
-      ]
+        const hdsNumbers = [
+          { code: 1, count: props.HDS_C1_num || 0, color: '#d62728' },
+          { code: 2, count: props.HDS_C2_num || 0, color: '#ff7f0e' },
+          { code: 3, count: props.HDS_C3_num || 0, color: '#bcbd22' },
+          { code: 4, count: props.HDS_C4_num || 0, color: '#9467bd' },
+          { code: 5, count: props.HDS_C5_num || 0, color: '#2ca02c' },
+          { code: 6, count: props.HDS_C6_num || 0, color: '#17becf' },
+          { code: 7, count: props.HDS_C7_num || 0, color: '#1f77b4' }
+        ];
+        
+        const dominantSystem = hdsNumbers.reduce((max, item) => item.count > max.count ? item : max);
+        return dominantSystem.count > 0 ? dominantSystem.color : '#808080';
+      },
+      populationDensity: () => {
+        const pop = props.Grid_POP || 0;
+        if (pop < 500) return '#ffffcc';
+        if (pop < 1000) return '#c7e9b4';
+        if (pop < 2000) return '#7fcdbb';
+        if (pop < 3000) return '#41b6c4';
+        if (pop < 5000) return '#2c7fb8';
+        return '#253494';
+      },
+      housingDensity: () => {
+        const housing = props.Grid_House || 0;
+        if (housing < 1000) return '#fff5f0';
+        if (housing < 2000) return '#fee0d2';
+        if (housing < 5000) return '#fcbba1';
+        if (housing < 10000) return '#fc9272';
+        if (housing < 20000) return '#fb6a4a';
+        if (housing < 50000) return '#de2d26';
+        return '#a50f15';
+      },
+      gridClass: () => {
+        const gridClass = props.Grid_Class;
+        const colorMap = {
+          1: '#ffffcc',
+          2: '#c7e9b4',
+          3: '#7fcdbb',
+          4: '#41b6c4',
+          5: '#253494'
+        };
+        return colorMap[gridClass] || '#808080';
+      }
     };
-    return schemes[colorScheme] || schemes.housingSystem;
+    
+    return schemes[colorScheme] ? schemes[colorScheme]() : schemes.housingSystem();
   };
 
   // Legend items for each color scheme
@@ -220,63 +223,58 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
-    const map = new mapboxgl.Map({
-      container: mapContainerRef.current,
-      style: 'mapbox://styles/mapbox/light-v11',
-      center: [102.8359, 16.4419], // Khon Kaen coordinates
+    // Create Leaflet map
+    const map = L.map(mapContainerRef.current, {
+      center: [16.4419, 102.8359], // Khon Kaen coordinates
       zoom: 10,
       maxZoom: 16,
-      minZoom: 8
+      minZoom: 8,
+      zoomControl: !isMobile,
+      attributionControl: true
     });
 
-    const navigationControl = new mapboxgl.NavigationControl({
-      showCompass: true,
-      visualizePitch: true
-    });
-    
-    // Only add controls if we are not on mobile
-    if (!isMobile) {
-      map.addControl(navigationControl, 'top-right');
-      
-      // Add fullscreen control
-      map.addControl(
-        new mapboxgl.FullscreenControl(), 
-        'top-right'
-      );
-    } else {
-      // Add minimal controls for mobile
-      map.addControl(
-        new mapboxgl.NavigationControl({
-          showCompass: false,
-          visualizePitch: false
-        }),
-        'top-right'
-      );
+    // Add tile layer (OpenStreetMap)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors',
+      maxZoom: 18
+    }).addTo(map);
+
+    // Add zoom control for mobile in a different position
+    if (isMobile) {
+      L.control.zoom({
+        position: 'topright'
+      }).addTo(map);
     }
 
     mapRef.current = map;
     
     // Create legend container with responsive styling
-    const legend = document.createElement('div');
-    legend.className = 'map-legend';
+    const legend = L.control({ position: isMobile ? 'topleft' : 'bottomright' });
     
-    // Mobile-specific styling for legend
-    if (isMobile) {
-      legend.style.cssText = 'position: absolute; top: 10px; left: 10px; right: 10px; background: white; padding: 6px; border-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,0.2); font-size: 9px; max-height: 80px; overflow-y: auto; z-index: 1;';
-    } else {
-      legend.style.cssText = 'position: absolute; bottom: 30px; right: 10px; background: white; padding: 10px; border-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,0.2); font-size: 12px; max-height: 400px; overflow-y: auto;';
-    }
+    legend.onAdd = function () {
+      const div = L.DomUtil.create('div', 'info legend');
+      
+      if (isMobile) {
+        div.style.cssText = 'background: white; padding: 6px; border-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,0.2); font-size: 9px; max-height: 80px; overflow-y: auto; z-index: 1; max-width: 280px;';
+      } else {
+        div.style.cssText = 'background: white; padding: 10px; border-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,0.2); font-size: 12px; max-height: 400px; overflow-y: auto;';
+      }
+      
+      return div;
+    };
     
+    legend.addTo(map);
     legendRef.current = legend;
-    mapContainerRef.current.appendChild(legend);
 
-    map.on('load', async () => {
-      try {
-        const response = await fetch('/data/HDS_GRID_KKN_FeaturesToJSON.geojson');
-        if (!response.ok) throw new Error('Failed to load GeoJSON data');
-        const geojsonData = await response.json();
-
-        console.log('Original GeoJSON data:', geojsonData.features.length, 'features');
+    // Load GeoJSON data
+    fetch('/data/HDS_GRID_KKN_FeaturesToJSON.geojson')
+      .then(response => {
+        if (!response.ok) throw new Error('Failed to load HDS GeoJSON data');
+        return response.json();
+      })
+      .then(geojsonData => {
+        console.log('GeoJSON data loaded:', geojsonData.features.length, 'features');
+        console.log('Original coordinates sample:', geojsonData.features[0]?.geometry?.coordinates[0]?.slice(0, 2));
         
         // Transform coordinates from Web Mercator (EPSG:3857) to WGS84 (EPSG:4326)
         const transformedGeoJSON = {
@@ -285,11 +283,19 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
             if (feature.geometry && feature.geometry.coordinates) {
               const transformedCoordinates = feature.geometry.coordinates.map(ring => 
                 ring.map(coord => {
-                  // Convert from Web Mercator to WGS84
+                  // Convert from Web Mercator to WGS84 using more precise formula
                   const [x, y] = coord;
-                  const lng = (x / 20037508.34) * 180;
-                  const lat = (Math.atan(Math.exp((y / 20037508.34) * Math.PI)) * 360 / Math.PI) - 90;
-                  return [lng, lat];
+                  
+                  // More precise Web Mercator to WGS84 conversion
+                  const lng = x / 20037508.342789244 * 180;
+                  const lat = Math.atan(Math.sinh(y / 20037508.342789244 * Math.PI)) * 180 / Math.PI;
+                  
+                  // Debug: Check if coordinates are reasonable for Thailand
+                  if (lng < 97 || lng > 106 || lat < 5 || lat > 21) {
+                    console.warn('Unusual coordinates detected:', { original: coord, transformed: [lng, lat] });
+                  }
+                  
+                  return [lng, lat]; // GeoJSON format: [lng, lat]
                 })
               );
               
@@ -306,270 +312,196 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
         };
 
         console.log('Transformed GeoJSON:', transformedGeoJSON.features.length, 'features');
-        console.log('Sample coordinates:', transformedGeoJSON.features[0]?.geometry?.coordinates[0]?.slice(0, 2));
+        console.log('Sample transformed coordinates:', transformedGeoJSON.features[0]?.geometry?.coordinates[0]?.slice(0, 2));
 
-        map.addSource('hds-grids', {
-          type: 'geojson',
-          data: transformedGeoJSON
-        });
+        // Style function for HDS grids
+        const style = (feature) => {
+          const isSelected = selectedGrid && selectedGrid.FID === feature.properties.FID;
+          
+          return {
+            fillColor: getColor(feature),
+            weight: isSelected ? 3 : 0.5,
+            opacity: 0.8,
+            color: isSelected ? '#ff0000' : '#666666',
+            fillOpacity: 0.7
+          };
+        };
 
-        // Add grid fill layer
-        map.addLayer({
-          id: 'hds-grid-fills',
-          type: 'fill',
-          source: 'hds-grids',
-          paint: {
-            'fill-color': getColorExpression(),
-            'fill-opacity': 0.7
+        // Add HDS layer
+        const hdsLayer = L.geoJSON(transformedGeoJSON, {
+          style: style,
+          onEachFeature: (feature, layer) => {
+            // Add click functionality for grid selection
+            layer.on('click', (e) => {
+              const clickedFeature = feature;
+              
+              // Call the parent component's callback to update statistics
+              if (onGridSelect) {
+                onGridSelect(clickedFeature.properties);
+              }
+              
+              // For mobile, show a smaller popup that doesn't interfere with legend
+              if (isMobile) {
+                const popup = L.popup({
+                  maxWidth: 280,
+                  className: 'hds-popup mobile-popup',
+                  closeButton: true,
+                  offset: [0, -10]
+                })
+                  .setLatLng(e.latlng)
+                  .setContent(`
+                    <div class="p-2 text-sm">
+                      <h3 class="font-bold text-gray-800 mb-1">กริด ID: ${clickedFeature.properties.FID}</h3>
+                      <p class="text-xs text-gray-600 mb-2">ประชากร: ${Math.round(clickedFeature.properties.Grid_POP || 0).toLocaleString()} คน</p>
+                      <p class="text-xs text-blue-600">ดูรายละเอียดในแผงสถิติด้านล่าง</p>
+                    </div>
+                  `)
+                  .openOn(map);
+                
+                // Auto-close popup after 3 seconds on mobile
+                setTimeout(() => {
+                  map.closePopup(popup);
+                }, 3000);
+              } else {
+                // Desktop: show full popup
+                const popup = L.popup({
+                  maxWidth: 400,
+                  className: 'hds-popup',
+                  closeButton: true
+                })
+                  .setLatLng(e.latlng)
+                  .setContent(generatePopupContent(clickedFeature, colorScheme))
+                  .openOn(map);
+              }
+            });
+
+            // Add hover effect for desktop only (no popup repositioning)
+            if (!isMobile) {
+              layer.on('mouseover', (e) => {
+                // Just highlight the layer, no popup
+                layer.setStyle({
+                  weight: 2,
+                  color: '#ff0000',
+                  fillOpacity: 0.9
+                });
+              });
+
+              layer.on('mouseout', (e) => {
+                // Reset to normal style
+                const isSelected = selectedGrid && selectedGrid.FID === layer.feature.properties.FID;
+                layer.setStyle({
+                  fillColor: getColor(layer.feature),
+                  weight: isSelected ? 3 : 0.5,
+                  opacity: 0.8,
+                  color: isSelected ? '#ff0000' : '#666666',
+                  fillOpacity: 0.7
+                });
+              });
+            }
           }
-        });
+        }).addTo(map);
 
-        // Add grid outline layer with click highlighting
-        map.addLayer({
-          id: 'hds-grid-outlines',
-          type: 'line',
-          source: 'hds-grids',
-          paint: {
-            'line-color': [
-              'case',
-              ['==', ['get', 'FID'], selectedGrid?.FID || -1],
-              '#ff0000', // Red for selected grid
-              '#666666'  // Default color
-            ],
-            'line-width': [
-              'case',
-              ['==', ['get', 'FID'], selectedGrid?.FID || -1],
-              3, // Thicker for selected grid
-              0.5 // Default width
-            ],
-            'line-opacity': 0.8
-          }
-        });
+        hdsLayerRef.current = hdsLayer;
 
-        // Calculate bounds from transformed coordinates
-        const bounds = new mapboxgl.LngLatBounds();
+        // Calculate bounds from transformed coordinates (for initial view only)
+        const bounds = L.latLngBounds();
         transformedGeoJSON.features.forEach(feature => {
           if (feature.geometry && feature.geometry.coordinates) {
             feature.geometry.coordinates[0].forEach(coord => {
-              bounds.extend(coord);
+              // Transformed coordinates are already [lng, lat], Leaflet expects [lat, lng]
+              bounds.extend([coord[1], coord[0]]);
             });
           }
         });
         
-        // Fit map to the data bounds
-        map.fitBounds(bounds, {
-          padding: isMobile ? 20 : 50,
-          maxZoom: isMobile ? 14 : 16
-        });
-
-        // Add hover effect
-        let hoveredStateId = null;
-
-        map.on('mousemove', 'hds-grid-fills', (e) => {
-          // Only show hover popup on desktop
-          if (!isMobile && e.features.length > 0) {
-            if (popupRef.current) {
-              popupRef.current.remove();
-            }
-        
-            if (hoveredStateId !== null) {
-              map.setFeatureState(
-                { source: 'hds-grids', id: hoveredStateId },
-                { hover: false }
-              );
-            }
-        
-            hoveredStateId = e.features[0].id;
-            map.setFeatureState(
-              { source: 'hds-grids', id: hoveredStateId },
-              { hover: true }
-            );
-        
-            const popup = new mapboxgl.Popup({
-              closeButton: false,
-              closeOnClick: false,
-              className: 'hds-popup',
-              maxWidth: '400px',
-              offset: 15
-            })
-              .setLngLat(e.lngLat)
-              .setHTML(generatePopupContent(e.features[0], colorScheme))
-              .addTo(map);
-        
-            popupRef.current = popup;
-          }
-        });
-
-        // Add click functionality for grid selection
-        map.on('click', 'hds-grid-fills', (e) => {
-          if (e.features.length > 0) {
-            const clickedFeature = e.features[0];
-            
-            // Call the parent component's callback to update statistics
-            if (onGridSelect) {
-              onGridSelect(clickedFeature.properties);
-            }
-            
-            // Remove existing popup if any
-            if (popupRef.current) {
-              popupRef.current.remove();
-            }
-            
-            // For mobile, show a smaller popup that doesn't interfere with legend
-            if (isMobile) {
-              const popup = new mapboxgl.Popup({
-                closeButton: true,
-                className: 'hds-popup mobile-popup',
-                maxWidth: '280px',
-                anchor: 'bottom',
-                offset: [0, -10]
-              })
-                .setLngLat(e.lngLat)
-                .setHTML(`
-                  <div class="p-2 text-sm">
-                    <h3 class="font-bold text-gray-800 mb-1">กริด ID: ${clickedFeature.properties.FID}</h3>
-                    <p class="text-xs text-gray-600 mb-2">ประชากร: ${Math.round(clickedFeature.properties.Grid_POP || 0).toLocaleString()} คน</p>
-                    <p class="text-xs text-blue-600">ดูรายละเอียดในแผงสถิติด้านล่าง</p>
-                  </div>
-                `)
-                .addTo(map);
-              
-              popupRef.current = popup;
-              
-              // Auto-close popup after 3 seconds on mobile
-              setTimeout(() => {
-                if (popupRef.current) {
-                  popupRef.current.remove();
-                  popupRef.current = null;
-                }
-              }, 3000);
-            } else {
-              // Desktop: show full popup
-              const popup = new mapboxgl.Popup({
-                closeButton: true,
-                className: 'hds-popup',
-                maxWidth: '400px'
-              })
-                .setLngLat(e.lngLat)
-                .setHTML(generatePopupContent(clickedFeature, colorScheme))
-                .addTo(map);
-              
-              popupRef.current = popup;
-            }
-          }
-        });
-
-        map.on('mouseleave', 'hds-grid-fills', () => {
-          if (hoveredStateId !== null) {
-            map.setFeatureState(
-              { source: 'hds-grids', id: hoveredStateId },
-              { hover: false }
-            );
-          }
-          hoveredStateId = null;
-
-          if (popupRef.current && !isMobile) {
-            popupRef.current.remove();
-            popupRef.current = null;
-          }
-        });
+        // Only fit bounds on initial load, don't force it afterwards
+        if (bounds.isValid()) {
+          map.fitBounds(bounds, {
+            padding: isMobile ? [20, 20] : [50, 50],
+            maxZoom: isMobile ? 14 : 16
+          });
+        }
 
         // Update legend initially
         updateLegend();
-
-      } catch (error) {
+      })
+      .catch(error => {
         console.error('Error loading GeoJSON:', error);
-      }
-    });
+      });
 
     return () => {
-      if (popupRef.current) {
-        popupRef.current.remove();
-      }
       if (mapRef.current) {
         mapRef.current.remove();
       }
-      if (legendRef.current) {
-        legendRef.current.remove();
-      }
     };
-  }, [isMobile]);
+  }, [isMobile]); // REMOVED selectedGrid and colorScheme dependencies
 
   // Update filters when they change
   useEffect(() => {
-    if (!mapRef.current || !mapRef.current.getLayer('hds-grid-fills')) return;
+    if (!mapRef.current || !hdsLayerRef.current) return;
 
-    let filterArray = ['all'];
-    
-    if (filters.housingSystem !== 'all') {
-      // Filter by dominant housing system
-      const systemNum = parseInt(filters.housingSystem);
-      if (systemNum >= 1 && systemNum <= 7) {
-        const fieldName = `HDS_C${systemNum}_num`;
-        filterArray.push(['>', ['get', fieldName], 0]);
+    // Filter the layer based on current filters
+    hdsLayerRef.current.eachLayer((layer) => {
+      const feature = layer.feature.properties;
+      let shouldShow = true;
+      
+      if (filters.housingSystem !== 'all') {
+        const systemNum = parseInt(filters.housingSystem);
+        if (systemNum >= 1 && systemNum <= 7) {
+          const fieldName = `HDS_C${systemNum}_num`;
+          shouldShow = shouldShow && ((feature[fieldName] || 0) > 0);
+        }
       }
-    }
-    
-    if (filters.densityLevel !== 'all') {
-      filterArray.push(['==', ['get', 'Grid_Class'], parseInt(filters.densityLevel)]);
-    }
-    
-    if (filters.populationRange !== 'all') {
-      const [min, max] = filters.populationRange.split('-').map(Number);
-      filterArray.push(['>=', ['get', 'Grid_POP'], min]);
-      if (max) {
-        filterArray.push(['<=', ['get', 'Grid_POP'], max]);
+      
+      if (filters.densityLevel !== 'all') {
+        shouldShow = shouldShow && (feature.Grid_Class === parseInt(filters.densityLevel));
       }
-    }
+      
+      if (filters.populationRange !== 'all') {
+        const [min, max] = filters.populationRange.split('-').map(Number);
+        const population = feature.Grid_POP || 0;
+        shouldShow = shouldShow && (population >= min);
+        if (max) {
+          shouldShow = shouldShow && (population <= max);
+        }
+      }
 
-    mapRef.current.setFilter('hds-grid-fills', filterArray);
-    mapRef.current.setFilter('hds-grid-outlines', filterArray);
+      // Show/hide layer based on filter
+      if (shouldShow) {
+        if (!mapRef.current.hasLayer(layer)) {
+          layer.addTo(mapRef.current);
+        }
+      } else {
+        if (mapRef.current.hasLayer(layer)) {
+          mapRef.current.removeLayer(layer);
+        }
+      }
+    });
   }, [filters]);
 
-  // Update colors when color scheme changes
+  // Update colors and selected grid styling when color scheme or selected grid changes
   useEffect(() => {
-    if (!mapRef.current || !mapRef.current.getLayer('hds-grid-fills')) return;
+    if (!mapRef.current || !hdsLayerRef.current) return;
 
-    mapRef.current.setPaintProperty(
-      'hds-grid-fills',
-      'fill-color',
-      getColorExpression()
-    );
+    // Re-style all layers
+    hdsLayerRef.current.eachLayer((layer) => {
+      const isSelected = selectedGrid && selectedGrid.FID === layer.feature.properties.FID;
+      
+      layer.setStyle({
+        fillColor: getColor(layer.feature),
+        weight: isSelected ? 3 : 0.5,
+        opacity: 0.8,
+        color: isSelected ? '#ff0000' : '#666666',
+        fillOpacity: 0.7
+      });
+    });
 
     updateLegend();
-  }, [colorScheme]);
-
-  // Update selected grid outline when selectedGrid changes
-  useEffect(() => {
-    if (!mapRef.current || !mapRef.current.getLayer('hds-grid-outlines')) return;
-
-    // Update the outline paint properties to highlight selected grid
-    mapRef.current.setPaintProperty(
-      'hds-grid-outlines',
-      'line-color',
-      [
-        'case',
-        ['==', ['get', 'FID'], selectedGrid?.FID || -1],
-        '#ff0000', // Red for selected grid
-        '#666666'  // Default color
-      ]
-    );
-
-    mapRef.current.setPaintProperty(
-      'hds-grid-outlines',
-      'line-width',
-      [
-        'case',
-        ['==', ['get', 'FID'], selectedGrid?.FID || -1],
-        3, // Thicker for selected grid
-        0.5 // Default width
-      ]
-    );
-  }, [selectedGrid]);
+  }, [colorScheme, selectedGrid]); // Combined both effects into one
 
   // Update legend content
   const updateLegend = () => {
-    if (!legendRef.current) return;
+    if (!legendRef.current || !legendRef.current.getContainer()) return;
 
     const items = getLegendItems();
     const title = {
@@ -584,7 +516,7 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
     const marginBottom = isMobile ? '1px' : '4px';
     const colorBoxSize = isMobile ? '10px' : '16px';
     
-    legendRef.current.innerHTML = `
+    legendRef.current.getContainer().innerHTML = `
       <h4 style="margin: 0 0 4px 0; font-weight: 600; font-size: ${isMobile ? '9px' : fontSize};">${title}</h4>
       ${items.map(item => `
         <div style="display: flex; align-items: center; margin-bottom: ${marginBottom};">
@@ -606,7 +538,7 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
         }}
       />
       <div className="absolute bottom-0 right-0 bg-white bg-opacity-75 px-2 py-1 text-xs text-gray-600">
-        © Mapbox © OpenStreetMap
+        © OpenStreetMap contributors
       </div>
     </div>
   );

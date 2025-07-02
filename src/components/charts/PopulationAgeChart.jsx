@@ -4,14 +4,23 @@ import {
   Tooltip, Legend, ResponsiveContainer 
 } from 'recharts';
 import ExportButton from '../ExportButton';
+import { usePopulationAgeData } from '../../hooks/useCkanQueries';
 
-const PopulationAgeChart = ({ data, provinceName }) => {
+const PopulationAgeChart = ({ provinceName, provinceId }) => {
+  // Use React Query for data fetching via the custom hook
+  const { 
+    data: rawData, 
+    isLoading, 
+    error,
+    isFetching
+  } = usePopulationAgeData(provinceId);
+
   // Process data for the chart
   const processedData = React.useMemo(() => {
-    if (!data || data.length === 0) return [];
+    if (!rawData || rawData.length === 0) return [];
     
-    const latestYear = Math.max(...data.map(d => d.year));
-    const latestData = data.filter(d => d.year === latestYear);
+    const latestYear = Math.max(...rawData.map(d => d.year));
+    const latestData = rawData.filter(d => d.year === latestYear);
     
     // Define custom sort order for age groups
     const ageOrder = {
@@ -29,9 +38,51 @@ const PopulationAgeChart = ({ data, provinceName }) => {
     })).sort((a, b) => {
       return (ageOrder[a.age_group] || 999) - (ageOrder[b.age_group] || 999);
     });
-  }, [data]);
+  }, [rawData]);
 
-  if (!data || data.length === 0) {
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="bg-white p-0 rounded-lg shadow">
+        <div className="px-3 py-2 border-b border-gray-200">
+          <div className="flex justify-between items-center">
+            <h2 className="text-sm font-semibold text-gray-800">Population by Age Group</h2>
+          </div>
+        </div>
+        <div className="px-2 py-1 h-52 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+            <p className="mt-3 text-gray-600">Loading population age data...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="bg-white p-0 rounded-lg shadow">
+        <div className="px-3 py-2 border-b border-gray-200">
+          <div className="flex justify-between items-center">
+            <h2 className="text-sm font-semibold text-gray-800">Population by Age Group</h2>
+            <ExportButton data={[]} filename={`population_age_${provinceName}`} />
+          </div>
+        </div>
+        <div className="px-2 py-1 h-52 flex items-center justify-center">
+          <div className="text-center text-red-500">
+            <p>Failed to load data</p>
+            <p className="text-xs">{error.message}</p>
+          </div>
+        </div>
+        <div className="px-3 py-1 text-xs text-gray-500 border-t border-gray-200">
+          <p>Source: Thailand National Statistics Office</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!processedData || processedData.length === 0) {
     return (
       <div className="bg-white p-0 rounded-lg shadow">
         <div className="px-3 py-2 border-b border-gray-200">
@@ -50,14 +101,24 @@ const PopulationAgeChart = ({ data, provinceName }) => {
     );
   }
 
-  const latestYear = Math.max(...data.map(d => d.year));
+  // Get the latest year for display
+  const latestYear = rawData && rawData.length > 0 ? Math.max(...rawData.map(d => d.year)) : '';
 
   return (
     <div className="bg-white p-0 rounded-lg shadow">
       <div className="px-3 py-2 border-b border-gray-200">
         <div className="flex justify-between items-center">
-          <h2 className="text-sm font-semibold text-gray-800">Population by Age Group ({latestYear})</h2>
-          <ExportButton data={processedData} filename={`population_age_${provinceName}`} />
+          <h2 className="text-sm font-semibold text-gray-800">
+            Population by Age Group {latestYear ? `(${latestYear})` : ''}
+          </h2>
+          <div className="flex items-center space-x-2">
+            {isFetching && (
+              <div className="text-xs text-blue-600">
+                <span className="inline-block animate-pulse">●</span>
+              </div>
+            )}
+            <ExportButton data={processedData} filename={`population_age_${provinceName}`} />
+          </div>
         </div>
       </div>
       <div className="px-2 py-1" style={{ height: 210 }}>
