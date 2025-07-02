@@ -391,6 +391,24 @@ const Dashboard = () => {
 
         {/* Right side - Map and Summary */}
         <div className="w-full md:w-5/12">
+          {/* Province Selector */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              เลือกจังหวัด
+            </label>
+            <select 
+              className="w-full p-3 border border-gray-300 rounded-lg shadow-sm bg-white text-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              value={activeProvince}
+              onChange={(e) => setActiveProvince(parseInt(e.target.value))}
+            >
+              {provinces.map((province) => (
+                <option key={province.id} value={province.id}>
+                  {province.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {/* Map Section */}
           <div className="mb-6">
             <MapView
