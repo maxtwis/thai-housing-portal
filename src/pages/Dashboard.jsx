@@ -322,30 +322,30 @@ const Dashboard = () => {
               {/* Additional affordability metrics */}
               <div className="bg-white p-4 rounded-lg shadow">
                 <h3 className="text-sm font-semibold text-gray-800 mb-3">
-                  Understanding Housing Affordability
+                  ทำความเข้าใจความสามารถในการจ่ายค่าที่อยู่อาศัย
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
                   <div className="bg-blue-50 p-3 rounded border border-blue-200">
-                    <h4 className="font-semibold text-blue-800 mb-1">Total Housing Burden</h4>
+                    <h4 className="font-semibold text-blue-800 mb-1">อัตราส่วนค่าใช้จ่ายที่อยู่อาศัยรวม</h4>
                     <p className="text-blue-700">
-                      Percentage of household income spent on all housing-related expenses
+                      เปอร์เซ็นต์ของรายได้ครัวเรือนที่ใช้จ่ายสำหรับค่าใช้จ่ายที่เกี่ยวกับที่อยู่อาศัยทั้งหมด
                     </p>
                   </div>
                   <div className="bg-green-50 p-3 rounded border border-green-200">
-                    <h4 className="font-semibold text-green-800 mb-1">Rent-to-Income Ratio</h4>
+                    <h4 className="font-semibold text-green-800 mb-1">อัตราส่วนค่าเช่าต่อรายได้</h4>
                     <p className="text-green-700">
-                      Percentage of household income spent specifically on rental payments
+                      เปอร์เซ็นต์ของรายได้ครัวเรือนที่ใช้จ่ายสำหรับค่าเช่าที่อยู่อาศัยโดยเฉพาะ
                     </p>
                   </div>
                   <div className="bg-yellow-50 p-3 rounded border border-yellow-200">
-                    <h4 className="font-semibold text-yellow-800 mb-1">Mortgage-to-Income Ratio</h4>
+                    <h4 className="font-semibold text-yellow-800 mb-1">อัตราส่วนค่างวดต่อรายได้</h4>
                     <p className="text-yellow-700">
-                      Percentage of household income spent on mortgage payments
+                      เปอร์เซ็นต์ของรายได้ครัวเรือนที่ใช้จ่ายสำหรับการชำระค่างวดที่อยู่อาศัย
                     </p>
                   </div>
                 </div>
                 <div className="mt-3 p-2 bg-gray-50 rounded text-xs text-gray-600">
-                  <p><strong>Note:</strong> Housing is considered affordable when it costs no more than 30% of household income. Higher ratios indicate housing affordability challenges.</p>
+                  <p><strong>หมายเหตุ:</strong> ที่อยู่อาศัยถือว่ามีราคาที่เหมาะสมเมื่อมีค่าใช้จ่ายไม่เกิน 30% ของรายได้ครัวเรือน อัตราส่วนที่สูงกว่านี้แสดงถึงปัญหาความสามารถในการจ่ายค่าที่อยู่อาศัย</p>
                 </div>
               </div>
             </div>
