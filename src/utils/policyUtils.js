@@ -2,7 +2,7 @@
 import { getCkanData } from './ckanClient';
 
 // Policy data resource ID
-const POLICY_RESOURCE_ID = '1d48b7c8-c95f-4576-8d52-5e68dc02ee68';
+const POLICY_RESOURCE_ID = 'fec3b798-5907-419c-8e75-d69717dcc4ef';
 
 // Cache for fetched policy data
 const policyCache = {};
