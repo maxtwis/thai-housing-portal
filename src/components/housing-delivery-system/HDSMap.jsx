@@ -195,15 +195,15 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
       
       case 'housingSystem':
       default:
-        // Find dominant housing system with better colors
+        // Find dominant housing system - ORIGINAL COLORS (easier to see)
         const hdsNumbers = [
-          { code: 1, count: props.HDS_C1_num || 0, color: '#dc2626' }, // Strong red
-          { code: 2, count: props.HDS_C2_num || 0, color: '#ea580c' }, // Orange-red
-          { code: 3, count: props.HDS_C3_num || 0, color: '#059669' }, // Emerald green
-          { code: 4, count: props.HDS_C4_num || 0, color: '#0891b2' }, // Cyan blue
-          { code: 5, count: props.HDS_C5_num || 0, color: '#2563eb' }, // Blue
-          { code: 6, count: props.HDS_C6_num || 0, color: '#7c3aed' }, // Violet
-          { code: 7, count: props.HDS_C7_num || 0, color: '#0284c7' }  // Sky blue
+          { code: 1, count: props.HDS_C1_num || 0, color: '#ff6b6b' }, // Light red
+          { code: 2, count: props.HDS_C2_num || 0, color: '#4ecdc4' }, // Teal
+          { code: 3, count: props.HDS_C3_num || 0, color: '#45b7d1' }, // Light blue
+          { code: 4, count: props.HDS_C4_num || 0, color: '#96ceb4' }, // Light green
+          { code: 5, count: props.HDS_C5_num || 0, color: '#feca57' }, // Yellow
+          { code: 6, count: props.HDS_C6_num || 0, color: '#ff9ff3' }, // Pink
+          { code: 7, count: props.HDS_C7_num || 0, color: '#a8e6cf' }  // Mint green
         ];
         
         const dominantSystem = hdsNumbers.reduce((max, current) => 
@@ -255,13 +255,13 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
       case 'housingSystem':
       default:
         return [
-          { color: '#dc2626', label: 'ชุมชนแออัดบนที่ดินรัฐ/เอกชน' },
-          { color: '#ea580c', label: 'การถือครองที่ดินชั่วคราว' },
-          { color: '#059669', label: 'กลุ่มประชากรแฝง' },
-          { color: '#0891b2', label: 'ที่อยู่อาศัยของลูกจ้าง' },
-          { color: '#2563eb', label: 'ที่อยู่อาศัยที่รัฐจัดสร้าง' },
-          { color: '#7c3aed', label: 'ที่อยู่อาศัยที่รัฐสนับสนุน' },
-          { color: '#0284c7', label: 'ที่อยู่อาศัยเอกชน' }
+          { color: '#ff6b6b', label: 'ชุมชนแออัดบนที่ดินรัฐ/เอกชน' },
+          { color: '#4ecdc4', label: 'การถือครองที่ดินชั่วคราว' },
+          { color: '#45b7d1', label: 'กลุ่มประชากรแฝง' },
+          { color: '#96ceb4', label: 'ที่อยู่อาศัยของลูกจ้าง' },
+          { color: '#feca57', label: 'ที่อยู่อาศัยที่รัฐจัดสร้าง' },
+          { color: '#ff9ff3', label: 'ที่อยู่อาศัยที่รัฐสนับสนุน' },
+          { color: '#a8e6cf', label: 'ที่อยู่อาศัยเอกชน' }
         ];
     }
   };
