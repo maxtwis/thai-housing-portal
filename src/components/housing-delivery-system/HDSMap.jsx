@@ -357,8 +357,8 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
                 ring.map(coord => {
                   const [x, y] = coord;
                   
-                  // Check if coordinates are in UTM Zone 47N (EPSG:32647) - Chiang Mai
-                  if (x > 300000 && x < 900000 && y > 1500000 && y < 2500000) {
+                  // Force UTM conversion for Chiang Mai province or detect UTM coordinates
+                  if (selectedProvince === 'cnx' || (x > 400000 && x < 600000 && y > 2000000 && y < 2100000)) {
                     // UTM Zone 47N to WGS84 conversion for Chiang Mai
                     // Using accurate conversion formula for UTM Zone 47N
                     
