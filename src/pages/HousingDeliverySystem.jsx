@@ -11,7 +11,7 @@ const HousingDeliverySystem = () => {
   const [isMobile, setIsMobile] = useState(false);
   const [showFilters, setShowFilters] = useState(true);
   const [selectedGrid, setSelectedGrid] = useState(null);
-  const [selectedProvince, setSelectedProvince] = useState('kkn'); // Default to Khon Kaen
+  const [selectedProvince, setSelectedProvince] = useState(40); // Default to ขอนแก่น
   const [filters, setFilters] = useState({
     housingSystem: 'all',
     densityLevel: 'all',
@@ -31,16 +31,15 @@ const HousingDeliverySystem = () => {
     }
   });
 
-  // Province configurations
-  const provinceConfigs = {
-    'kkn': {
-      name: 'ขอนแก่น',
-      file: '/data/HDS_GRID_KKN_FeaturesToJSON.geojson'
-    },
-    'cnx': {
-      name: 'เชียงใหม่', 
-      file: '/data/HDS_CNX.geojson'
-    }
+  // Available provinces
+  const provinces = [
+    { id: 40, name: 'ขอนแก่น', file: '/data/HDS_GRID_KKN_FeaturesToJSON.geojson' },
+    { id: 50, name: 'เชียงใหม่', file: '/data/HDS_CNX_02GJSON.geojson' }
+  ];
+
+  // Get current province info
+  const getCurrentProvince = () => {
+    return provinces.find(p => p.id === selectedProvince) || provinces[0];
   };
 
   // Check if device is mobile
@@ -59,26 +58,54 @@ const HousingDeliverySystem = () => {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Load GeoJSON data and calculate statistics when province changes
+  // Handle URL parameters
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const provinceParam = urlParams.get('province');
+    
+    if (provinceParam) {
+      // Handle both numeric IDs and string codes
+      let provinceId;
+      if (provinceParam === 'kkn' || provinceParam === 'khonkaen') {
+        provinceId = 40;
+      } else if (provinceParam === 'cnx' || provinceParam === 'chiangmai') {
+        provinceId = 50;
+      } else {
+        provinceId = parseInt(provinceParam);
+      }
+      
+      // Validate province exists
+      if (provinces.find(p => p.id === provinceId)) {
+        setSelectedProvince(provinceId);
+      }
+    }
+  }, []);
+
+  // Update URL when province changes
+  useEffect(() => {
+    const url = new URL(window.location);
+    url.searchParams.set('province', selectedProvince.toString());
+    window.history.replaceState({}, '', url);
+  }, [selectedProvince]);
+
+  // Load GeoJSON data and calculate statistics
   useEffect(() => {
     const loadHDSData = async () => {
       setLoading(true);
       setError(null);
       
-      const config = provinceConfigs[selectedProvince];
-      if (!config) {
-        setError('ไม่พบข้อมูลจังหวัดที่เลือก');
-        setLoading(false);
-        return;
-      }
-
+      const currentProvince = getCurrentProvince();
+      console.log(`Loading HDS data for ${currentProvince.name}...`);
+      
       try {
-        console.log(`Loading HDS data for ${config.name}...`);
-        const response = await fetch(config.file);
-        if (!response.ok) throw new Error(`Failed to load HDS GeoJSON data for ${config.name}`);
+        const response = await fetch(currentProvince.file);
+        if (!response.ok) {
+          throw new Error(`Failed to load HDS GeoJSON data for ${currentProvince.name} (${response.status})`);
+        }
+        
         const geojsonData = await response.json();
         
-        console.log(`HDS Data loaded for ${config.name}:`, geojsonData.features.length, 'features');
+        console.log(`HDS Data loaded for ${currentProvince.name}:`, geojsonData.features.length, 'features');
         setHdsData(geojsonData);
         
         // Calculate statistics
@@ -151,18 +178,13 @@ const HousingDeliverySystem = () => {
 
         setLoading(false);
       } catch (error) {
-        console.error(`Error loading HDS data for ${config.name}:`, error);
-        setError(`Failed to load housing delivery system data for ${config.name}: ${error.message}`);
+        console.error(`Error loading HDS data for ${currentProvince.name}:`, error);
+        setError(`Failed to load housing delivery system data for ${currentProvince.name}: ${error.message}`);
         setLoading(false);
       }
     };
 
     loadHDSData();
-  }, [selectedProvince]);
-
-  // Clear selected grid when province changes
-  useEffect(() => {
-    setSelectedGrid(null);
   }, [selectedProvince]);
 
   // Handle grid selection
@@ -180,7 +202,13 @@ const HousingDeliverySystem = () => {
     setShowFilters(!showFilters);
   };
 
-  const provinceName = provinceConfigs[selectedProvince]?.name || 'ไม่ทราบ';
+  // Handle province change
+  const handleProvinceChange = (provinceId) => {
+    setSelectedProvince(provinceId);
+    setSelectedGrid(null); // Clear selected grid when changing province
+  };
+
+  const currentProvince = getCurrentProvince();
 
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-gray-50">
@@ -188,8 +216,31 @@ const HousingDeliverySystem = () => {
         <div className="mb-4">
           <h1 className="text-2xl font-bold text-gray-800">Housing Delivery System Analysis</h1>
           <p className="text-gray-600 mt-2">
-            วิเคราะห์ระบบที่อยู่อาศัยในพื้นที่จังหวัด{provinceName} แบ่งตามกริดความหนาแน่นและประเภทระบบที่อยู่อาศัย
+            วิเคราะห์ระบบที่อยู่อาศัยในพื้นที่จังหวัด{currentProvince.name} แบ่งตามกริดความหนาแน่นและประเภทระบบที่อยู่อาศัย
           </p>
+        </div>
+
+        {/* Province Selection */}
+        <div className="mb-4 bg-white rounded-lg shadow-md p-4">
+          <h3 className="font-semibold text-gray-800 mb-3">เลือกจังหวัด</h3>
+          <div className="flex flex-wrap gap-2">
+            {provinces.map(province => (
+              <button
+                key={province.id}
+                onClick={() => handleProvinceChange(province.id)}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  selectedProvince === province.id
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                {province.name}
+              </button>
+            ))}
+          </div>
+          <div className="mt-2 text-xs text-gray-500">
+            แสดงข้อมูลสำหรับจังหวัด{currentProvince.name}
+          </div>
         </div>
 
         {/* Mobile toggle button for filters */}
@@ -207,55 +258,44 @@ const HousingDeliverySystem = () => {
           </div>
         )}
 
-        {/* Mobile layout - stacked */}
+        {/* Mobile layout - stacked vertically */}
         {isMobile && (
           <div className="space-y-4">
             {/* Filters */}
             {showFilters && (
-              <div className="space-y-4">
-                <HDSFilters 
-                  filters={filters} 
-                  setFilters={setFilters}
-                  colorScheme={colorScheme}
-                  setColorScheme={setColorScheme}
-                  selectedProvince={selectedProvince}
-                  setSelectedProvince={setSelectedProvince}
-                />
-                <HDSStatistics 
-                  stats={stats} 
-                  selectedGrid={selectedGrid}
-                  onClearSelection={handleClearSelection}
-                  selectedProvince={selectedProvince}
-                />
-              </div>
+              <HDSFilters 
+                filters={filters} 
+                setFilters={setFilters}
+                colorScheme={colorScheme}
+                setColorScheme={setColorScheme}
+              />
             )}
             
             {/* Map */}
-            <div className="relative">
+            <div className="relative" style={{ height: "60vh" }}>
               {loading && (
-                <div className="absolute inset-0 bg-white bg-opacity-80 flex items-center justify-center z-10 rounded-lg">
+                <div className="absolute inset-0 bg-white bg-opacity-80 flex items-center justify-center z-10">
                   <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
-                    <p className="mt-3 text-gray-600">Loading HDS data for {provinceName}...</p>
+                    <p className="mt-3 text-gray-600">Loading HDS data for {currentProvince.name}...</p>
                   </div>
                 </div>
               )}
               
               {error && (
-                <div className="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center z-10 rounded-lg">
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-4 max-w-md mx-auto">
-                    <div className="text-red-800 font-medium">Error loading data</div>
-                    <div className="text-red-600 text-sm mt-1">{error}</div>
+                <div className="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center z-10">
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4 max-w-md">
+                    <p className="text-red-800">{error}</p>
                     <button 
                       onClick={() => window.location.reload()}
-                      className="mt-2 px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
+                      className="mt-4 w-full px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
                     >
                       Retry
                     </button>
                   </div>
                 </div>
               )}
-              
+
               <HDSMap 
                 filters={filters}
                 colorScheme={colorScheme}
@@ -263,6 +303,15 @@ const HousingDeliverySystem = () => {
                 onGridSelect={handleGridSelect}
                 selectedGrid={selectedGrid}
                 selectedProvince={selectedProvince}
+              />
+            </div>
+            
+            {/* Statistics - always shown on mobile */}
+            <div className="w-full">
+              <HDSStatistics 
+                stats={stats} 
+                selectedGrid={selectedGrid}
+                onClearSelection={handleClearSelection}
               />
             </div>
           </div>
@@ -278,14 +327,11 @@ const HousingDeliverySystem = () => {
                 setFilters={setFilters}
                 colorScheme={colorScheme}
                 setColorScheme={setColorScheme}
-                selectedProvince={selectedProvince}
-                setSelectedProvince={setSelectedProvince}
               />
               <HDSStatistics 
                 stats={stats} 
                 selectedGrid={selectedGrid}
                 onClearSelection={handleClearSelection}
-                selectedProvince={selectedProvince}
               />
             </div>
             
@@ -295,34 +341,25 @@ const HousingDeliverySystem = () => {
                 <div className="absolute inset-0 bg-white bg-opacity-80 flex items-center justify-center z-10">
                   <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
-                    <p className="mt-3 text-gray-600">Loading HDS data for {provinceName}...</p>
+                    <p className="mt-3 text-gray-600">Loading HDS data for {currentProvince.name}...</p>
                   </div>
                 </div>
               )}
               
               {error && (
                 <div className="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center z-10">
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md mx-auto">
-                    <div className="text-red-800 font-medium">Error loading data</div>
-                    <div className="text-red-600 text-sm mt-2">{error}</div>
-                    <div className="mt-4 space-x-2">
-                      <button 
-                        onClick={() => window.location.reload()}
-                        className="px-4 py-2 bg-red-600 text-white text-sm rounded hover:bg-red-700"
-                      >
-                        Retry
-                      </button>
-                      <button 
-                        onClick={() => setSelectedProvince(selectedProvince === 'kkn' ? 'cnx' : 'kkn')}
-                        className="px-4 py-2 bg-gray-600 text-white text-sm rounded hover:bg-gray-700"
-                      >
-                        Switch Province
-                      </button>
-                    </div>
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4 max-w-md">
+                    <p className="text-red-800">{error}</p>
+                    <button 
+                      onClick={() => window.location.reload()}
+                      className="mt-4 w-full px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+                    >
+                      Retry
+                    </button>
                   </div>
                 </div>
               )}
-              
+
               <HDSMap 
                 filters={filters}
                 colorScheme={colorScheme}
@@ -331,19 +368,6 @@ const HousingDeliverySystem = () => {
                 selectedGrid={selectedGrid}
                 selectedProvince={selectedProvince}
               />
-            </div>
-          </div>
-        )}
-
-        {/* Loading overlay for province switching */}
-        {loading && !isMobile && (
-          <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 max-w-sm mx-auto">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
-                <p className="mt-3 text-gray-600">Switching to {provinceName}...</p>
-                <p className="text-sm text-gray-500 mt-1">Loading grid data</p>
-              </div>
             </div>
           </div>
         )}
