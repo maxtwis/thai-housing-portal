@@ -195,15 +195,15 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
       
       case 'housingSystem':
       default:
-        // Find dominant housing system with blue-based colors
+        // Find dominant housing system with better colors
         const hdsNumbers = [
-          { code: 1, count: props.HDS_C1_num || 0, color: '#ef4444' }, // Red
-          { code: 2, count: props.HDS_C2_num || 0, color: '#f97316' }, // Orange  
-          { code: 3, count: props.HDS_C3_num || 0, color: '#eab308' }, // Yellow
-          { code: 4, count: props.HDS_C4_num || 0, color: '#22c55e' }, // Green
-          { code: 5, count: props.HDS_C5_num || 0, color: '#3b82f6' }, // Blue
-          { code: 6, count: props.HDS_C6_num || 0, color: '#8b5cf6' }, // Purple
-          { code: 7, count: props.HDS_C7_num || 0, color: '#06b6d4' }  // Cyan (blue tone)
+          { code: 1, count: props.HDS_C1_num || 0, color: '#dc2626' }, // Strong red
+          { code: 2, count: props.HDS_C2_num || 0, color: '#ea580c' }, // Orange-red
+          { code: 3, count: props.HDS_C3_num || 0, color: '#059669' }, // Emerald green
+          { code: 4, count: props.HDS_C4_num || 0, color: '#0891b2' }, // Cyan blue
+          { code: 5, count: props.HDS_C5_num || 0, color: '#2563eb' }, // Blue
+          { code: 6, count: props.HDS_C6_num || 0, color: '#7c3aed' }, // Violet
+          { code: 7, count: props.HDS_C7_num || 0, color: '#0284c7' }  // Sky blue
         ];
         
         const dominantSystem = hdsNumbers.reduce((max, current) => 
@@ -255,13 +255,13 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
       case 'housingSystem':
       default:
         return [
-          { color: '#ef4444', label: 'ชุมชนแออัดบนที่ดินรัฐ/เอกชน' },
-          { color: '#f97316', label: 'การถือครองที่ดินชั่วคราว' },
-          { color: '#eab308', label: 'กลุ่มประชากรแฝง' },
-          { color: '#22c55e', label: 'ที่อยู่อาศัยของลูกจ้าง' },
-          { color: '#3b82f6', label: 'ที่อยู่อาศัยที่รัฐจัดสร้าง' },
-          { color: '#8b5cf6', label: 'ที่อยู่อาศัยที่รัฐสนับสนุน' },
-          { color: '#06b6d4', label: 'ที่อยู่อาศัยเอกชน' }
+          { color: '#dc2626', label: 'ชุมชนแออัดบนที่ดินรัฐ/เอกชน' },
+          { color: '#ea580c', label: 'การถือครองที่ดินชั่วคราว' },
+          { color: '#059669', label: 'กลุ่มประชากรแฝง' },
+          { color: '#0891b2', label: 'ที่อยู่อาศัยของลูกจ้าง' },
+          { color: '#2563eb', label: 'ที่อยู่อาศัยที่รัฐจัดสร้าง' },
+          { color: '#7c3aed', label: 'ที่อยู่อาศัยที่รัฐสนับสนุน' },
+          { color: '#0284c7', label: 'ที่อยู่อาศัยเอกชน' }
         ];
     }
   };
@@ -359,21 +359,14 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
         console.log('Sample processed coordinates:', processedGeoJSON.features[0]?.geometry?.coordinates[0]?.[0]);
         console.log('First feature geometry type:', processedGeoJSON.features[0]?.geometry?.type);
 
-        // Style function for HDS grids
+        // Style function for HDS grids - NO BORDERS AT ALL
         const style = (feature) => {
-          const isSelected = selectedGrid && (
-            selectedGrid.FID === feature.properties.FID ||
-            selectedGrid.OBJECTID_1 === feature.properties.OBJECTID_1 ||
-            selectedGrid.Grid_Code === feature.properties.Grid_Code ||
-            selectedGrid.Grid_CODE === feature.properties.Grid_CODE
-          );
-          
           return {
             fillColor: getColor(feature),
-            weight: isSelected ? 2 : 0, // Thin border only when selected, no border otherwise
-            opacity: isSelected ? 1 : 0, // Border visible only when selected
-            color: isSelected ? '#1f2937' : 'transparent', // Dark gray border when selected, transparent otherwise
-            fillOpacity: 0.7
+            weight: 0, // No borders ever
+            opacity: 0, // No border visibility
+            color: 'transparent', // Transparent border
+            fillOpacity: 0.8
           };
         };
 
@@ -431,29 +424,27 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
               }
             });
 
-            // Add hover effect for desktop only (subtle highlight without borders)
+            // Add hover effect for desktop only (only opacity change, no borders)
             if (!isMobile) {
               layer.on('mouseover', (e) => {
-                // Subtle highlight without borders
+                // Only increase opacity on hover, no borders
                 layer.setStyle({
-                  fillOpacity: 0.9 // Just increase opacity, no borders
+                  fillColor: getColor(layer.feature),
+                  weight: 0,
+                  opacity: 0,
+                  color: 'transparent',
+                  fillOpacity: 1.0 // Brighter on hover
                 });
               });
 
               layer.on('mouseout', (e) => {
-                // Reset to normal style
-                const isSelected = selectedGrid && (
-                  selectedGrid.FID === layer.feature.properties.FID ||
-                  selectedGrid.OBJECTID_1 === layer.feature.properties.OBJECTID_1 ||
-                  selectedGrid.Grid_Code === layer.feature.properties.Grid_Code ||
-                  selectedGrid.Grid_CODE === layer.feature.properties.Grid_CODE
-                );
+                // Reset to normal style - no borders
                 layer.setStyle({
                   fillColor: getColor(layer.feature),
-                  weight: isSelected ? 2 : 0,
-                  opacity: isSelected ? 1 : 0,
-                  color: isSelected ? '#1f2937' : 'transparent',
-                  fillOpacity: 0.7
+                  weight: 0,
+                  opacity: 0,
+                  color: 'transparent',
+                  fillOpacity: 0.8
                 });
               });
             }
@@ -562,21 +553,14 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
   useEffect(() => {
     if (!mapRef.current || !hdsLayerRef.current) return;
 
-    // Re-style all layers
+    // Re-style all layers with no borders
     hdsLayerRef.current.eachLayer((layer) => {
-      const isSelected = selectedGrid && (
-        selectedGrid.FID === layer.feature.properties.FID ||
-        selectedGrid.OBJECTID_1 === layer.feature.properties.OBJECTID_1 ||
-        selectedGrid.Grid_Code === layer.feature.properties.Grid_Code ||
-        selectedGrid.Grid_CODE === layer.feature.properties.Grid_CODE
-      );
-      
       layer.setStyle({
         fillColor: getColor(layer.feature),
-        weight: isSelected ? 2 : 0,
-        opacity: isSelected ? 1 : 0,
-        color: isSelected ? '#1f2937' : 'transparent',
-        fillOpacity: 0.7
+        weight: 0, // No borders
+        opacity: 0, // No border visibility  
+        color: 'transparent', // Transparent border
+        fillOpacity: 0.8
       });
     });
 
