@@ -357,73 +357,36 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
                 ring.map(coord => {
                   const [x, y] = coord;
                   
-                  // Validate input coordinates
-                  if (typeof x !== 'number' || typeof y !== 'number' || isNaN(x) || isNaN(y)) {
-                    console.warn(`Invalid input coordinates: [${x}, ${y}]`);
-                    return [0, 0]; // Return valid fallback coordinates
-                  }
-                  
-                  // Force UTM conversion for Chiang Mai province or detect UTM coordinates
-                  if (selectedProvince === 'cnx' || (x > 400000 && x < 600000 && y > 2000000 && y < 2100000)) {
-                    // Simple and reliable UTM Zone 47N to WGS84 conversion for Chiang Mai
-                    // Using empirical formula that works for Thailand region
+                  // Check if coordinates are in UTM Zone 47N (EPSG:32647)
+                  if (x > 400000 && x < 800000 && y > 1800000 && y < 2300000) {
+                    // Simplified UTM Zone 47N to WGS84 conversion
+                    // Zone 47N central meridian is 99°E
+                    // Using approximation suitable for Thailand region
                     
-                    // UTM Zone 47N central meridian is 99°E
-                    // Simple linear approximation for Thailand area
-                    const utmEasting = x;
-                    const utmNorthing = y;
+                    const falseEasting = 500000;
+                    const falseNorthing = 0;
+                    const scaleFactor = 0.9996;
+                    const centralMeridian = 99; // degrees
                     
-                    // Convert using simple degree conversion
-                    // 1 degree ≈ 111,320 meters at equator for longitude
-                    // 1 degree ≈ 111,000 meters for latitude
-                    const lng = 99.0 + (utmEasting - 500000) / 111320;
-                    const lat = (utmNorthing / 111000) - 0.3; // Adjust for northern hemisphere offset
+                    // Remove false easting/northing
+                    const eastingFromCM = (x - falseEasting) / scaleFactor;
+                    const northing = y / scaleFactor;
                     
-                    // Validate output coordinates
-                    if (isNaN(lng) || isNaN(lat) || !isFinite(lng) || !isFinite(lat)) {
-                      console.warn(`Invalid UTM conversion result: [${lng}, ${lat}] from [${x}, ${y}]`);
-                      return [98.9853, 18.7883]; // Fallback to Chiang Mai center
-                    }
+                    // Approximate conversion for Thailand region
+                    // These are simplified formulas that work well for the Thailand area
+                    const lat = (northing / 111132.954) - 0.00559974 * Math.pow(eastingFromCM / 1000, 2);
+                    const lng = centralMeridian + (eastingFromCM / (111412.84 * Math.cos(lat * Math.PI / 180)));
                     
-                    // Ensure coordinates are within reasonable bounds for Thailand
-                    const validLng = Math.max(95, Math.min(105, lng));
-                    const validLat = Math.max(5, Math.min(25, lat));
-                    
-                    console.log(`Simple UTM conversion: [${x}, ${y}] -> [${validLng.toFixed(6)}, ${validLat.toFixed(6)}]`);
-                    return [validLng, validLat];
-                  }
-                  // Check if coordinates are in Web Mercator (EPSG:3857) - Khon Kaen
-                  else if (Math.abs(x) > 1000000 || Math.abs(y) > 1000000) {
-                    // Web Mercator to WGS84 conversion
+                    return [lng, lat];
+                  } else if (Math.abs(x) > 180 || Math.abs(y) > 90) {
+                    // Web Mercator to WGS84 conversion (for Khon Kaen data)
                     const lng = x / 20037508.342789244 * 180;
                     const lat = Math.atan(Math.sinh(y / 20037508.342789244 * Math.PI)) * 180 / Math.PI;
-                    
-                    // Validate output coordinates
-                    if (isNaN(lng) || isNaN(lat) || !isFinite(lng) || !isFinite(lat)) {
-                      console.warn(`Invalid Web Mercator conversion: [${lng}, ${lat}] from [${x}, ${y}]`);
-                      return [102.8359, 16.4419]; // Fallback to Khon Kaen center
-                    }
-                    
-                    // Validate coordinates are within Thailand bounds
-                    if (lat >= 5 && lat <= 25 && lng >= 95 && lng <= 110) {
-                      console.log(`WebMercator->WGS84 conversion: [${x}, ${y}] -> [${lng.toFixed(6)}, ${lat.toFixed(6)}]`);
-                      return [lng, lat];
-                    } else {
-                      console.warn(`Web Mercator result outside Thailand bounds: [${lng}, ${lat}]`);
-                      return [102.8359, 16.4419]; // Fallback to Khon Kaen center
-                    }
+                    return [lng, lat];
                   }
                   
-                  // Already in WGS84 or unknown coordinate system
-                  // Validate that these are reasonable lat/lng coordinates
-                  if (x >= -180 && x <= 180 && y >= -90 && y <= 90) {
-                    console.log(`Using original coordinates (WGS84): [${x}, ${y}]`);
-                    return [x, y];
-                  } else {
-                    console.warn(`Unknown coordinate system or invalid coordinates: [${x}, ${y}]`);
-                    // Return appropriate fallback based on province
-                    return selectedProvince === 'cnx' ? [98.9853, 18.7883] : [102.8359, 16.4419];
-                  }
+                  // Already in WGS84
+                  return [x, y];
                 })
               );
               
