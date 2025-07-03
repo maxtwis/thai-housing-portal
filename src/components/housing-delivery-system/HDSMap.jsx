@@ -54,69 +54,70 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
     }
   };
 
-  const generatePopupContent = (feature, colorScheme) => {
-    const props = feature.properties;
-    
-    // Handle different property structures between provinces
-    const gridId = props.FID || props.OBJECTID_1 || props.Grid_Code || props.Grid_CODE;
-    const gridPop = props.Grid_POP || 0;
-    const gridHouse = props.Grid_House || 0;
-    const gridClass = props.Grid_Class || 'ไม่มีข้อมูล';
-    
-    // Calculate dominant housing system
-    const hdsNumbers = [
-      { code: 1, count: props.HDS_C1_num || 0 },
-      { code: 2, count: props.HDS_C2_num || 0 },
-      { code: 3, count: props.HDS_C3_num || 0 },
-      { code: 4, count: props.HDS_C4_num || 0 },
-      { code: 5, count: props.HDS_C5_num || 0 },
-      { code: 6, count: props.HDS_C6_num || 0 },
-      { code: 7, count: props.HDS_C7_num || 0 }
-    ];
-    
-    const totalHousing = hdsNumbers.reduce((sum, item) => sum + item.count, 0);
-    const dominantSystem = hdsNumbers.reduce((max, item) => item.count > max.count ? item : max);
-    
-    const currentProvince = provinceConfigs[selectedProvince];
-    
-    return `
-      <div class="p-3 min-w-[280px]">
-        <div class="bg-gray-50 -m-3 p-3 mb-3 border-b">
-          <h3 class="font-bold text-gray-800">พื้นที่กริด ID: ${gridId}</h3>
-          <p class="text-sm text-gray-600 mt-1">${currentProvince?.name || 'ไม่ทราบจังหวัด'} - ระบบที่อยู่อาศัย</p>
-        </div>
-        
-        <div class="space-y-2">
-          <div class="flex justify-between items-baseline text-sm">
-            <span class="text-gray-600">ประชากรรวม</span>
-            <span class="font-medium text-gray-800">${gridPop ? Math.round(gridPop).toLocaleString() : 'ไม่มีข้อมูล'} คน</span>
-          </div>
+        // Also need to update property handling for Chiang Mai data structure
+        const generatePopupContent = (feature, colorScheme) => {
+          const props = feature.properties;
           
-          <div class="flex justify-between items-baseline text-sm">
-            <span class="text-gray-600">ที่อยู่อาศัยรวม</span>
-            <span class="font-medium text-gray-800">${gridHouse ? Math.round(gridHouse).toLocaleString() : 'ไม่มีข้อมูล'} หน่วย</span>
-          </div>
+          // Handle different property structures between provinces
+          const gridId = props.FID || props.OBJECTID_1 || props.Grid_Code || props.Grid_CODE;
+          const gridPop = props.Grid_POP || 0;
+          const gridHouse = props.Grid_House || 0;
+          const gridClass = props.Grid_Class || 'ไม่มีข้อมูล';
           
-          <div class="flex justify-between items-baseline text-sm">
-            <span class="text-gray-600">ระดับความหนาแน่น</span>
-            <span class="font-medium text-gray-800">Class ${gridClass}</span>
-          </div>
+          // Calculate dominant housing system
+          const hdsNumbers = [
+            { code: 1, count: props.HDS_C1_num || 0 },
+            { code: 2, count: props.HDS_C2_num || 0 },
+            { code: 3, count: props.HDS_C3_num || 0 },
+            { code: 4, count: props.HDS_C4_num || 0 },
+            { code: 5, count: props.HDS_C5_num || 0 },
+            { code: 6, count: props.HDS_C6_num || 0 },
+            { code: 7, count: props.HDS_C7_num || 0 }
+          ];
           
-          ${totalHousing > 0 ? `
-            <div class="border-t pt-2 mt-3">
-              <h4 class="text-sm font-medium text-gray-700 mb-2">ระบบที่อยู่อาศัยหลัก</h4>
-              <div class="text-xs text-gray-600">
-                <div class="font-medium text-blue-600">${hdsCategories[dominantSystem.code]} (${dominantSystem.count.toLocaleString()} หน่วย)</div>
-                <div class="mt-1 text-xs">
-                  รวม ${totalHousing.toLocaleString()} หน่วย | คิดเป็น ${((dominantSystem.count / totalHousing) * 100).toFixed(1)}%
+          const totalHousing = hdsNumbers.reduce((sum, item) => sum + item.count, 0);
+          const dominantSystem = hdsNumbers.reduce((max, item) => item.count > max.count ? item : max);
+          
+          const currentProvince = provinceConfigs[selectedProvince];
+          
+          return `
+            <div class="p-3 min-w-[280px]">
+              <div class="bg-gray-50 -m-3 p-3 mb-3 border-b">
+                <h3 class="font-bold text-gray-800">พื้นที่กริด ID: ${gridId}</h3>
+                <p class="text-sm text-gray-600 mt-1">${currentProvince?.name || 'ไม่ทราบจังหวัด'} - ระบบที่อยู่อาศัย</p>
+              </div>
+              
+              <div class="space-y-2">
+                <div class="flex justify-between items-baseline text-sm">
+                  <span class="text-gray-600">ประชากรรวม</span>
+                  <span class="font-medium text-gray-800">${gridPop ? Math.round(gridPop).toLocaleString() : 'ไม่มีข้อมูล'} คน</span>
                 </div>
+                
+                <div class="flex justify-between items-baseline text-sm">
+                  <span class="text-gray-600">ที่อยู่อาศัยรวม</span>
+                  <span class="font-medium text-gray-800">${gridHouse ? Math.round(gridHouse).toLocaleString() : 'ไม่มีข้อมูล'} หน่วย</span>
+                </div>
+                
+                <div class="flex justify-between items-baseline text-sm">
+                  <span class="text-gray-600">ระดับความหนาแน่น</span>
+                  <span class="font-medium text-gray-800">Class ${gridClass}</span>
+                </div>
+                
+                ${totalHousing > 0 ? `
+                  <div class="border-t pt-2 mt-3">
+                    <h4 class="text-sm font-medium text-gray-700 mb-2">ระบบที่อยู่อาศัยหลัก</h4>
+                    <div class="text-xs text-gray-600">
+                      <div class="font-medium text-blue-600">${hdsCategories[dominantSystem.code]} (${dominantSystem.count.toLocaleString()} หน่วย)</div>
+                      <div class="mt-1 text-xs">
+                        รวม ${totalHousing.toLocaleString()} หน่วย | คิดเป็น ${((dominantSystem.count / totalHousing) * 100).toFixed(1)}%
+                      </div>
+                    </div>
+                  </div>
+                ` : ''}
               </div>
             </div>
-          ` : ''}
-        </div>
-      </div>
-    `;
-  };
+          `;
+        };
 
   // Color functions for different schemes
   const getColor = (feature) => {
