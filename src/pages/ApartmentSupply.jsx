@@ -2,6 +2,23 @@ import React, { useState, useEffect } from 'react';
 import { getCkanData } from '../utils/ckanClient';
 import ApartmentMap from '../components/apartment-supply/ApartmentMap';
 
+// Function to check if coordinates are within Thailand's boundaries
+const isCoordinateInThailand = (latitude, longitude) => {
+  const THAILAND_BOUNDS = {
+    north: 20.5,    // Northern border near Myanmar/Laos
+    south: 5.5,     // Southern border near Malaysia  
+    east: 105.7,    // Eastern border near Laos/Cambodia
+    west: 97.3      // Western border near Myanmar
+  };
+
+  return (
+    latitude >= THAILAND_BOUNDS.south &&
+    latitude <= THAILAND_BOUNDS.north &&
+    longitude >= THAILAND_BOUNDS.west &&
+    longitude <= THAILAND_BOUNDS.east
+  );
+};
+
 const ApartmentSupply = () => {
   const [apartmentData, setApartmentData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -370,13 +387,24 @@ const ApartmentSupply = () => {
             contact_line_id: record.contact_line_id || '',
             phone_count: parseInt(record.phone_count) || 0,
             url: record.url || ''
-          })).filter(property => 
-            // Filter out properties without valid coordinates
-            property.latitude && property.longitude && 
-            !isNaN(property.latitude) && !isNaN(property.longitude)
-          );
+          })).filter(property => {
+            // Enhanced coordinate validation with Thailand boundary check
+            if (!property.latitude || !property.longitude || 
+                isNaN(property.latitude) || isNaN(property.longitude)) {
+              console.log(`Filtered out property with invalid coordinates: ${property.apartment_name || 'Unknown'} - lat: ${property.latitude}, lng: ${property.longitude}`);
+              return false;
+            }
+
+            // Check if coordinates are within Thailand's boundaries
+            if (!isCoordinateInThailand(property.latitude, property.longitude)) {
+              console.log(`Filtered out property outside Thailand: ${property.apartment_name || 'Unknown'} - lat: ${property.latitude}, lng: ${property.longitude}`);
+              return false;
+            }
+
+            return true;
+          });
           
-          console.log(`Processed ${processedData.length} valid property records from all provinces`);
+          console.log(`Processed ${processedData.length} valid property records within Thailand boundaries`);
           
           // Group by province for statistics
           const provinceStats = {};
@@ -617,32 +645,29 @@ const ApartmentSupply = () => {
                     <option value="20-39">ไกล (20-39%)</option>
                     <option value="0-19">ไกลมาก (0-19%)</option>
                   </select>
-                  <div className="mt-1 text-xs text-gray-500">
-                    คลิกที่อพาร์ตเมนต์เพื่อคำนวณคะแนนความใกล้เคียงกับร้านอาหาร ร้านสะดวกซื้อ โรงเรียน โรงพยาบาล และขนส่งสาธารณะ
-                  </div>
                 </div>
 
-                {/* Required Amenities */}
+                {/* Required Amenities Filter */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">สิ่งอำนวยความสะดวกที่ต้องการ</label>
-                  <div className="mt-2 space-y-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">สิ่งอำนวยความสะดวกที่จำเป็น</label>
+                  <div className="space-y-2">
                     {[
-                      { key: 'parking', label: 'ที่จอดรถ' },
+                      { key: 'air', label: 'เครื่องปรับอากาศ' },
+                      { key: 'furniture', label: 'เฟอร์นิเจอร์' },
                       { key: 'internet', label: 'อินเทอร์เน็ต' },
+                      { key: 'parking', label: 'ที่จอดรถ' },
+                      { key: 'lift', label: 'ลิฟต์' },
                       { key: 'pool', label: 'สระว่ายน้ำ' },
                       { key: 'fitness', label: 'ฟิตเนส' },
-                      { key: 'security', label: 'รปภ.24ชม.' },
-                      { key: 'lift', label: 'ลิฟต์' },
-                      { key: 'air', label: 'เครื่องปรับอากาศ' },
-                      { key: 'furniture', label: 'เฟอร์นิเจอร์' }
+                      { key: 'security', label: 'รักษาความปลอดภัย' }
                     ].map(amenity => (
                       <label key={amenity.key} className="flex items-center">
                         <input
                           type="checkbox"
-                          className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200"
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                           checked={filters.requiredAmenities.includes(amenity.key)}
                           onChange={(e) => {
-                            const newAmenities = e.target.checked
+                            const newAmenities = e.target.checked 
                               ? [...filters.requiredAmenities, amenity.key]
                               : filters.requiredAmenities.filter(a => a !== amenity.key);
                             handleFilterChange({...filters, requiredAmenities: newAmenities});
