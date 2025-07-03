@@ -234,7 +234,15 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
 
   // Initialize map
   useEffect(() => {
-    if (!mapContainerRef.current || mapRef.current) return;
+    if (!mapContainerRef.current) return;
+
+    // Clean up any existing map
+    if (mapRef.current) {
+      mapRef.current.remove();
+      mapRef.current = null;
+      hdsLayerRef.current = null;
+      legendRef.current = null;
+    }
 
     const currentProvince = provinceConfigs[selectedProvince];
     if (!currentProvince) {
@@ -465,11 +473,15 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
       });
 
     return () => {
+      // Clean up map when component unmounts or province changes
       if (mapRef.current) {
         mapRef.current.remove();
+        mapRef.current = null;
+        hdsLayerRef.current = null;
+        legendRef.current = null;
       }
     };
-  }, [isMobile, selectedProvince]); // Added selectedProvince to dependencies
+  }, [selectedProvince, isMobile]); // Re-initialize when province or mobile state changes
 
   // Update filters when they change
   useEffect(() => {
