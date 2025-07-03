@@ -10,11 +10,27 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
-const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect, selectedGrid }) => {
+const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect, selectedGrid, selectedProvince = 'kkn' }) => {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const hdsLayerRef = useRef(null);
   const legendRef = useRef(null);
+
+  // Province configurations
+  const provinceConfigs = {
+    'kkn': {
+      name: 'ขอนแก่น',
+      file: '/data/HDS_GRID_KKN_FeaturesToJSON.geojson',
+      center: [16.4419, 102.8359],
+      zoom: 10
+    },
+    'cnx': {
+      name: 'เชียงใหม่', 
+      file: '/data/HDS_CNX.geojson',
+      center: [18.7883, 98.9853],
+      zoom: 10
+    }
+  };
 
   // Housing Delivery System categories
   const hdsCategories = {
@@ -38,6 +54,7 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
 
   const generatePopupContent = (feature, colorScheme) => {
     const props = feature.properties;
+    const provinceName = provinceConfigs[selectedProvince]?.name || 'ไม่ทราบจังหวัด';
     
     // Calculate dominant housing system
     const hdsNumbers = [
@@ -57,7 +74,7 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
       <div class="p-3 min-w-[280px]">
         <div class="bg-gray-50 -m-3 p-3 mb-3 border-b">
           <h3 class="font-bold text-gray-800">พื้นที่กริด ID: ${props.FID}</h3>
-          <p class="text-sm text-gray-600 mt-1">ขอนแก่น - ระบบที่อยู่อาศัย</p>
+          <p class="text-sm text-gray-600 mt-1">${provinceName} - ระบบที่อยู่อาศัย</p>
         </div>
         
         <div class="space-y-2">
@@ -68,68 +85,45 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
           
           <div class="flex justify-between items-baseline text-sm">
             <span class="text-gray-600">ที่อยู่อาศัยรวม</span>
-            <span class="font-medium text-gray-800">${props.Grid_House ? props.Grid_House.toLocaleString() : 'ไม่มีข้อมูล'} หน่วย</span>
+            <span class="font-medium text-gray-800">${props.Grid_House ? Math.round(props.Grid_House).toLocaleString() : 'ไม่มีข้อมูล'} หน่วย</span>
           </div>
           
           <div class="flex justify-between items-baseline text-sm">
-            <span class="text-gray-600">ระดับความหนาแน่น</span>
+            <span class="text-gray-600">ความหนาแน่น</span>
             <span class="font-medium text-gray-800">ระดับ ${props.Grid_Class || 'ไม่มีข้อมูล'}</span>
           </div>
           
           ${totalHousing > 0 ? `
-            <div class="border-t border-gray-200 mt-3 pt-3">
-              <p class="text-xs font-medium text-gray-600 mb-2">ระบบที่อยู่อาศัยหลัก:</p>
-              <p class="text-sm font-medium text-blue-600">
-                ${hdsCategories[dominantSystem.code]} (${dominantSystem.count.toLocaleString()} หน่วย)
-              </p>
-              <p class="text-xs text-gray-500">
-                คิดเป็น ${((dominantSystem.count / totalHousing) * 100).toFixed(1)}% ของทั้งหมด
-              </p>
-            </div>
-            
-            <div class="border-t border-gray-200 mt-3 pt-3">
-              <p class="text-xs font-medium text-gray-600 mb-2">รายละเอียดระบบที่อยู่อาศัย:</p>
-              ${hdsNumbers.filter(item => item.count > 0).map(item => `
-                <div class="flex justify-between text-xs">
-                  <span class="text-gray-500">${hdsCategories[item.code]}:</span>
-                  <span class="font-medium">${item.count.toLocaleString()}</span>
-                </div>
-              `).join('')}
-            </div>
+          <hr class="my-2">
+          <div class="text-xs text-gray-600">
+            <div class="font-medium mb-1">ระบบที่อยู่อาศัยหลัก:</div>
+            <div class="text-blue-600">${hdsCategories[dominantSystem.code] || 'ไม่ทราบ'}</div>
+            <div class="text-gray-500">(${dominantSystem.count.toLocaleString()} หน่วย)</div>
+          </div>
           ` : ''}
           
-          ${props.Stability_ && props.Stability_.trim() ? `
-            <div class="border-t border-gray-200 mt-3 pt-3">
-              <p class="text-xs font-medium text-red-600">ปัญหาด้าน Stability:</p>
-              <p class="text-xs text-gray-700">${props.Stability_}</p>
-            </div>
-          ` : ''}
-          
-          ${props.Subsidies_ && props.Subsidies_.trim() ? `
-            <div class="border-t border-gray-200 mt-3 pt-3">
-              <p class="text-xs font-medium text-orange-600">ปัญหาด้าน Subsidies:</p>
-              <p class="text-xs text-gray-700">${props.Subsidies_}</p>
-            </div>
-          ` : ''}
-          
-          ${props.Supply_Pro && props.Supply_Pro.trim() ? `
-            <div class="border-t border-gray-200 mt-3 pt-3">
-              <p class="text-xs font-medium text-green-600">ปัญหาด้าน Supply:</p>
-              <p class="text-xs text-gray-700">${props.Supply_Pro}</p>
-            </div>
+          ${colorScheme === 'housingSystem' && totalHousing > 0 ? `
+          <hr class="my-2">
+          <div class="text-xs">
+            <div class="font-medium text-gray-600 mb-1">รายละเอียดระบบที่อยู่อาศัย:</div>
+            ${hdsNumbers.filter(h => h.count > 0).map(h => `
+              <div class="flex justify-between text-xs">
+                <span class="text-gray-600">${hdsCategories[h.code]}:</span>
+                <span class="text-gray-800">${h.count.toLocaleString()}</span>
+              </div>
+            `).join('')}
+          </div>
           ` : ''}
         </div>
       </div>
     `;
   };
 
-  // Color schemes for different attributes
-  const getColor = (feature) => {
-    const props = feature.properties;
-    
+  // Color scheme functions
+  const getFeatureColor = (feature) => {
     const schemes = {
       housingSystem: () => {
-        // Find the dominant housing system for each grid
+        const props = feature.properties;
         const hdsNumbers = [
           { code: 1, count: props.HDS_C1_num || 0, color: '#d62728' },
           { code: 2, count: props.HDS_C2_num || 0, color: '#ff7f0e' },
@@ -140,11 +134,15 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
           { code: 7, count: props.HDS_C7_num || 0, color: '#1f77b4' }
         ];
         
-        const dominantSystem = hdsNumbers.reduce((max, item) => item.count > max.count ? item : max);
+        const dominantSystem = hdsNumbers.reduce((max, item) => 
+          item.count > max.count ? item : max
+        );
+        
         return dominantSystem.count > 0 ? dominantSystem.color : '#808080';
       },
+      
       populationDensity: () => {
-        const pop = props.Grid_POP || 0;
+        const pop = feature.properties.Grid_POP || 0;
         if (pop < 500) return '#ffffcc';
         if (pop < 1000) return '#c7e9b4';
         if (pop < 2000) return '#7fcdbb';
@@ -152,8 +150,9 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
         if (pop < 5000) return '#2c7fb8';
         return '#253494';
       },
+      
       housingDensity: () => {
-        const housing = props.Grid_House || 0;
+        const housing = feature.properties.Grid_House || 0;
         if (housing < 1000) return '#fff5f0';
         if (housing < 2000) return '#fee0d2';
         if (housing < 5000) return '#fcbba1';
@@ -162,8 +161,9 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
         if (housing < 50000) return '#de2d26';
         return '#a50f15';
       },
+      
       gridClass: () => {
-        const gridClass = props.Grid_Class;
+        const gridClass = feature.properties.Grid_Class;
         const colorMap = {
           1: '#ffffcc',
           2: '#c7e9b4',
@@ -219,14 +219,56 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
     return items[colorScheme] || items.housingSystem;
   };
 
+  // Filter features based on current filters
+  const filterFeatures = (features) => {
+    return features.filter(feature => {
+      const props = feature.properties;
+      
+      // Housing system filter
+      if (filters.housingSystem !== 'all') {
+        const systemKey = `HDS_C${filters.housingSystem}_num`;
+        const dominantSystem = [1,2,3,4,5,6,7].reduce((max, code) => {
+          const count = props[`HDS_C${code}_num`] || 0;
+          const maxCount = props[`HDS_C${max}_num`] || 0;
+          return count > maxCount ? code : max;
+        }, 1);
+        
+        if (dominantSystem.toString() !== filters.housingSystem) {
+          return false;
+        }
+      }
+      
+      // Density level filter
+      if (filters.densityLevel !== 'all') {
+        if (props.Grid_Class?.toString() !== filters.densityLevel) {
+          return false;
+        }
+      }
+      
+      // Population range filter
+      if (filters.populationRange !== 'all') {
+        const pop = props.Grid_POP || 0;
+        const [min, max] = filters.populationRange.split('-').map(Number);
+        if (pop < min || (max !== 999999 && pop > max)) {
+          return false;
+        }
+      }
+      
+      return true;
+    });
+  };
+
   // Initialize map when component mounts
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
+    const config = provinceConfigs[selectedProvince];
+    if (!config) return;
+
     // Create Leaflet map
     const map = L.map(mapContainerRef.current, {
-      center: [16.4419, 102.8359], // Khon Kaen coordinates
-      zoom: 10,
+      center: config.center,
+      zoom: config.zoom,
       maxZoom: 16,
       minZoom: 8,
       zoomControl: !isMobile,
@@ -266,36 +308,52 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
     legend.addTo(map);
     legendRef.current = legend;
 
-    // Load GeoJSON data
-    fetch('/data/HDS_GRID_KKN_FeaturesToJSON.geojson')
+    // Clean up on unmount
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.remove();
+      }
+    };
+  }, [isMobile, selectedProvince]); // Re-initialize when province changes
+
+  // Load and update GeoJSON data when province or filters change
+  useEffect(() => {
+    if (!mapRef.current) return;
+
+    const config = provinceConfigs[selectedProvince];
+    if (!config) return;
+
+    // Remove existing HDS layer
+    if (hdsLayerRef.current) {
+      mapRef.current.removeLayer(hdsLayerRef.current);
+    }
+
+    // Load GeoJSON data for selected province
+    fetch(config.file)
       .then(response => {
-        if (!response.ok) throw new Error('Failed to load HDS GeoJSON data');
+        if (!response.ok) throw new Error(`Failed to load HDS GeoJSON data for ${config.name}`);
         return response.json();
       })
       .then(geojsonData => {
-        console.log('GeoJSON data loaded:', geojsonData.features.length, 'features');
-        console.log('Original coordinates sample:', geojsonData.features[0]?.geometry?.coordinates[0]?.slice(0, 2));
-        
-        // Transform coordinates from Web Mercator (EPSG:3857) to WGS84 (EPSG:4326)
+        console.log(`GeoJSON data loaded for ${config.name}:`, geojsonData.features.length, 'features');
+
+        // Transform coordinates if needed (same logic as before)
         const transformedGeoJSON = {
           ...geojsonData,
           features: geojsonData.features.map(feature => {
             if (feature.geometry && feature.geometry.coordinates) {
               const transformedCoordinates = feature.geometry.coordinates.map(ring => 
                 ring.map(coord => {
-                  // Convert from Web Mercator to WGS84 using more precise formula
                   const [x, y] = coord;
                   
-                  // More precise Web Mercator to WGS84 conversion
-                  const lng = x / 20037508.342789244 * 180;
-                  const lat = Math.atan(Math.sinh(y / 20037508.342789244 * Math.PI)) * 180 / Math.PI;
-                  
-                  // Debug: Check if coordinates are reasonable for Thailand
-                  if (lng < 97 || lng > 106 || lat < 5 || lat > 21) {
-                    console.warn('Unusual coordinates detected:', { original: coord, transformed: [lng, lat] });
+                  // Check if coordinates need transformation (Web Mercator to WGS84)
+                  if (Math.abs(x) > 180 || Math.abs(y) > 90) {
+                    const lng = x / 20037508.342789244 * 180;
+                    const lat = Math.atan(Math.sinh(y / 20037508.342789244 * Math.PI)) * 180 / Math.PI;
+                    return [lng, lat];
                   }
                   
-                  return [lng, lat]; // GeoJSON format: [lng, lat]
+                  return [x, y];
                 })
               );
               
@@ -311,236 +369,140 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
           })
         };
 
-        console.log('Transformed GeoJSON:', transformedGeoJSON.features.length, 'features');
-        console.log('Sample transformed coordinates:', transformedGeoJSON.features[0]?.geometry?.coordinates[0]?.slice(0, 2));
-
-        // Style function for HDS grids
-        const style = (feature) => {
-          const isSelected = selectedGrid && selectedGrid.FID === feature.properties.FID;
-          
-          return {
-            fillColor: getColor(feature),
-            weight: isSelected ? 3 : 0.5,
-            opacity: 0.8,
-            color: isSelected ? '#ff0000' : '#666666',
-            fillOpacity: 0.7
-          };
+        // Filter features based on current filters
+        const filteredFeatures = filterFeatures(transformedGeoJSON.features);
+        
+        // Create filtered GeoJSON
+        const filteredGeoJSON = {
+          ...transformedGeoJSON,
+          features: filteredFeatures
         };
 
-        // Add HDS layer
-        const hdsLayer = L.geoJSON(transformedGeoJSON, {
-          style: style,
+        // Add HDS layer to map
+        const hdsLayer = L.geoJSON(filteredGeoJSON, {
+          style: (feature) => {
+            const isSelected = selectedGrid && selectedGrid.FID === feature.properties.FID;
+            
+            return {
+              fillColor: getFeatureColor(feature),
+              weight: isSelected ? 3 : 1,
+              opacity: 0.8,
+              color: isSelected ? '#ff0000' : '#666666',
+              fillOpacity: 0.7
+            };
+          },
           onEachFeature: (feature, layer) => {
-            // Add click functionality for grid selection
-            layer.on('click', (e) => {
-              const clickedFeature = feature;
-              
-              // Call the parent component's callback to update statistics
-              if (onGridSelect) {
-                onGridSelect(clickedFeature.properties);
-              }
-              
-              // For mobile, show a smaller popup that doesn't interfere with legend
-              if (isMobile) {
-                const popup = L.popup({
-                  maxWidth: 280,
-                  className: 'hds-popup mobile-popup',
-                  closeButton: true,
-                  offset: [0, -10]
-                })
-                  .setLatLng(e.latlng)
-                  .setContent(`
-                    <div class="p-2 text-sm">
-                      <h3 class="font-bold text-gray-800 mb-1">กริด ID: ${clickedFeature.properties.FID}</h3>
-                      <p class="text-xs text-gray-600 mb-2">ประชากร: ${Math.round(clickedFeature.properties.Grid_POP || 0).toLocaleString()} คน</p>
-                      <p class="text-xs text-blue-600">ดูรายละเอียดในแผงสถิติด้านล่าง</p>
-                    </div>
-                  `)
-                  .openOn(map);
-                
-                // Auto-close popup after 3 seconds on mobile
-                setTimeout(() => {
-                  map.closePopup(popup);
-                }, 3000);
-              } else {
-                // Desktop: show full popup
-                const popup = L.popup({
-                  maxWidth: 400,
-                  className: 'hds-popup',
-                  closeButton: true
-                })
-                  .setLatLng(e.latlng)
-                  .setContent(generatePopupContent(clickedFeature, colorScheme))
-                  .openOn(map);
-              }
+            // Add popup
+            layer.bindPopup(generatePopupContent(feature, colorScheme));
+            
+            // Add click event
+            layer.on('click', () => {
+              onGridSelect(feature.properties);
             });
-
-            // Add hover effect for desktop only (no popup repositioning)
-            if (!isMobile) {
-              layer.on('mouseover', (e) => {
-                // Just highlight the layer, no popup
-                layer.setStyle({
-                  weight: 2,
-                  color: '#ff0000',
-                  fillOpacity: 0.9
-                });
+            
+            // Add hover effects
+            layer.on('mouseover', () => {
+              layer.setStyle({
+                weight: 3,
+                color: '#333333',
+                fillOpacity: 0.9
               });
-
-              layer.on('mouseout', (e) => {
-                // Reset to normal style
-                const isSelected = selectedGrid && selectedGrid.FID === layer.feature.properties.FID;
+            });
+            
+            layer.on('mouseout', () => {
+              if (!selectedGrid || selectedGrid.FID !== feature.properties.FID) {
                 layer.setStyle({
-                  fillColor: getColor(layer.feature),
-                  weight: isSelected ? 3 : 0.5,
-                  opacity: 0.8,
-                  color: isSelected ? '#ff0000' : '#666666',
+                  weight: 1,
+                  color: '#666666',
                   fillOpacity: 0.7
                 });
-              });
-            }
+              }
+            });
           }
-        }).addTo(map);
+        }).addTo(mapRef.current);
 
         hdsLayerRef.current = hdsLayer;
 
-        // Calculate bounds from transformed coordinates (for initial view only)
+        // Update legend
+        if (legendRef.current) {
+          const legendContainer = legendRef.current.getContainer();
+          const legendItems = getLegendItems();
+          
+          legendContainer.innerHTML = `
+            <div style="font-weight: bold; margin-bottom: ${isMobile ? '4px' : '8px'}; color: #374151;">
+              ${config.name} - ${colorScheme === 'housingSystem' ? 'ระบบที่อยู่อาศัย' : 
+                colorScheme === 'populationDensity' ? 'ความหนาแน่นประชากร' :
+                colorScheme === 'housingDensity' ? 'ความหนาแน่นที่อยู่อาศัย' : 'ระดับความหนาแน่น'}
+            </div>
+            ${legendItems.map(item => `
+              <div style="display: flex; align-items: center; margin-bottom: ${isMobile ? '2px' : '4px'};">
+                <div style="width: ${isMobile ? '12px' : '16px'}; height: ${isMobile ? '12px' : '16px'}; background-color: ${item.color}; margin-right: ${isMobile ? '4px' : '6px'}; border: 1px solid #ccc; flex-shrink: 0;"></div>
+                <span style="color: #374151; ${isMobile ? 'font-size: 8px;' : ''}">${item.label}</span>
+              </div>
+            `).join('')}
+            <div style="margin-top: ${isMobile ? '4px' : '8px'}; padding-top: ${isMobile ? '4px' : '8px'}; border-top: 1px solid #e5e7eb; font-size: ${isMobile ? '7px' : '10px'}; color: #6b7280;">
+              รวม ${filteredFeatures.length.toLocaleString()} กริด
+            </div>
+          `;
+        }
+
+        // Fit map to bounds if this is a province change
         const bounds = L.latLngBounds();
-        transformedGeoJSON.features.forEach(feature => {
+        filteredGeoJSON.features.forEach(feature => {
           if (feature.geometry && feature.geometry.coordinates) {
             feature.geometry.coordinates[0].forEach(coord => {
-              // Transformed coordinates are already [lng, lat], Leaflet expects [lat, lng]
               bounds.extend([coord[1], coord[0]]);
             });
           }
         });
         
-        // Only fit bounds on initial load, don't force it afterwards
         if (bounds.isValid()) {
-          map.fitBounds(bounds, {
+          mapRef.current.fitBounds(bounds, {
             padding: isMobile ? [20, 20] : [50, 50],
-            maxZoom: isMobile ? 14 : 16
+            maxZoom: isMobile ? 12 : 14
           });
         }
 
-        // Update legend initially
-        updateLegend();
       })
       .catch(error => {
-        console.error('Error loading GeoJSON:', error);
+        console.error(`Error loading HDS data for ${config.name}:`, error);
+        
+        // Update legend with error message
+        if (legendRef.current) {
+          const legendContainer = legendRef.current.getContainer();
+          legendContainer.innerHTML = `
+            <div style="color: #dc2626; font-weight: bold;">
+              ไม่สามารถโหลดข้อมูล ${config.name}
+            </div>
+            <div style="font-size: 10px; color: #6b7280; margin-top: 4px;">
+              ${error.message}
+            </div>
+          `;
+        }
       });
 
-    return () => {
-      if (mapRef.current) {
-        mapRef.current.remove();
-      }
-    };
-  }, [isMobile]); // REMOVED selectedGrid and colorScheme dependencies
+  }, [selectedProvince, filters, colorScheme, selectedGrid]);
 
-  // Update filters when they change
+  // Update map center when province changes
   useEffect(() => {
-    if (!mapRef.current || !hdsLayerRef.current) return;
-
-    // Filter the layer based on current filters
-    hdsLayerRef.current.eachLayer((layer) => {
-      const feature = layer.feature.properties;
-      let shouldShow = true;
-      
-      if (filters.housingSystem !== 'all') {
-        const systemNum = parseInt(filters.housingSystem);
-        if (systemNum >= 1 && systemNum <= 7) {
-          const fieldName = `HDS_C${systemNum}_num`;
-          shouldShow = shouldShow && ((feature[fieldName] || 0) > 0);
-        }
-      }
-      
-      if (filters.densityLevel !== 'all') {
-        shouldShow = shouldShow && (feature.Grid_Class === parseInt(filters.densityLevel));
-      }
-      
-      if (filters.populationRange !== 'all') {
-        const [min, max] = filters.populationRange.split('-').map(Number);
-        const population = feature.Grid_POP || 0;
-        shouldShow = shouldShow && (population >= min);
-        if (max) {
-          shouldShow = shouldShow && (population <= max);
-        }
-      }
-
-      // Show/hide layer based on filter
-      if (shouldShow) {
-        if (!mapRef.current.hasLayer(layer)) {
-          layer.addTo(mapRef.current);
-        }
-      } else {
-        if (mapRef.current.hasLayer(layer)) {
-          mapRef.current.removeLayer(layer);
-        }
-      }
-    });
-  }, [filters]);
-
-  // Update colors and selected grid styling when color scheme or selected grid changes
-  useEffect(() => {
-    if (!mapRef.current || !hdsLayerRef.current) return;
-
-    // Re-style all layers
-    hdsLayerRef.current.eachLayer((layer) => {
-      const isSelected = selectedGrid && selectedGrid.FID === layer.feature.properties.FID;
-      
-      layer.setStyle({
-        fillColor: getColor(layer.feature),
-        weight: isSelected ? 3 : 0.5,
-        opacity: 0.8,
-        color: isSelected ? '#ff0000' : '#666666',
-        fillOpacity: 0.7
-      });
-    });
-
-    updateLegend();
-  }, [colorScheme, selectedGrid]); // Combined both effects into one
-
-  // Update legend content
-  const updateLegend = () => {
-    if (!legendRef.current || !legendRef.current.getContainer()) return;
-
-    const items = getLegendItems();
-    const title = {
-      housingSystem: 'ระบบที่อยู่อาศัยหลัก',
-      populationDensity: 'ความหนาแน่นประชากร',
-      housingDensity: 'ความหนาแน่นที่อยู่อาศัย',
-      gridClass: 'ระดับความหนาแน่น'
-    }[colorScheme] || 'คำอธิบายสัญลักษณ์';
+    if (!mapRef.current) return;
     
-    // Different styling for mobile vs desktop
-    const fontSize = isMobile ? '8px' : '12px';
-    const marginBottom = isMobile ? '1px' : '4px';
-    const colorBoxSize = isMobile ? '10px' : '16px';
-    
-    legendRef.current.getContainer().innerHTML = `
-      <h4 style="margin: 0 0 4px 0; font-weight: 600; font-size: ${isMobile ? '9px' : fontSize};">${title}</h4>
-      ${items.map(item => `
-        <div style="display: flex; align-items: center; margin-bottom: ${marginBottom};">
-          <span style="display: inline-block; width: ${colorBoxSize}; height: ${colorBoxSize}; margin-right: 6px; background: ${item.color}; border: 1px solid rgba(0,0,0,0.2);"></span>
-          <span style="font-size: ${fontSize}; line-height: 1.2;">${item.label}</span>
-        </div>
-      `).join('')}
-    `;
-  };
+    const config = provinceConfigs[selectedProvince];
+    if (config) {
+      mapRef.current.setView(config.center, config.zoom);
+    }
+  }, [selectedProvince]);
 
   return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden relative h-full">
-      <div 
-        ref={mapContainerRef}
-        className="w-full h-full"
-        style={{ 
-          minHeight: "400px", 
-          height: getMapHeight() 
-        }}
-      />
-      <div className="absolute bottom-0 right-0 bg-white bg-opacity-75 px-2 py-1 text-xs text-gray-600">
-        © OpenStreetMap contributors
-      </div>
-    </div>
+    <div 
+      ref={mapContainerRef} 
+      style={{ 
+        height: getMapHeight(),
+        width: '100%',
+        borderRadius: '0.5rem',
+        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+      }}
+    />
   );
 };
 
