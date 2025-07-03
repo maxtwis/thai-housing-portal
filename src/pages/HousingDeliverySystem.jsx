@@ -33,7 +33,7 @@ const HousingDeliverySystem = () => {
 
   // Available provinces
   const provinces = [
-    { id: 40, name: 'ขอนแก่น', file: '/data/HDS_GRID_KKN_FeaturesToJSON.geojson' },
+    { id: 40, name: 'ขอนแก่น', file: 'data/HDS_KKN01.geojson' },
     { id: 50, name: 'เชียงใหม่', file: '/data/HDS_CNX_02GJSON.geojson' }
   ];
 

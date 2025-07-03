@@ -31,7 +31,7 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
   const provinceConfigs = {
     40: {
       name: 'ขอนแก่น',
-      file: '/data/HDS_GRID_KKN_FeaturesToJSON.geojson',
+      file: '/data/HDS_KKN01.geojson',
       needsTransformation: false, // New coordinate system, already in WGS84
       center: [16.4419, 102.8359],
       bounds: [[15.5, 101.5], [17.5, 104.0]]
