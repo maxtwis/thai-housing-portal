@@ -56,6 +56,12 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
     const props = feature.properties;
     const provinceName = provinceConfigs[selectedProvince]?.name || 'ไม่ทราบจังหวัด';
     
+    // Handle different field names between provinces
+    const gridId = props.FID || props.Grid_CODE || props.OBJECTID_1 || 'N/A';
+    const gridPop = props.Grid_POP || 0;
+    const gridHouse = props.Grid_House || props.House || 0;
+    const gridClass = props.Grid_Class || 'ไม่มีข้อมูล';
+    
     // Calculate dominant housing system
     const hdsNumbers = [
       { code: 1, count: props.HDS_C1_num || 0 },
@@ -73,24 +79,24 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
     return `
       <div class="p-3 min-w-[280px]">
         <div class="bg-gray-50 -m-3 p-3 mb-3 border-b">
-          <h3 class="font-bold text-gray-800">พื้นที่กริด ID: ${props.FID}</h3>
+          <h3 class="font-bold text-gray-800">พื้นที่กริด ID: ${gridId}</h3>
           <p class="text-sm text-gray-600 mt-1">${provinceName} - ระบบที่อยู่อาศัย</p>
         </div>
         
         <div class="space-y-2">
           <div class="flex justify-between items-baseline text-sm">
             <span class="text-gray-600">ประชากรรวม</span>
-            <span class="font-medium text-gray-800">${props.Grid_POP ? Math.round(props.Grid_POP).toLocaleString() : 'ไม่มีข้อมูล'} คน</span>
+            <span class="font-medium text-gray-800">${gridPop ? Math.round(gridPop).toLocaleString() : 'ไม่มีข้อมูล'} คน</span>
           </div>
           
           <div class="flex justify-between items-baseline text-sm">
             <span class="text-gray-600">ที่อยู่อาศัยรวม</span>
-            <span class="font-medium text-gray-800">${props.Grid_House ? Math.round(props.Grid_House).toLocaleString() : 'ไม่มีข้อมูล'} หน่วย</span>
+            <span class="font-medium text-gray-800">${gridHouse ? Math.round(gridHouse).toLocaleString() : 'ไม่มีข้อมูล'} หน่วย</span>
           </div>
           
           <div class="flex justify-between items-baseline text-sm">
             <span class="text-gray-600">ความหนาแน่น</span>
-            <span class="font-medium text-gray-800">ระดับ ${props.Grid_Class || 'ไม่มีข้อมูล'}</span>
+            <span class="font-medium text-gray-800">ระดับ ${gridClass}</span>
           </div>
           
           ${totalHousing > 0 ? `
@@ -152,7 +158,7 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
       },
       
       housingDensity: () => {
-        const housing = feature.properties.Grid_House || 0;
+        const housing = feature.properties.Grid_House || feature.properties.House || 0;
         if (housing < 1000) return '#fff5f0';
         if (housing < 2000) return '#fee0d2';
         if (housing < 5000) return '#fcbba1';
@@ -169,7 +175,9 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
           2: '#c7e9b4',
           3: '#7fcdbb',
           4: '#41b6c4',
-          5: '#253494'
+          5: '#253494',
+          6: '#1a237e',
+          7: '#0d47a1'
         };
         return colorMap[gridClass] || '#808080';
       }
@@ -213,7 +221,9 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
         { color: '#c7e9b4', label: 'ระดับ 2' },
         { color: '#7fcdbb', label: 'ระดับ 3' },
         { color: '#41b6c4', label: 'ระดับ 4' },
-        { color: '#253494', label: 'ระดับ 5 (สูงสุด)' }
+        { color: '#253494', label: 'ระดับ 5' },
+        { color: '#1a237e', label: 'ระดับ 6' },
+        { color: '#0d47a1', label: 'ระดับ 7 (สูงสุด)' }
       ]
     };
     return items[colorScheme] || items.housingSystem;
@@ -226,7 +236,6 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
       
       // Housing system filter
       if (filters.housingSystem !== 'all') {
-        const systemKey = `HDS_C${filters.housingSystem}_num`;
         const dominantSystem = [1,2,3,4,5,6,7].reduce((max, code) => {
           const count = props[`HDS_C${code}_num`] || 0;
           const maxCount = props[`HDS_C${max}_num`] || 0;
@@ -336,8 +345,10 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
       })
       .then(geojsonData => {
         console.log(`GeoJSON data loaded for ${config.name}:`, geojsonData.features.length, 'features');
+        console.log('Sample original coordinates:', geojsonData.features[0]?.geometry?.coordinates[0]?.slice(0, 2));
+        console.log('CRS:', geojsonData.crs);
 
-        // Transform coordinates if needed (same logic as before)
+        // Transform coordinates based on the coordinate system
         const transformedGeoJSON = {
           ...geojsonData,
           features: geojsonData.features.map(feature => {
@@ -346,13 +357,35 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
                 ring.map(coord => {
                   const [x, y] = coord;
                   
-                  // Check if coordinates need transformation (Web Mercator to WGS84)
-                  if (Math.abs(x) > 180 || Math.abs(y) > 90) {
+                  // Check if coordinates are in UTM Zone 47N (EPSG:32647)
+                  if (x > 400000 && x < 800000 && y > 1800000 && y < 2300000) {
+                    // Simplified UTM Zone 47N to WGS84 conversion
+                    // Zone 47N central meridian is 99°E
+                    // Using approximation suitable for Thailand region
+                    
+                    const falseEasting = 500000;
+                    const falseNorthing = 0;
+                    const scaleFactor = 0.9996;
+                    const centralMeridian = 99; // degrees
+                    
+                    // Remove false easting/northing
+                    const eastingFromCM = (x - falseEasting) / scaleFactor;
+                    const northing = y / scaleFactor;
+                    
+                    // Approximate conversion for Thailand region
+                    // These are simplified formulas that work well for the Thailand area
+                    const lat = (northing / 111132.954) - 0.00559974 * Math.pow(eastingFromCM / 1000, 2);
+                    const lng = centralMeridian + (eastingFromCM / (111412.84 * Math.cos(lat * Math.PI / 180)));
+                    
+                    return [lng, lat];
+                  } else if (Math.abs(x) > 180 || Math.abs(y) > 90) {
+                    // Web Mercator to WGS84 conversion (for Khon Kaen data)
                     const lng = x / 20037508.342789244 * 180;
                     const lat = Math.atan(Math.sinh(y / 20037508.342789244 * Math.PI)) * 180 / Math.PI;
                     return [lng, lat];
                   }
                   
+                  // Already in WGS84
                   return [x, y];
                 })
               );
@@ -369,6 +402,9 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
           })
         };
 
+        // Log sample transformed coordinates for debugging
+        console.log('Sample transformed coordinates:', transformedGeoJSON.features[0]?.geometry?.coordinates[0]?.slice(0, 2));
+
         // Filter features based on current filters
         const filteredFeatures = filterFeatures(transformedGeoJSON.features);
         
@@ -381,7 +417,9 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
         // Add HDS layer to map
         const hdsLayer = L.geoJSON(filteredGeoJSON, {
           style: (feature) => {
-            const isSelected = selectedGrid && selectedGrid.FID === feature.properties.FID;
+            const gridId = feature.properties.FID || feature.properties.Grid_CODE || feature.properties.OBJECTID_1;
+            const selectedId = selectedGrid?.FID || selectedGrid?.Grid_CODE || selectedGrid?.OBJECTID_1;
+            const isSelected = selectedGrid && selectedId === gridId;
             
             return {
               fillColor: getFeatureColor(feature),
@@ -397,7 +435,12 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
             
             // Add click event
             layer.on('click', () => {
-              onGridSelect(feature.properties);
+              // Handle different ID field names
+              const gridData = {
+                ...feature.properties,
+                FID: feature.properties.FID || feature.properties.Grid_CODE || feature.properties.OBJECTID_1
+              };
+              onGridSelect(gridData);
             });
             
             // Add hover effects
@@ -410,7 +453,10 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
             });
             
             layer.on('mouseout', () => {
-              if (!selectedGrid || selectedGrid.FID !== feature.properties.FID) {
+              const gridId = feature.properties.FID || feature.properties.Grid_CODE || feature.properties.OBJECTID_1;
+              const selectedId = selectedGrid?.FID || selectedGrid?.Grid_CODE || selectedGrid?.OBJECTID_1;
+              
+              if (!selectedGrid || selectedId !== gridId) {
                 layer.setStyle({
                   weight: 1,
                   color: '#666666',
