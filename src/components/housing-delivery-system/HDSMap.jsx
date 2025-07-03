@@ -359,13 +359,13 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
         console.log('Sample processed coordinates:', processedGeoJSON.features[0]?.geometry?.coordinates[0]?.[0]);
         console.log('First feature geometry type:', processedGeoJSON.features[0]?.geometry?.type);
 
-        // Style function for HDS grids - NO BORDERS AT ALL
+        // Style function for HDS grids - LOW OPACITY BORDERS
         const style = (feature) => {
           return {
             fillColor: getColor(feature),
-            weight: 0, // No borders ever
-            opacity: 0, // No border visibility
-            color: 'transparent', // Transparent border
+            weight: 1, // Thin border
+            opacity: 0.3, // Low opacity border - easy to see grids
+            color: '#666666', // Gray border color
             fillOpacity: 0.8
           };
         };
@@ -424,26 +424,26 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
               }
             });
 
-            // Add hover effect for desktop only (only opacity change, no borders)
+            // Add hover effect for desktop only (slightly brighter border on hover)
             if (!isMobile) {
               layer.on('mouseover', (e) => {
-                // Only increase opacity on hover, no borders
+                // Slightly brighter border and fill on hover
                 layer.setStyle({
                   fillColor: getColor(layer.feature),
-                  weight: 0,
-                  opacity: 0,
-                  color: 'transparent',
-                  fillOpacity: 1.0 // Brighter on hover
+                  weight: 1,
+                  opacity: 0.6, // Slightly more visible border on hover
+                  color: '#333333', // Darker border on hover
+                  fillOpacity: 0.9
                 });
               });
 
               layer.on('mouseout', (e) => {
-                // Reset to normal style - no borders
+                // Reset to normal style with subtle borders
                 layer.setStyle({
                   fillColor: getColor(layer.feature),
-                  weight: 0,
-                  opacity: 0,
-                  color: 'transparent',
+                  weight: 1,
+                  opacity: 0.3, // Back to low opacity border
+                  color: '#666666',
                   fillOpacity: 0.8
                 });
               });
@@ -553,13 +553,13 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
   useEffect(() => {
     if (!mapRef.current || !hdsLayerRef.current) return;
 
-    // Re-style all layers with no borders
+    // Re-style all layers with subtle borders
     hdsLayerRef.current.eachLayer((layer) => {
       layer.setStyle({
         fillColor: getColor(layer.feature),
-        weight: 0, // No borders
-        opacity: 0, // No border visibility  
-        color: 'transparent', // Transparent border
+        weight: 1, // Thin border
+        opacity: 0.3, // Low opacity border
+        color: '#666666', // Gray border
         fillOpacity: 0.8
       });
     });
