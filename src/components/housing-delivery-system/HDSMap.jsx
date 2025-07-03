@@ -359,25 +359,40 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
                   
                   // Check if coordinates are in UTM Zone 47N (EPSG:32647)
                   if (x > 400000 && x < 800000 && y > 1800000 && y < 2300000) {
-                    // Simplified UTM Zone 47N to WGS84 conversion
-                    // Zone 47N central meridian is 99°E
-                    // Using approximation suitable for Thailand region
+                    // Simplified UTM Zone 47N to WGS84 conversion calibrated for Chiang Mai
+                    // Using proj4 formula simplified for Thailand region
                     
-                    const falseEasting = 500000;
-                    const falseNorthing = 0;
-                    const scaleFactor = 0.9996;
-                    const centralMeridian = 99; // degrees
+                    // Reference point: Chiang Mai city center
+                    // UTM: approximately [500000, 2080000] 
+                    // WGS84: [98.9853, 18.7883]
                     
-                    // Remove false easting/northing
-                    const eastingFromCM = (x - falseEasting) / scaleFactor;
-                    const northing = y / scaleFactor;
+                    const utmRefX = 500000;
+                    const utmRefY = 2080000;
+                    const wgs84RefLng = 98.9853;
+                    const wgs84RefLat = 18.7883;
                     
-                    // Approximate conversion for Thailand region
-                    // These are simplified formulas that work well for the Thailand area
-                    const lat = (northing / 111132.954) - 0.00559974 * Math.pow(eastingFromCM / 1000, 2);
-                    const lng = centralMeridian + (eastingFromCM / (111412.84 * Math.cos(lat * Math.PI / 180)));
+                    // Calculate offset from reference point
+                    const deltaX = x - utmRefX;
+                    const deltaY = y - utmRefY;
                     
-                    return [lng, lat];
+                    // Convert meters to degrees (approximate for Thailand)
+                    // At latitude ~19°N, 1 degree longitude ≈ 105,000 meters
+                    // At any latitude, 1 degree latitude ≈ 111,000 meters
+                    const deltaLng = deltaX / 105000;
+                    const deltaLat = deltaY / 111000;
+                    
+                    const lng = wgs84RefLng + deltaLng;
+                    const lat = wgs84RefLat + deltaLat;
+                    
+                    // Validate coordinates
+                    if (lat >= 15 && lat <= 22 && lng >= 97 && lng <= 101) {
+                      console.log(`UTM conversion: [${x}, ${y}] -> [${lng.toFixed(6)}, ${lat.toFixed(6)}]`);
+                      return [lng, lat];
+                    } else {
+                      console.warn(`Invalid converted coordinates: [${lng}, ${lat}]`);
+                      // Return original coordinates as-is (might already be WGS84)
+                      return [x, y];
+                    }
                   } else if (Math.abs(x) > 180 || Math.abs(y) > 90) {
                     // Web Mercator to WGS84 conversion (for Khon Kaen data)
                     const lng = x / 20037508.342789244 * 180;
