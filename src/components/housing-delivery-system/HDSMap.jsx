@@ -345,14 +345,10 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
       })
       .then(geojsonData => {
         console.log(`GeoJSON data loaded for ${config.name}:`, geojsonData.features.length, 'features');
-        console.log('Sample original coordinates:', geojsonData.features[0]?.geometry?.coordinates[0]?.slice(0, 2));
+        console.log('Sample original coordinates:', geojsonData.features[0]?.geometry?.coordinates[0]?.[0]?.slice(0, 2));
+        console.log('Full coordinate structure:', geojsonData.features[0]?.geometry?.coordinates);
         console.log('CRS:', geojsonData.crs);
         console.log('Selected province:', selectedProvince);
-        
-        // Special note for Chiang Mai mislabeled CRS
-        if (selectedProvince === 'cnx') {
-          console.log('Note: Chiang Mai file has incorrect CRS label (EPSG:3857) but contains UTM coordinates');
-        }
 
         // Transform coordinates based on the coordinate system
         const transformedGeoJSON = {
@@ -361,12 +357,23 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
             if (feature.geometry && feature.geometry.coordinates) {
               const transformedCoordinates = feature.geometry.coordinates.map(ring => 
                 ring.map(coord => {
-                  const [x, y] = coord;
+                  console.log('Processing coordinate:', coord, 'Type:', typeof coord, 'IsArray:', Array.isArray(coord));
+                  
+                  // Handle both array format [x, y] and potential string format
+                  let x, y;
+                  if (Array.isArray(coord) && coord.length >= 2) {
+                    [x, y] = coord;
+                  } else if (typeof coord === 'string' && coord.includes(',')) {
+                    [x, y] = coord.split(',').map(Number);
+                  } else {
+                    console.warn('Unexpected coordinate format:', coord);
+                    return [98.9853, 18.7883]; // Return Chiang Mai center as fallback
+                  }
                   
                   // Validate input coordinates
                   if (typeof x !== 'number' || typeof y !== 'number' || isNaN(x) || isNaN(y)) {
-                    console.warn(`Invalid input coordinates: [${x}, ${y}]`);
-                    return [0, 0]; // Return valid fallback coordinates
+                    console.warn(`Invalid input coordinates: [${x}, ${y}], original coord:`, coord);
+                    return [98.9853, 18.7883]; // Return Chiang Mai center as fallback
                   }
                   
                   // Force UTM conversion for Chiang Mai province OR detect UTM coordinates
