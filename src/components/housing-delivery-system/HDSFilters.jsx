@@ -1,24 +1,11 @@
 import React from 'react';
 
-const HDSFilters = ({ filters, setFilters, colorScheme, setColorScheme, selectedProvince, setSelectedProvince }) => {
+const HDSFilters = ({ filters, setFilters, colorScheme, setColorScheme }) => {
   return (
     <div className="bg-white rounded-lg shadow-md p-4">
       <h2 className="text-lg font-semibold mb-4">ตัวกรองข้อมูล</h2>
       
       <div className="space-y-4">
-        {/* Province Selector */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700">จังหวัด</label>
-          <select 
-            className="mt-1 block w-full rounded-md border border-gray-300 p-2"
-            value={selectedProvince}
-            onChange={(e) => setSelectedProvince(e.target.value)}
-          >
-            <option value="kkn">ขอนแก่น</option>
-            <option value="cnx">เชียงใหม่</option>
-          </select>
-        </div>
-
         {/* Color Scheme Selector */}
         <div>
           <label className="block text-sm font-medium text-gray-700">แสดงสีตาม</label>
@@ -87,9 +74,7 @@ const HDSFilters = ({ filters, setFilters, colorScheme, setColorScheme, selected
 
         {/* Note about data source */}
         <div className="mt-4 text-xs text-gray-500 bg-gray-50 p-2 rounded">
-          หมายเหตุ: ข้อมูลระบบที่อยู่อาศัยจากการสำรวจพื้นที่ แบ่งตามกริดความหนาแน่น
-          {selectedProvince === 'kkn' && ' - จังหวัดขอนแก่น'}
-          {selectedProvince === 'cnx' && ' - จังหวัดเชียงใหม่'}
+          หมายเหตุ: ข้อมูลระบบที่อยู่อาศัยจากการสำรวจพื้นที่จังหวัดขอนแก่น แบ่งตามกริดความหนาแน่น
         </div>
       </div>
     </div>
