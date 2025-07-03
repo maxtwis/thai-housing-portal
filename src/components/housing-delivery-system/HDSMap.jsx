@@ -357,50 +357,94 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
                 ring.map(coord => {
                   const [x, y] = coord;
                   
-                  // Check if coordinates are in UTM Zone 47N (EPSG:32647)
+                  // Check if coordinates are in UTM Zone 47N (EPSG:32647) - Chiang Mai
                   if (x > 400000 && x < 800000 && y > 1800000 && y < 2300000) {
-                    // Simplified UTM Zone 47N to WGS84 conversion calibrated for Chiang Mai
-                    // Using proj4 formula simplified for Thailand region
+                    // UTM Zone 47N to WGS84 conversion for Chiang Mai
+                    // Using accurate conversion formula for UTM Zone 47N
                     
-                    // Reference point: Chiang Mai city center
-                    // UTM: approximately [500000, 2080000] 
-                    // WGS84: [98.9853, 18.7883]
+                    const a = 6378137; // WGS84 semi-major axis
+                    const f = 1/298.257223563; // WGS84 flattening
+                    const k0 = 0.9996; // UTM scale factor
+                    const E0 = 500000; // False easting
+                    const N0 = 0; // False northing (northern hemisphere)
+                    const lambda0 = (47 - 1) * 6 - 180 + 3; // Central meridian for zone 47: 99°
                     
-                    const utmRefX = 500000;
-                    const utmRefY = 2080000;
-                    const wgs84RefLng = 98.9853;
-                    const wgs84RefLat = 18.7883;
+                    // Convert to radians
+                    const lambda0_rad = lambda0 * Math.PI / 180;
                     
-                    // Calculate offset from reference point
-                    const deltaX = x - utmRefX;
-                    const deltaY = y - utmRefY;
+                    // Remove false easting and northing
+                    const E = x - E0;
+                    const N = y - N0;
                     
-                    // Convert meters to degrees (approximate for Thailand)
-                    // At latitude ~19°N, 1 degree longitude ≈ 105,000 meters
-                    // At any latitude, 1 degree latitude ≈ 111,000 meters
-                    const deltaLng = deltaX / 105000;
-                    const deltaLat = deltaY / 111000;
+                    // Calculate eccentricity
+                    const e = Math.sqrt(f * (2 - f));
+                    const e_prime = e / Math.sqrt(1 - e * e);
                     
-                    const lng = wgs84RefLng + deltaLng;
-                    const lat = wgs84RefLat + deltaLat;
+                    // Calculate M (meridional arc)
+                    const M = N / k0;
                     
-                    // Validate coordinates
-                    if (lat >= 15 && lat <= 22 && lng >= 97 && lng <= 101) {
-                      console.log(`UTM conversion: [${x}, ${y}] -> [${lng.toFixed(6)}, ${lat.toFixed(6)}]`);
+                    // Calculate mu (footprint latitude parameter)
+                    const mu = M / (a * (1 - e*e/4 - 3*e*e*e*e/64 - 5*e*e*e*e*e*e/256));
+                    
+                    // Calculate e1
+                    const e1 = (1 - Math.sqrt(1 - e*e)) / (1 + Math.sqrt(1 - e*e));
+                    
+                    // Calculate footprint latitude
+                    const phi1 = mu + 
+                      (3*e1/2 - 27*e1*e1*e1/32) * Math.sin(2*mu) +
+                      (21*e1*e1/16 - 55*e1*e1*e1*e1/32) * Math.sin(4*mu) +
+                      (151*e1*e1*e1/96) * Math.sin(6*mu);
+                    
+                    // Calculate supporting values
+                    const C1 = e_prime*e_prime * Math.cos(phi1)*Math.cos(phi1);
+                    const T1 = Math.tan(phi1)*Math.tan(phi1);
+                    const N1 = a / Math.sqrt(1 - e*e * Math.sin(phi1)*Math.sin(phi1));
+                    const R1 = a * (1 - e*e) / Math.pow(1 - e*e * Math.sin(phi1)*Math.sin(phi1), 3/2);
+                    const D = E / (N1 * k0);
+                    
+                    // Calculate latitude
+                    const lat_rad = phi1 - (N1 * Math.tan(phi1) / R1) * 
+                      (D*D/2 - (5 + 3*T1 + 10*C1 - 4*C1*C1 - 9*e_prime*e_prime) * D*D*D*D/24 +
+                       (61 + 90*T1 + 298*C1 + 45*T1*T1 - 252*e_prime*e_prime - 3*C1*C1) * Math.pow(D, 6)/720);
+                    
+                    // Calculate longitude
+                    const lng_rad = lambda0_rad + (D - (1 + 2*T1 + C1) * D*D*D/6 + 
+                      (5 - 2*C1 + 28*T1 - 3*C1*C1 + 8*e_prime*e_prime + 24*T1*T1) * Math.pow(D, 5)/120) / Math.cos(phi1);
+                    
+                    // Convert to degrees
+                    const lat = lat_rad * 180 / Math.PI;
+                    const lng = lng_rad * 180 / Math.PI;
+                    
+                    // Validate coordinates are within Thailand bounds
+                    if (lat >= 5 && lat <= 25 && lng >= 95 && lng <= 105) {
+                      console.log(`UTM->WGS84 conversion: [${x}, ${y}] -> [${lng.toFixed(6)}, ${lat.toFixed(6)}]`);
                       return [lng, lat];
                     } else {
-                      console.warn(`Invalid converted coordinates: [${lng}, ${lat}]`);
-                      // Return original coordinates as-is (might already be WGS84)
-                      return [x, y];
+                      console.warn(`Invalid UTM conversion result: [${lng}, ${lat}] from [${x}, ${y}]`);
+                      // Fallback to simple approximation
+                      const fallbackLng = 99 + (x - 500000) / 111320;
+                      const fallbackLat = (y / 111000) - 0.3;
+                      return [fallbackLng, fallbackLat];
                     }
-                  } else if (Math.abs(x) > 180 || Math.abs(y) > 90) {
-                    // Web Mercator to WGS84 conversion (for Khon Kaen data)
+                  }
+                  // Check if coordinates are in Web Mercator (EPSG:3857) - Khon Kaen
+                  else if (Math.abs(x) > 1000000 || Math.abs(y) > 1000000) {
+                    // Web Mercator to WGS84 conversion
                     const lng = x / 20037508.342789244 * 180;
                     const lat = Math.atan(Math.sinh(y / 20037508.342789244 * Math.PI)) * 180 / Math.PI;
-                    return [lng, lat];
+                    
+                    // Validate coordinates are within Thailand bounds
+                    if (lat >= 5 && lat <= 25 && lng >= 95 && lng <= 110) {
+                      console.log(`WebMercator->WGS84 conversion: [${x}, ${y}] -> [${lng.toFixed(6)}, ${lat.toFixed(6)}]`);
+                      return [lng, lat];
+                    } else {
+                      console.warn(`Invalid Web Mercator conversion: [${x}, ${y}] -> [${lng}, ${lat}]`);
+                      return [x, y];
+                    }
                   }
                   
-                  // Already in WGS84
+                  // Already in WGS84 or unknown coordinate system
+                  console.log(`No conversion needed for: [${x}, ${y}]`);
                   return [x, y];
                 })
               );
