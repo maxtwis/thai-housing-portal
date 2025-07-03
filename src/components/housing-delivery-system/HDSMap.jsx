@@ -54,11 +54,11 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
     }
   };
 
-        // Also need to update property handling for Chiang Mai data structure
+        // Detailed popup content with full information
         const generatePopupContent = (feature, colorScheme) => {
           const props = feature.properties;
           
-          // Handle different property structures between provinces
+          // Handle different property structures between provinces  
           const gridId = props.FID || props.OBJECTID_1 || props.Grid_Code || props.Grid_CODE;
           const gridPop = props.Grid_POP || 0;
           const gridHouse = props.Grid_House || 0;
@@ -114,6 +114,40 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
                     </div>
                   </div>
                 ` : ''}
+                
+                ${totalHousing > 0 ? `
+                  <div class="border-t pt-3 mt-3">
+                    <h4 class="text-sm font-medium text-gray-700 mb-2">รายละเอียดระบบที่อยู่อาศัย</h4>
+                    <div class="grid grid-cols-1 gap-1 text-xs">
+                      ${hdsNumbers.map(hds => 
+                        hds.count > 0 ? `
+                          <div class="flex justify-between">
+                            <span class="text-gray-600">${hdsCategories[hds.code]}</span>
+                            <span class="font-medium">${hds.count.toLocaleString()}</span>
+                          </div>
+                        ` : ''
+                      ).join('')}
+                    </div>
+                  </div>
+                ` : ''}
+                
+                ${(props.Stability_ || props.Supply_Pro || props.Subsidies_) ? `
+                  <div class="border-t pt-3 mt-3">
+                    <h4 class="text-sm font-medium text-gray-700 mb-2">ปัญหาที่พบ</h4>
+                    <div class="text-xs text-gray-600 space-y-1">
+                      ${props.Stability_ ? `<div><span class="font-medium text-red-600">ความมั่นคง:</span> ${props.Stability_}</div>` : ''}
+                      ${props.Supply_Pro ? `<div><span class="font-medium text-orange-600">อุปทาน:</span> ${props.Supply_Pro}</div>` : ''}
+                      ${props.Subsidies_ ? `<div><span class="font-medium text-blue-600">เงินอุดหนุน:</span> ${props.Subsidies_}</div>` : ''}
+                    </div>
+                  </div>
+                ` : ''}
+                
+                <div class="border-t pt-2 mt-3">
+                  <div class="flex justify-between items-baseline text-xs text-gray-500">
+                    <span>ความหนาแน่น</span>
+                    <span>${gridPop && props.Shape_Area ? ((gridPop / props.Shape_Area) * 1000000).toFixed(1) : '0'} คน/ตร.กม.</span>
+                  </div>
+                </div>
               </div>
             </div>
           `;
