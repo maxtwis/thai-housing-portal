@@ -244,12 +244,14 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
     // Initialize map
     const map = L.map(mapContainerRef.current, {
       center: currentProvince.center,
-      zoom: isMobile ? 10 : 11,
+      zoom: isMobile ? 9 : 10,
       zoomControl: !isMobile,
       attributionControl: false
     });
 
     mapRef.current = map;
+    
+    console.log(`Initializing map for ${currentProvince.name} at center:`, currentProvince.center);
 
     // Add zoom control to bottom right for mobile
     if (isMobile) {
@@ -294,58 +296,25 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
         
         let processedGeoJSON = geojsonData;
 
-        // Check if coordinates need transformation
-        if (currentProvince.needsTransformation) {
-          // Transform coordinates from Web Mercator (EPSG:3857) to WGS84 (EPSG:4326)
-          processedGeoJSON = {
-            ...geojsonData,
-            features: geojsonData.features.map(feature => {
-              if (feature.geometry && feature.geometry.coordinates) {
-                const transformedCoordinates = feature.geometry.coordinates.map(ring => 
-                  ring.map(coord => {
-                    // Convert from Web Mercator to WGS84 using more precise formula
-                    const [x, y] = coord;
-                    
-                    // More precise Web Mercator to WGS84 conversion
-                    const lng = x / 20037508.342789244 * 180;
-                    const lat = Math.atan(Math.sinh(y / 20037508.342789244 * Math.PI)) * 180 / Math.PI;
-                    
-                    // Debug: Check if coordinates are reasonable for Thailand
-                    if (lng < 97 || lng > 106 || lat < 5 || lat > 21) {
-                      console.warn('Unusual coordinates detected:', { original: coord, transformed: [lng, lat] });
-                    }
-                    
-                    return [lng, lat]; // GeoJSON format: [lng, lat]
-                  })
-                );
-                
-                return {
-                  ...feature,
-                  geometry: {
-                    ...feature.geometry,
-                    coordinates: transformedCoordinates
-                  }
-                };
-              }
-              return feature;
-            })
-          };
-        } else {
-          // Coordinates are already in WGS84, just validate them
-          const sampleCoord = geojsonData.features[0]?.geometry?.coordinates[0]?.[0];
-          if (sampleCoord) {
-            const [lng, lat] = sampleCoord;
-            console.log(`${currentProvince.name} coordinates are already in WGS84:`, { lng, lat });
-            
-            // Validate coordinates are reasonable for Thailand
-            if (lng < 97 || lng > 106 || lat < 5 || lat > 21) {
-              console.warn(`Unusual coordinates detected for ${currentProvince.name}:`, { lng, lat });
-            }
+        // The coordinates are already in WGS84 format [lng, lat]
+        // Just validate and log them
+        const sampleCoord = geojsonData.features[0]?.geometry?.coordinates[0]?.[0];
+        if (sampleCoord) {
+          const [lng, lat] = sampleCoord;
+          console.log(`${currentProvince.name} coordinates are in WGS84 [lng, lat]:`, { lng, lat });
+          
+          // Validate coordinates are reasonable for Thailand
+          if (lng < 97 || lng > 106 || lat < 5 || lat > 21) {
+            console.warn(`Unusual coordinates detected for ${currentProvince.name}:`, { lng, lat });
           }
         }
+        
+        // No transformation needed - coordinates are already in correct WGS84 format
+        processedGeoJSON = geojsonData;
 
         console.log('Processed GeoJSON:', processedGeoJSON.features.length, 'features');
-        console.log('Sample processed coordinates:', processedGeoJSON.features[0]?.geometry?.coordinates[0]?.slice(0, 2));
+        console.log('Sample processed coordinates:', processedGeoJSON.features[0]?.geometry?.coordinates[0]?.[0]);
+        console.log('First feature geometry type:', processedGeoJSON.features[0]?.geometry?.type);
 
         // Style function for HDS grids
         const style = (feature) => {
@@ -456,19 +425,35 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
         const bounds = L.latLngBounds();
         processedGeoJSON.features.forEach(feature => {
           if (feature.geometry && feature.geometry.coordinates) {
-            feature.geometry.coordinates[0].forEach(coord => {
-              // Coordinates are already [lng, lat], Leaflet expects [lat, lng]
-              bounds.extend([coord[1], coord[0]]);
-            });
+            // Handle MultiPolygon geometry
+            const coordinates = feature.geometry.coordinates;
+            if (coordinates && coordinates.length > 0) {
+              // Get the outer ring of the first polygon
+              const outerRing = coordinates[0][0];
+              if (outerRing && Array.isArray(outerRing)) {
+                outerRing.forEach(coord => {
+                  // GeoJSON coordinates are [lng, lat], Leaflet expects [lat, lng]
+                  if (coord && coord.length >= 2) {
+                    bounds.extend([coord[1], coord[0]]); // [lat, lng] for Leaflet
+                  }
+                });
+              }
+            }
           }
         });
         
+        console.log('Calculated bounds:', bounds.isValid() ? bounds.toString() : 'Invalid bounds');
+        
         // Only fit bounds on initial load, don't force it afterwards
         if (bounds.isValid()) {
+          console.log('Fitting map to bounds...');
           map.fitBounds(bounds, {
             padding: isMobile ? [20, 20] : [50, 50],
             maxZoom: isMobile ? 14 : 16
           });
+        } else {
+          console.log('Bounds invalid, using province center');
+          map.setView(currentProvince.center, isMobile ? 9 : 10);
         }
 
         // Update legend initially
