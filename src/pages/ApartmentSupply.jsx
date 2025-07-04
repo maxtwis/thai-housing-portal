@@ -491,8 +491,8 @@ const ApartmentSupply = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">ข้อมูลอพาร์ตเมนต์</h1>
-              <p className="text-gray-600">แสดงข้อมูลอพาร์ตเมนต์และที่พักเช่าในเขตพื้นที่ต่างๆ</p>
+              <h1 className="text-2xl font-bold text-gray-900">ข้อมูล Housing Stock</h1>
+              <p className="text-gray-600">แสดงข้อมูลที่อยู่อาศัย เช่น อพาร์ตเมนต์และที่พักเช่าในเขตพื้นที่ต่าง ๆ</p>
             </div>
             
             {/* Mobile filter toggle */}
@@ -632,7 +632,7 @@ const ApartmentSupply = () => {
 
                 {/* Proximity Score Filter */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">คะแนนความใกล้เคียงสถานที่ (%)</label>
+                  <label className="block text-sm font-medium text-gray-700">คะแนนความใกล้เคียงสถานบริการ (%)</label>
                   <select 
                     className="mt-1 block w-full rounded-md border border-gray-300 p-2"
                     value={filters.proximityScore}
