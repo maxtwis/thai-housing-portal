@@ -430,28 +430,21 @@ const Dashboard = () => {
         <div className="w-full md:w-5/12">
           {/* Province Filter Section - Moved above map */}
           <div className="mb-4">
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-2">
-                <label className="text-sm font-medium text-gray-700">
-                  Select Province:
-                </label>
-                <select
-                  value={activeProvince}
-                  onChange={(e) => handleProvinceChange(parseInt(e.target.value))}
-                  className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm flex-1"
-                >
-                  {provinces.map(province => (
-                    <option key={province.id} value={province.id}>
-                      {province.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              
-              {/* Active province indicator */}
-              <div className="text-sm text-gray-600">
-                Viewing data for: <span className="font-semibold text-blue-600">{provinceName}</span>
-              </div>
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-gray-700">
+                Select Province:
+              </label>
+              <select
+                value={activeProvince}
+                onChange={(e) => handleProvinceChange(parseInt(e.target.value))}
+                className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm flex-1"
+              >
+                {provinces.map(province => (
+                  <option key={province.id} value={province.id}>
+                    {province.name}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
