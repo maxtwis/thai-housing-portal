@@ -17,6 +17,7 @@ import PolicyTable from '../components/charts/PolicyTable';
 import PolicyChart from '../components/charts/PolicyChart';
 import PopulationAgeChart from '../components/charts/PopulationAgeChart';
 import HousingAffordabilityChart from '../components/charts/HousingAffordabilityChart';
+import HousingDemandChart from '../components/charts/HousingDemandChart';
 
 const Dashboard = () => {
   const [activeProvince, setActiveProvince] = useState(10); // Default to Bangkok
@@ -32,6 +33,7 @@ const Dashboard = () => {
     policy,
     housingSupply,
     housingAffordability,
+    housingDemand,
     expenditure,
     isLoading,
     isError,
@@ -56,7 +58,7 @@ const Dashboard = () => {
       }
     }
     
-    if (topicParam && ['demographics', 'housing', 'affordability', 'policy'].includes(topicParam)) {
+    if (topicParam && ['demographics', 'housing', 'affordability', 'demand', 'policy'].includes(topicParam)) {
       setActiveTopic(topicParam);
     }
   }, []);
@@ -82,52 +84,38 @@ const Dashboard = () => {
   const getFilteredPolicies = () => {
     if (!policy.data) return [];
     
-    if (policyFilter && policyFilter.startsWith('status:')) {
-      const status = policyFilter.split(':')[1];
-      return policy.data.filter(p => p.Status === status);
-    }
+    if (!policyFilter) return policy.data;
     
-    if (policyFilter && policyFilter.startsWith('type:')) {
-      const type = policyFilter.split(':')[1];
+    if (policyFilter.startsWith('type:')) {
+      const typeCode = policyFilter.split(':')[1];
       return policy.data.filter(p => 
-        p['3S Model'] && p['3S Model'].includes(type)
+        p['3S Model'] && p['3S Model'].includes(typeCode)
       );
     }
     
-    return policy.data || [];
+    return policy.data;
   };
   
-  const filteredPolicies = getFilteredPolicies();
-  
-  // Convert expenditure queries result to the format expected by components
-  const getExpenditureData = () => {
-    const result = {};
-    expenditure.forEach((query, index) => {
-      const quintileId = index + 1;
-      if (query.data) {
-        result[quintileId] = query.data;
-      }
-    });
-    return result;
-  };
-  
-  // Get key metrics
+  // Get key metrics for summary
   const getLatestMetrics = () => {
-    const populationData = population.data || [];
-    const householdData = household.data || [];
-    const incomeData = income.data || [];
+    const latestPop = population.data && population.data.length > 0 
+      ? population.data[population.data.length - 1].population 
+      : 0;
     
-    if (!populationData.length || !householdData.length || !incomeData.length) {
-      return { population: 0, households: 0, income: 0, incomeGrowth: 0 };
-    }
+    const latestHouseholds = household.data && household.data.length > 0 
+      ? household.data[household.data.length - 1].household 
+      : 0;
     
-    const latestPop = populationData[populationData.length - 1]?.population || 0;
-    const latestHouseholds = householdData[householdData.length - 1]?.household || 0;
-    const latestIncome = incomeData[incomeData.length - 1]?.income || 0;
+    const latestIncome = income.data && income.data.length > 0 
+      ? income.data[income.data.length - 1].income 
+      : 0;
     
-    // Calculate income growth
-    const firstIncome = incomeData[0]?.income || 0;
-    const incomeGrowth = firstIncome ? ((latestIncome / firstIncome) - 1) * 100 : 0;
+    const firstIncome = income.data && income.data.length > 0 
+      ? income.data[0].income 
+      : 0;
+    
+    const incomeGrowth = firstIncome > 0 && latestIncome > 0 
+      ? ((latestIncome / firstIncome) - 1) * 100 : 0;
     
     return {
       population: latestPop,
@@ -162,6 +150,7 @@ const Dashboard = () => {
             {income.isFetching && <span className="text-blue-600">💰 Updating income...</span>}
             {housingSupply.isFetching && <span className="text-blue-600">🏘️ Updating housing supply...</span>}
             {housingAffordability.isFetching && <span className="text-blue-600">💳 Updating affordability...</span>}
+            {housingDemand.isFetching && <span className="text-blue-600">🏗️ Updating housing demand...</span>}
             {policy.isFetching && <span className="text-blue-600">📋 Updating policies...</span>}
           </div>
         )}
@@ -177,6 +166,7 @@ const Dashboard = () => {
           <option value="demographics">Demographics</option>
           <option value="housing">Housing Supply</option>
           <option value="affordability">Housing Affordability</option>
+          <option value="demand">Housing Demand</option>
           <option value="policy">Policy</option>
         </select>
       </div>
@@ -225,6 +215,15 @@ const Dashboard = () => {
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
             >
               HOUSING AFFORDABILITY
+            </button>
+            <button 
+              onClick={() => setActiveTopic('demand')}
+              className={`px-4 py-2 rounded-t-md text-xs font-bold mr-1 whitespace-nowrap
+                ${activeTopic === 'demand' 
+                  ? 'bg-blue-800 text-white' 
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+            >
+              HOUSING DEMAND
             </button>
             <button 
               onClick={() => setActiveTopic('policy')}
@@ -350,6 +349,46 @@ const Dashboard = () => {
               </div>
             </div>
           )}
+
+          {/* Housing Demand Content */}
+          {activeTopic === 'demand' && (
+            <div className="grid grid-cols-1 gap-4">
+              <HousingDemandChart 
+                provinceName={provinceName} 
+                provinceId={activeProvince} 
+              />
+              
+              {/* Additional demand insights */}
+              <div className="bg-white p-4 rounded-lg shadow">
+                <h3 className="text-sm font-semibold text-gray-800 mb-3">
+                  ทำความเข้าใจความต้องการที่อยู่อาศัย
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                  <div className="bg-blue-50 p-3 rounded border border-blue-200">
+                    <h4 className="font-semibold text-blue-800 mb-1">การเปลี่ยนประเภทที่อยู่อาศัย</h4>
+                    <p className="text-blue-700">
+                      แสดงความต้องการเปลี่ยนแปลงจากประเภทที่อยู่อาศัยปัจจุบันไปสู่ประเภทที่ต้องการในอนาคต ช่วยให้เข้าใจแนวโน้มการพัฒนาที่อยู่อาศัย
+                    </p>
+                  </div>
+                  <div className="bg-green-50 p-3 rounded border border-green-200">
+                    <h4 className="font-semibold text-green-800 mb-1">การจัดหาเงินทุน</h4>
+                    <p className="text-green-700">
+                      แสดงรูปแบบการจัดหาเงินทุนที่ผู้ต้องการจะใช้ (เช่า หรือ ผ่อน) ในการย้ายไปยังที่อยู่อาศัยใหม่
+                    </p>
+                  </div>
+                  <div className="bg-yellow-50 p-3 rounded border border-yellow-200">
+                    <h4 className="font-semibold text-yellow-800 mb-1">ความสามารถในการจ่าย</h4>
+                    <p className="text-yellow-700">
+                      แสดงราคาที่ผู้ตอบแบบสอบถามสามารถจ่ายได้ แยกตามกลุ่มรายได้ เพื่อวางแผนการพัฒนาที่อยู่อาศัยที่เหมาะสม
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-3 p-2 bg-gray-50 rounded text-xs text-gray-600">
+                  <p><strong>หมายเหตุ:</strong> ข้อมูลจากการสำรวจความต้องการที่อยู่อาศัยในจังหวัดสงขลา ช่วยให้เข้าใจพฤติกรรมและความต้องการของประชาชนในการเลือกที่อยู่อาศัย รวมถึงขีดความสามารถทางการเงิน</p>
+                </div>
+              </div>
+            </div>
+          )}
           
           {/* Policy Content */}
           {activeTopic === 'policy' && (
@@ -357,71 +396,42 @@ const Dashboard = () => {
               {/* Policy filter notice */}
               {policyFilter && (
                 <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-2 rounded-md mb-4 flex justify-between items-center">
-                  <span>
-                    <span className="font-medium">Filtered by:</span> {policyFilter.replace(':', ': ')}
-                  </span>
+                  <span>Filtered by: {policyFilter}</span>
                   <button 
                     onClick={() => setPolicyFilter(null)}
-                    className="text-xs bg-white border border-blue-300 hover:bg-blue-100 px-2 py-1 rounded"
+                    className="text-blue-800 hover:text-blue-900 underline"
                   >
-                    Clear Filter
+                    Clear filter
                   </button>
                 </div>
               )}
               
-              <div className="mb-4">
-                <PolicyChart 
-                  policies={policy.data} 
-                  onFilterChange={setPolicyFilter}
-                  activeFilter={policyFilter}
-                />
-              </div>
-              
-              <div className="mb-4">
+              <div className="grid grid-cols-1 gap-4">
                 <PolicyTable 
-                  policies={filteredPolicies} 
+                  policies={getFilteredPolicies()} 
                   provinceName={provinceName}
-                  onFilterChange={setPolicyFilter}
-                  activeFilter={policyFilter}
+                />
+                
+                <PolicyChart 
+                  policies={getFilteredPolicies()} 
+                  provinceName={provinceName}
                 />
               </div>
             </div>
           )}
         </div>
 
-        {/* Right side - Map and Summary */}
+        {/* Right side - Map and summary */}
         <div className="w-full md:w-5/12">
-          {/* Province Selector */}
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              เลือกจังหวัด
-            </label>
-            <select 
-              className="w-full p-3 border border-gray-300 rounded-lg shadow-sm bg-white text-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              value={activeProvince}
-              onChange={(e) => setActiveProvince(parseInt(e.target.value))}
-            >
-              {provinces.map((province) => (
-                <option key={province.id} value={province.id}>
-                  {province.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          <MapView
+            activeProvince={activeProvince}
+            setActiveProvince={setActiveProvince}
+            onProvinceHover={handleProvinceHover}
+          />
 
-          {/* Map Section */}
-          <div className="mb-6">
-            <MapView
-              provinces={provinces}
-              activeProvince={activeProvince}
-              onProvinceChange={setActiveProvince}
-              onProvinceHover={handleProvinceHover}
-            />
-          </div>
-
-          {/* Summary Metrics */}
-          {!isLoading && !isError && (
-            <div className="bg-white rounded-lg shadow p-4 mb-6">
+          {/* Province Summary Card */}
+          {metrics.population > 0 && (
+            <div className="bg-white rounded-lg shadow p-4 mt-4">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">
                 {provinceName} Overview
               </h3>
@@ -429,22 +439,19 @@ const Dashboard = () => {
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Population</span>
-                  <span className="font-medium">
-                    {metrics.population.toLocaleString()}
-                  </span>
+                  <span className="font-medium">{metrics.population.toLocaleString()}</span>
                 </div>
+                
                 <div className="flex justify-between">
                   <span className="text-gray-600">Households</span>
-                  <span className="font-medium">
-                    {metrics.households.toLocaleString()}
-                  </span>
+                  <span className="font-medium">{metrics.households.toLocaleString()}</span>
                 </div>
+                
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Median Income</span>
-                  <span className="font-medium">
-                    ฿{metrics.income.toLocaleString()}
-                  </span>
+                  <span className="text-gray-600">Avg Income</span>
+                  <span className="font-medium">฿{metrics.income.toLocaleString()}</span>
                 </div>
+                
                 <div className="flex justify-between">
                   <span className="text-gray-600">Income Growth</span>
                   <span className={`font-medium ${metrics.incomeGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -457,7 +464,7 @@ const Dashboard = () => {
 
           {/* Policy Summary */}
           {policy.data && policy.data.length > 0 && (
-            <div className="bg-white rounded-lg shadow p-4">
+            <div className="bg-white rounded-lg shadow p-4 mt-4">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">
                 Policy Summary
               </h3>
@@ -513,7 +520,7 @@ const Dashboard = () => {
           
           {/* React Query DevTools Info */}
           {process.env.NODE_ENV === 'development' && (
-            <div className="bg-white p-3 rounded-lg shadow text-xs">
+            <div className="bg-white p-3 rounded-lg shadow text-xs mt-4">
               <h4 className="font-medium text-gray-800 mb-2">Query Cache Status</h4>
               <div className="space-y-1 text-xs">
                 <div className="flex justify-between">
@@ -532,6 +539,12 @@ const Dashboard = () => {
                   <span>Affordability:</span>
                   <span className={`${housingAffordability.isStale ? 'text-orange-600' : 'text-green-600'}`}>
                     {housingAffordability.isLoading ? 'Loading...' : housingAffordability.isStale ? 'Stale' : 'Fresh'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Demand:</span>
+                  <span className={`${housingDemand.isStale ? 'text-orange-600' : 'text-green-600'}`}>
+                    {housingDemand.isLoading ? 'Loading...' : housingDemand.isStale ? 'Stale' : 'Fresh'}
                   </span>
                 </div>
                 <div className="flex justify-between">

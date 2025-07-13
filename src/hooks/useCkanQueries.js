@@ -17,6 +17,7 @@ const INCOME_RESOURCE_ID = '6a63d6c9-792c-450a-8f82-60e025bee415';
 const EXPENDITURE_RESOURCE_ID = '98eb6fce-d04e-44e6-b3af-408ad2957653';
 const HOUSEHOLD_RESOURCE_ID = '94b9e62e-7182-47b0-91b9-7c7400d990cc';
 const HOUSING_AFFORDABILITY_RESOURCE_ID = '73ff152b-02fc-4468-a93b-1b29b53186eb';
+const HOUSING_DEMAND_RESOURCE_ID = '1417ade4-fe17-4558-868a-e1b1821c6a9e';
 
 // Individual query hooks
 export const useHousingSupplyData = (provinceId) => {
@@ -33,6 +34,24 @@ export const useHousingSupplyData = (provinceId) => {
     enabled: !!provinceId,
     staleTime: 5 * 60 * 1000,
     cacheTime: 10 * 60 * 1000,
+  });
+};
+
+export const useHousingDemandData = (provinceId) => {
+  return useQuery({
+    queryKey: ['housing-demand', provinceId],
+    queryFn: async () => {
+      const result = await getCkanData(HOUSING_DEMAND_RESOURCE_ID, {
+        filters: JSON.stringify({ geo_id: provinceId }),
+        limit: 1000,
+        sort: 'Quintile asc, current_house_type asc, future_house_type asc'
+      });
+      
+      return result;
+    },
+    enabled: !!provinceId,
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    cacheTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
   });
 };
 
@@ -218,6 +237,7 @@ export const useAllProvinceData = (provinceId) => {
   const policy = usePolicyData(provinceId);
   const housingSupply = useHousingSupplyData(provinceId);
   const housingAffordability = useHousingAffordabilityData(provinceId);
+  const housingDemand = useHousingDemandData(provinceId); // Add this line
   const expenditureQueries = useAllExpenditureData(provinceId);
   
   return {
@@ -228,15 +248,19 @@ export const useAllProvinceData = (provinceId) => {
     policy,
     housingSupply,
     housingAffordability,
+    housingDemand, // Add this line
     expenditure: expenditureQueries,
     isLoading: population.isLoading || household.isLoading || income.isLoading || 
                populationAge.isLoading || policy.isLoading || housingSupply.isLoading ||
-               housingAffordability.isLoading || expenditureQueries.some(q => q.isLoading),
+               housingAffordability.isLoading || housingDemand.isLoading || // Add this
+               expenditureQueries.some(q => q.isLoading),
     isError: population.isError || household.isError || income.isError || 
              populationAge.isError || policy.isError || housingSupply.isError ||
-             housingAffordability.isError || expenditureQueries.some(q => q.isError),
+             housingAffordability.isError || housingDemand.isError || // Add this
+             expenditureQueries.some(q => q.isError),
   };
 };
+
 
 // Prefetch hook for preloading data
 export const usePrefetchProvinceData = () => {
@@ -348,12 +372,26 @@ export const usePrefetchProvinceData = () => {
         staleTime: 5 * 60 * 1000,
       }),
       queryClient.prefetchQuery({
+        queryKey: ['housing-demand', provinceId],
+        queryFn: async () => {
+          const result = await getCkanData(HOUSING_DEMAND_RESOURCE_ID, {
+            filters: JSON.stringify({ geo_id: provinceId }),
+            limit: 1000,
+            sort: 'Quintile asc, current_house_type asc, future_house_type asc'
+          });
+          
+          return result;
+        },
+        staleTime: 5 * 60 * 1000,
+      }),
+      queryClient.prefetchQuery({
         queryKey: ['policy', provinceId],
         queryFn: () => getPolicyData(provinceId),
         staleTime: 5 * 60 * 1000,
       }),
     ]);
   };
+  
   
   return { prefetchProvince };
 };
