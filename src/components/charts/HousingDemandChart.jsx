@@ -432,7 +432,7 @@ const HousingDemandChart = ({ provinceName, provinceId }) => {
             <p>แสดงราคาเฉลี่ยที่ผู้ตอบแบบสอบถามสามารถจ่ายได้ แยกตามกลุ่มรายได้</p>
           )}
           <p className="mt-1 text-gray-600">
-            ข้อมูลจากการสำรวจในจังหวัด{provinceName} 
+            ข้อมูลจากการสำรวจในจังหวัด{provinceName} เทศบาลนครหาดใหญ่
             {selectedQuintile !== 'all' && ` (${quintiles.find(q => q.value === selectedQuintile)?.label})`}
           </p>
         </div>
