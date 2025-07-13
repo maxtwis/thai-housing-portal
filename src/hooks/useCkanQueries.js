@@ -287,7 +287,13 @@ export const usePopulationAgeData = (provinceId) => {
         limit: 1000,
         sort: 'year asc'
       });
-      return result;
+      
+      // Return the transformed data directly (not the full result object)
+      return result.records.map(record => ({
+        year: record.year,
+        age_group: record.age_group,
+        age_population: record.age_population
+      }));
     },
     enabled: !!provinceId,
     staleTime: 5 * 60 * 1000,
@@ -407,7 +413,13 @@ export const usePrefetchProvinceData = () => {
             limit: 1000,
             sort: 'year asc'
           });
-          return result;
+          
+          // Return the transformed data directly
+          return result.records.map(record => ({
+            year: record.year,
+            age_group: record.age_group,
+            age_population: record.age_population
+          }));
         },
         staleTime: 5 * 60 * 1000,
       }),
