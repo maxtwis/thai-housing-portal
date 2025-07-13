@@ -253,6 +253,31 @@ export const useExpenditureData = (provinceId, quintileId) => {
   });
 };
 
+// Compound hook for all expenditure quintiles
+export const useAllExpenditureData = (provinceId) => {
+  return useQueries({
+    queries: [1, 2, 3, 4, 5].map(quintileId => ({
+      queryKey: ['expenditure', provinceId, quintileId],
+      queryFn: async () => {
+        let filters = {};
+        
+        if (provinceId) filters.geo_id = provinceId;
+        if (quintileId) filters.quintile = quintileId;
+        
+        const result = await getCkanData(EXPENDITURE_RESOURCE_ID, {
+          filters: JSON.stringify(filters),
+          limit: 500
+        });
+        
+        return result.records || [];
+      },
+      enabled: !!provinceId,
+      staleTime: 5 * 60 * 1000,
+      cacheTime: 10 * 60 * 1000,
+    })),
+  });
+};
+
 export const usePopulationAgeData = (provinceId) => {
   return useQuery({
     queryKey: ['population-age', provinceId],
@@ -290,15 +315,17 @@ export const useAllProvinceData = (provinceId) => {
   const housingSupply = useHousingSupplyData(provinceId);
   const housingAffordability = useHousingAffordabilityData(provinceId);
   const housingDemand = useHousingDemandData(provinceId);
-  const expenditure = useExpenditureData(provinceId, 1);
+  const expenditure = useAllExpenditureData(provinceId);
 
   const isLoading = population.isLoading || household.isLoading || income.isLoading || 
                    populationAge.isLoading || policy.isLoading || housingSupply.isLoading || 
-                   housingAffordability.isLoading || housingDemand.isLoading || expenditure.isLoading;
+                   housingAffordability.isLoading || housingDemand.isLoading || 
+                   expenditure.some(q => q.isLoading);
 
   const isError = population.isError || household.isError || income.isError || 
                  populationAge.isError || policy.isError || housingSupply.isError || 
-                 housingAffordability.isError || housingDemand.isError || expenditure.isError;
+                 housingAffordability.isError || housingDemand.isError || 
+                 expenditure.some(q => q.isError);
 
   return {
     population,
