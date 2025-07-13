@@ -118,7 +118,7 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
           <p className="text-xs text-gray-600 mb-2">
             {selectedDemandType} • {metrics[selectedMetric]}
             {dataLevel === 'district' && selectedDistrict && (
-              <span className="ml-1">• {districtsData?.find(d => d.id === selectedDistrict)?.name}</span>
+              <span className="ml-1">• {selectedDistrict}</span>
             )}
           </p>
           {nonZeroPayload.map((entry, index) => (
@@ -164,9 +164,7 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
     );
   }
 
-  const currentDistrictName = selectedDistrict && districtsData 
-    ? districtsData.find(d => d.id === selectedDistrict)?.name 
-    : '';
+  const currentDistrictName = selectedDistrict; // District name is now used directly as ID
 
   const chartTitle = dataLevel === 'district' && currentDistrictName 
     ? `ความสามารถในการจ่ายค่าที่อยู่อาศัยตามกลุ่มรายได้ (${currentDistrictName})`

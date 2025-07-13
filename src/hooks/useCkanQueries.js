@@ -71,18 +71,18 @@ export const useHousingDemandData = (provinceId) => {
 };
 
 // Updated hook for housing affordability data with district support
-export const useHousingAffordabilityData = (provinceId, level = 'province', districtId = null) => {
+export const useHousingAffordabilityData = (provinceId, level = 'province', districtName = null) => {
   return useQuery({
-    queryKey: ['housing-affordability', provinceId, level, districtId],
+    queryKey: ['housing-affordability', provinceId, level, districtName],
     queryFn: async () => {
       let resourceId, filters;
       
-      if (level === 'district' && districtId) {
+      if (level === 'district' && districtName) {
         // Use district-level data from new resource
         resourceId = DISTRICT_HOUSING_AFFORDABILITY_RESOURCE_ID;
         filters = JSON.stringify({ 
           geo_id: provinceId,
-          district_id: districtId 
+          dname: districtName 
         });
       } else {
         // Use existing province-level data
@@ -135,26 +135,19 @@ export const useDistrictsData = (provinceId) => {
   return useQuery({
     queryKey: ['districts', provinceId],
     queryFn: async () => {
-      // Get distinct district_id values for the province
+      // Get distinct dname values for the province
       const result = await getCkanData(DISTRICT_HOUSING_AFFORDABILITY_RESOURCE_ID, {
         filters: JSON.stringify({ geo_id: provinceId }),
         limit: 1000
       });
       
-      // Extract unique districts
-      const districts = [...new Set(result.records.map(record => record.district_id))]
+      // Extract unique districts using dname instead of district_id
+      const districts = [...new Set(result.records.map(record => record.dname))]
         .filter(Boolean)
-        .map(districtId => {
-          // Find district name from the data (you can expand this mapping)
-          const districtMapping = {
-            '03901101': 'เทศบาลนครหาดใหญ่'
-          };
-          
-          return {
-            id: districtId,
-            name: districtMapping[districtId] || `District ${districtId}`
-          };
-        });
+        .map(districtName => ({
+          id: districtName, // Use district name as ID
+          name: districtName
+        }));
       
       return districts;
     },
@@ -466,19 +459,13 @@ export const usePrefetchProvinceData = () => {
             limit: 1000
           });
           
-          // Extract unique districts
-          const districts = [...new Set(result.records.map(record => record.district_id))]
+          // Extract unique districts using dname instead of district_id
+          const districts = [...new Set(result.records.map(record => record.dname))]
             .filter(Boolean)
-            .map(districtId => {
-              const districtMapping = {
-                '03901101': 'เทศบาลนครหาดใหญ่'
-              };
-              
-              return {
-                id: districtId,
-                name: districtMapping[districtId] || `District ${districtId}`
-              };
-            });
+            .map(districtName => ({
+              id: districtName, // Use district name as ID
+              name: districtName
+            }));
           
           return districts;
         },
@@ -487,12 +474,12 @@ export const usePrefetchProvinceData = () => {
       // Prefetch district-level housing affordability for สงขลา (geo_id = 90)
       ...(provinceId === 90 ? [
         queryClient.prefetchQuery({
-          queryKey: ['housing-affordability', provinceId, 'district', '03901101'],
+          queryKey: ['housing-affordability', provinceId, 'district', 'เทศบาลนครหาดใหญ่'],
           queryFn: async () => {
             const result = await getCkanData(DISTRICT_HOUSING_AFFORDABILITY_RESOURCE_ID, {
               filters: JSON.stringify({ 
                 geo_id: provinceId,
-                district_id: '03901101' 
+                dname: 'เทศบาลนครหาดใหญ่' 
               }),
               limit: 1000,
               sort: 'Quintile asc, House_type asc'
