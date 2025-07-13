@@ -18,6 +18,21 @@ const EXPENDITURE_RESOURCE_ID = '98eb6fce-d04e-44e6-b3af-408ad2957653';
 const HOUSEHOLD_RESOURCE_ID = '94b9e62e-7182-47b0-91b9-7c7400d990cc';
 const HOUSING_AFFORDABILITY_RESOURCE_ID = '73ff152b-02fc-4468-a93b-1b29b53186eb';
 const HOUSING_DEMAND_RESOURCE_ID = '1417ade4-fe17-4558-868a-e1b1821c6a9e';
+// NEW: District-level housing affordability resource ID
+const DISTRICT_HOUSING_AFFORDABILITY_RESOURCE_ID = 'c0b992d2-58f0-49ac-a63b-a4d163b8a264';
+
+// Helper function to map house type names to IDs for district data
+const mapHouseTypeToId = (houseTypeName) => {
+  const houseTypeMapping = {
+    'บ้านเดี่ยว': '1',
+    'ห้องแถว/ตึกแถว': '2', 
+    'ทาวน์เฮ้าส์/ทาวโฮม': '3',
+    'หอพัก/แฟลต/อพาร์ทเมนต์': '4',
+    'ตึกแถวพาณิชย์': '5'
+  };
+  
+  return houseTypeMapping[houseTypeName] || '1';
+};
 
 // Individual query hooks
 export const useHousingSupplyData = (provinceId) => {
@@ -55,29 +70,97 @@ export const useHousingDemandData = (provinceId) => {
   });
 };
 
-export const useHousingAffordabilityData = (provinceId) => {
+// Updated hook for housing affordability data with district support
+export const useHousingAffordabilityData = (provinceId, level = 'province', districtId = null) => {
   return useQuery({
-    queryKey: ['housing-affordability', provinceId],
+    queryKey: ['housing-affordability', provinceId, level, districtId],
     queryFn: async () => {
-      const result = await getCkanData(HOUSING_AFFORDABILITY_RESOURCE_ID, {
-        filters: JSON.stringify({ geo_id: provinceId }),
+      let resourceId, filters;
+      
+      if (level === 'district' && districtId) {
+        // Use district-level data from new resource
+        resourceId = DISTRICT_HOUSING_AFFORDABILITY_RESOURCE_ID;
+        filters = JSON.stringify({ 
+          geo_id: provinceId,
+          district_id: districtId 
+        });
+      } else {
+        // Use existing province-level data
+        resourceId = HOUSING_AFFORDABILITY_RESOURCE_ID;
+        filters = JSON.stringify({ geo_id: provinceId });
+      }
+      
+      const result = await getCkanData(resourceId, {
+        filters,
         limit: 1000,
         sort: 'Quintile asc, house_type asc'
       });
       
-      // Filter out house_type 6 as requested
-      const filteredRecords = result.records.filter(record => 
-        record.house_type && parseInt(record.house_type) <= 5
-      );
-      
-      return {
-        ...result,
-        records: filteredRecords
-      };
+      if (level === 'district') {
+        // For district data, transform the structure to match existing chart format
+        const transformedRecords = result.records.map(record => ({
+          ...record,
+          // Map the new field names to existing field names expected by the chart
+          house_type: mapHouseTypeToId(record.House_type),
+          demand_type: record.demand_type,
+          Quintile: record.Quintile,
+          Total_Hburden: record.Total_Hburden,
+          Exp_house: record.Exp_house
+        }));
+        
+        return {
+          ...result,
+          records: transformedRecords
+        };
+      } else {
+        // Filter out house_type 6 for province-level data as requested
+        const filteredRecords = result.records.filter(record => 
+          record.house_type && parseInt(record.house_type) <= 5
+        );
+        
+        return {
+          ...result,
+          records: filteredRecords
+        };
+      }
     },
     enabled: !!provinceId,
     staleTime: 5 * 60 * 1000,
     cacheTime: 10 * 60 * 1000,
+  });
+};
+
+// New hook to get available districts for a province
+export const useDistrictsData = (provinceId) => {
+  return useQuery({
+    queryKey: ['districts', provinceId],
+    queryFn: async () => {
+      // Get distinct district_id values for the province
+      const result = await getCkanData(DISTRICT_HOUSING_AFFORDABILITY_RESOURCE_ID, {
+        filters: JSON.stringify({ geo_id: provinceId }),
+        limit: 1000
+      });
+      
+      // Extract unique districts
+      const districts = [...new Set(result.records.map(record => record.district_id))]
+        .filter(Boolean)
+        .map(districtId => {
+          // Find district name from the data (you can expand this mapping)
+          const districtMapping = {
+            '03901101': 'เทศบาลนครหาดใหญ่'
+          };
+          
+          return {
+            id: districtId,
+            name: districtMapping[districtId] || `District ${districtId}`
+          };
+        });
+      
+      return districts;
+    },
+    enabled: !!provinceId,
+    staleTime: 10 * 60 * 1000,
+    cacheTime: 15 * 60 * 1000,
   });
 };
 
@@ -177,15 +260,9 @@ export const usePopulationAgeData = (provinceId) => {
       const result = await getCkanData(POPULATION_AGE_RESOURCE_ID, {
         filters: JSON.stringify({ geo_id: provinceId }),
         limit: 1000,
-        sort: 'year asc, age_group asc'
+        sort: 'year asc'
       });
-      const transformedData = result.records.map(record => ({
-        year: record.year,
-        age_group: record.age_group,
-        age_population: record.age_population
-      }));
-      
-      return transformedData;
+      return result;
     },
     enabled: !!provinceId,
     staleTime: 5 * 60 * 1000,
@@ -203,32 +280,7 @@ export const usePolicyData = (provinceId) => {
   });
 };
 
-// Compound hook for all expenditure quintiles
-export const useAllExpenditureData = (provinceId) => {
-  return useQueries({
-    queries: [1, 2, 3, 4, 5].map(quintileId => ({
-      queryKey: ['expenditure', provinceId, quintileId],
-      queryFn: async () => {
-        let filters = {};
-        
-        if (provinceId) filters.geo_id = provinceId;
-        if (quintileId) filters.quintile = quintileId;
-        
-        const result = await getCkanData(EXPENDITURE_RESOURCE_ID, {
-          filters: JSON.stringify(filters),
-          limit: 500
-        });
-        
-        return result.records || [];
-      },
-      enabled: !!provinceId,
-      staleTime: 5 * 60 * 1000,
-      cacheTime: 10 * 60 * 1000,
-    })),
-  });
-};
-
-// Compound hook for all data at once
+// Composite hook for all province data
 export const useAllProvinceData = (provinceId) => {
   const population = usePopulationData(provinceId);
   const household = useHouseholdData(provinceId);
@@ -237,9 +289,17 @@ export const useAllProvinceData = (provinceId) => {
   const policy = usePolicyData(provinceId);
   const housingSupply = useHousingSupplyData(provinceId);
   const housingAffordability = useHousingAffordabilityData(provinceId);
-  const housingDemand = useHousingDemandData(provinceId); // Add this line
-  const expenditureQueries = useAllExpenditureData(provinceId);
-  
+  const housingDemand = useHousingDemandData(provinceId);
+  const expenditure = useExpenditureData(provinceId, 1);
+
+  const isLoading = population.isLoading || household.isLoading || income.isLoading || 
+                   populationAge.isLoading || policy.isLoading || housingSupply.isLoading || 
+                   housingAffordability.isLoading || housingDemand.isLoading || expenditure.isLoading;
+
+  const isError = population.isError || household.isError || income.isError || 
+                 populationAge.isError || policy.isError || housingSupply.isError || 
+                 housingAffordability.isError || housingDemand.isError || expenditure.isError;
+
   return {
     population,
     household,
@@ -248,26 +308,18 @@ export const useAllProvinceData = (provinceId) => {
     policy,
     housingSupply,
     housingAffordability,
-    housingDemand, // Add this line
-    expenditure: expenditureQueries,
-    isLoading: population.isLoading || household.isLoading || income.isLoading || 
-               populationAge.isLoading || policy.isLoading || housingSupply.isLoading ||
-               housingAffordability.isLoading || housingDemand.isLoading || // Add this
-               expenditureQueries.some(q => q.isLoading),
-    isError: population.isError || household.isError || income.isError || 
-             populationAge.isError || policy.isError || housingSupply.isError ||
-             housingAffordability.isError || housingDemand.isError || // Add this
-             expenditureQueries.some(q => q.isError),
+    housingDemand,
+    expenditure,
+    isLoading,
+    isError
   };
 };
 
-
-// Prefetch hook for preloading data
+// Updated prefetch hook with district support
 export const usePrefetchProvinceData = () => {
   const queryClient = useQueryClient();
   
   const prefetchProvince = async (provinceId) => {
-    // Prefetch all data types for a province
     await Promise.all([
       queryClient.prefetchQuery({
         queryKey: ['population', provinceId],
@@ -277,12 +329,12 @@ export const usePrefetchProvinceData = () => {
             limit: 1000,
             sort: 'year asc'
           });
-          
-          // Transform the data to match the expected format in the chart component
-          return result.records.map(record => ({
+          const transformedData = result.records.map(record => ({
             year: record.year,
             population: record.population
           }));
+          
+          return transformedData;
         },
         staleTime: 5 * 60 * 1000,
       }),
@@ -294,30 +346,12 @@ export const usePrefetchProvinceData = () => {
             limit: 1000,
             sort: 'year asc'
           });
-          
-          // Transform the data to match the expected format in the chart component
-          return result.records.map(record => ({
+          const transformedData = result.records.map(record => ({
             year: record.year,
             household: record.household
           }));
-        },
-        staleTime: 5 * 60 * 1000,
-      }),
-      queryClient.prefetchQuery({
-        queryKey: ['population-age', provinceId],
-        queryFn: async () => {
-          const result = await getCkanData(POPULATION_AGE_RESOURCE_ID, {
-            filters: JSON.stringify({ geo_id: provinceId }),
-            limit: 1000,
-            sort: 'year asc, age_group asc'
-          });
           
-          // Transform the data to match the expected format in the chart component
-          return result.records.map(record => ({
-            year: record.year,
-            age_group: record.age_group,
-            age_population: record.age_population
-          }));
+          return transformedData;
         },
         staleTime: 5 * 60 * 1000,
       }),
@@ -329,12 +363,24 @@ export const usePrefetchProvinceData = () => {
             limit: 1000,
             sort: 'year asc'
           });
-          
-          // Transform the data to match the expected format in the chart component
-          return result.records.map(record => ({
+          const transformedData = result.records.map(record => ({
             year: record.year,
             income: record.income
           }));
+          
+          return transformedData;
+        },
+        staleTime: 5 * 60 * 1000,
+      }),
+      queryClient.prefetchQuery({
+        queryKey: ['population-age', provinceId],
+        queryFn: async () => {
+          const result = await getCkanData(POPULATION_AGE_RESOURCE_ID, {
+            filters: JSON.stringify({ geo_id: provinceId }),
+            limit: 1000,
+            sort: 'year asc'
+          });
+          return result;
         },
         staleTime: 5 * 60 * 1000,
       }),
@@ -350,8 +396,9 @@ export const usePrefetchProvinceData = () => {
         },
         staleTime: 5 * 60 * 1000,
       }),
+      // Prefetch province-level housing affordability
       queryClient.prefetchQuery({
-        queryKey: ['housing-affordability', provinceId],
+        queryKey: ['housing-affordability', provinceId, 'province', null],
         queryFn: async () => {
           const result = await getCkanData(HOUSING_AFFORDABILITY_RESOURCE_ID, {
             filters: JSON.stringify({ geo_id: provinceId }),
@@ -371,6 +418,64 @@ export const usePrefetchProvinceData = () => {
         },
         staleTime: 5 * 60 * 1000,
       }),
+      // Prefetch districts data
+      queryClient.prefetchQuery({
+        queryKey: ['districts', provinceId],
+        queryFn: async () => {
+          const result = await getCkanData(DISTRICT_HOUSING_AFFORDABILITY_RESOURCE_ID, {
+            filters: JSON.stringify({ geo_id: provinceId }),
+            limit: 1000
+          });
+          
+          // Extract unique districts
+          const districts = [...new Set(result.records.map(record => record.district_id))]
+            .filter(Boolean)
+            .map(districtId => {
+              const districtMapping = {
+                '03901101': 'เทศบาลนครหาดใหญ่'
+              };
+              
+              return {
+                id: districtId,
+                name: districtMapping[districtId] || `District ${districtId}`
+              };
+            });
+          
+          return districts;
+        },
+        staleTime: 10 * 60 * 1000,
+      }),
+      // Prefetch district-level housing affordability for สงขลา (geo_id = 90)
+      ...(provinceId === 90 ? [
+        queryClient.prefetchQuery({
+          queryKey: ['housing-affordability', provinceId, 'district', '03901101'],
+          queryFn: async () => {
+            const result = await getCkanData(DISTRICT_HOUSING_AFFORDABILITY_RESOURCE_ID, {
+              filters: JSON.stringify({ 
+                geo_id: provinceId,
+                district_id: '03901101' 
+              }),
+              limit: 1000,
+              sort: 'Quintile asc, House_type asc'
+            });
+            
+            const transformedRecords = result.records.map(record => ({
+              ...record,
+              house_type: mapHouseTypeToId(record.House_type),
+              demand_type: record.demand_type,
+              Quintile: record.Quintile,
+              Total_Hburden: record.Total_Hburden,
+              Exp_house: record.Exp_house
+            }));
+            
+            return {
+              ...result,
+              records: transformedRecords
+            };
+          },
+          staleTime: 5 * 60 * 1000,
+        })
+      ] : []),
       queryClient.prefetchQuery({
         queryKey: ['housing-demand', provinceId],
         queryFn: async () => {
@@ -391,7 +496,6 @@ export const usePrefetchProvinceData = () => {
       }),
     ]);
   };
-  
   
   return { prefetchProvince };
 };
