@@ -132,7 +132,7 @@ const HousingDemandChart = ({ provinceName, provinceId }) => {
 
       return Object.entries(affordability).map(([quintile, data]) => ({
         quintile,
-        averagePrice: data.totalCount > 0 ? data.totalPrice / data.totalCount : 0,
+        averagePrice: data.totalCount > 0 ? Math.round(data.totalPrice / data.totalCount) : 0,
         respondents: data.totalCount
       })).sort((a, b) => {
         // Sort by quintile order
@@ -269,7 +269,7 @@ const HousingDemandChart = ({ provinceName, provinceId }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="flex items-center gap-2">
             <label className="text-xs font-medium text-gray-700">
-              มุมมอง:
+              ตัวชี้วัด:
             </label>
             <select
               value={selectedView}
@@ -398,11 +398,11 @@ const HousingDemandChart = ({ provinceName, provinceId }) => {
               <YAxis 
                 fontSize={10}
                 label={{ value: 'ราคา (บาท)', angle: -90, position: 'insideLeft' }}
-                tickFormatter={(value) => `${(value / 1000).toFixed(0)}K`}
+                tickFormatter={(value) => `${Math.round(value / 1000)}K`}
               />
               <Tooltip 
                 formatter={(value, name) => [
-                  name === 'averagePrice' ? `${value.toLocaleString()} บาท` : `${value} คน`,
+                  name === 'averagePrice' ? `${Math.round(value).toLocaleString()} บาท` : `${value} คน`,
                   name === 'averagePrice' ? 'ราคาเฉลี่ยที่สามารถจ่ายได้' : 'จำนวนผู้ตอบแบบสอบถาม'
                 ]}
               />
