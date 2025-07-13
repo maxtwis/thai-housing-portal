@@ -402,9 +402,10 @@ const HousingDemandChart = ({ provinceName, provinceId }) => {
               />
               <Tooltip 
                 formatter={(value, name) => [
-                  name === 'averagePrice' ? `${Math.round(value).toLocaleString()} บาท` : `${value} คน`,
+                  name === 'averagePrice' ? `${Math.round(value).toLocaleString()} บาท` : `${value.toLocaleString()} คน`,
                   name === 'averagePrice' ? 'ราคาเฉลี่ยที่สามารถจ่ายได้' : 'จำนวนผู้ตอบแบบสอบถาม'
                 ]}
+                labelFormatter={(label) => `${label}`}
               />
               <Legend wrapperStyle={{ fontSize: '10px' }} />
               
