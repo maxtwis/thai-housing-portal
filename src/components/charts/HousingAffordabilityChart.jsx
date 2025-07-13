@@ -237,87 +237,86 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
         </div>
         
         {/* Controls */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-          {/* Data Level Selector */}
-          <div className="flex items-center gap-2">
-            <label className="text-xs font-medium text-gray-700 whitespace-nowrap">
-              ระดับข้อมูล:
-            </label>
-            <select
-              value={dataLevel}
-              onChange={(e) => {
-                setDataLevel(e.target.value);
-                if (e.target.value === 'province') {
-                  setSelectedDistrict(null);
-                }
-              }}
-              className="text-xs px-2 py-1 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 flex-1"
-            >
-              <option value="province">จังหวัด</option>
-              {hasDistrictData && <option value="district">อำเภอ/เขต</option>}
-            </select>
-          </div>
-
-          {/* District Selector (only show when district level is selected) */}
-          {dataLevel === 'district' && hasDistrictData && (
+        <div className="space-y-3">
+          {/* First Row: Data Level and District */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {/* Data Level Selector */}
             <div className="flex items-center gap-2">
               <label className="text-xs font-medium text-gray-700 whitespace-nowrap">
-                อำเภอ/เขต:
+                ระดับข้อมูล:
               </label>
               <select
-                value={selectedDistrict || ''}
-                onChange={(e) => setSelectedDistrict(e.target.value)}
+                value={dataLevel}
+                onChange={(e) => {
+                  setDataLevel(e.target.value);
+                  if (e.target.value === 'province') {
+                    setSelectedDistrict(null);
+                  }
+                }}
                 className="text-xs px-2 py-1 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 flex-1"
               >
-                {districtsData.map(district => (
-                  <option key={district.id} value={district.id}>
-                    {district.name}
-                  </option>
+                <option value="province">จังหวัด</option>
+                {hasDistrictData && <option value="district">อำเภอ/เขต</option>}
+              </select>
+            </div>
+
+            {/* District Selector (only show when district level is selected) */}
+            {dataLevel === 'district' && hasDistrictData && (
+              <div className="flex items-center gap-2">
+                <label className="text-xs font-medium text-gray-700 whitespace-nowrap">
+                  อำเภอ/เขต:
+                </label>
+                <select
+                  value={selectedDistrict || ''}
+                  onChange={(e) => setSelectedDistrict(e.target.value)}
+                  className="text-xs px-2 py-1 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 flex-1"
+                >
+                  {districtsData.map(district => (
+                    <option key={district.id} value={district.id}>
+                      {district.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+
+          {/* Second Row: Demand Type and Metric */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {/* Demand Type Selector */}
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-medium text-gray-700 whitespace-nowrap">
+                กลุ่มผู้มีความต้องการ:
+              </label>
+              <select
+                value={selectedDemandType}
+                onChange={(e) => setSelectedDemandType(e.target.value)}
+                className="text-xs px-2 py-1 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 flex-1"
+              >
+                {demandTypes.map(type => (
+                  <option key={type} value={type}>{type}</option>
                 ))}
               </select>
             </div>
-          )}
-          
-          {/* Demand Type Selector */}
-          <div className="flex items-center gap-2">
-            <label className="text-xs font-medium text-gray-700 whitespace-nowrap">
-              กลุ่มผู้มีความต้องการ:
-            </label>
-            <select
-              value={selectedDemandType}
-              onChange={(e) => setSelectedDemandType(e.target.value)}
-              className="text-xs px-2 py-1 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 flex-1"
-            >
-              {demandTypes.map(type => (
-                <option key={type} value={type}>{type}</option>
-              ))}
-            </select>
-          </div>
-          
-          {/* Metric Selector */}
-          <div className="flex items-center gap-2">
-            <label className="text-xs font-medium text-gray-700 whitespace-nowrap">
-              ตัวชี้วัด:
-            </label>
-            <select
-              value={selectedMetric}
-              onChange={(e) => setSelectedMetric(e.target.value)}
-              className="text-xs px-2 py-1 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 flex-1"
-            >
-              {Object.entries(metrics).map(([key, label]) => (
-                <option key={key} value={key}>{label}</option>
-              ))}
-            </select>
+            
+            {/* Metric Selector */}
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-medium text-gray-700 whitespace-nowrap">
+                ตัวชี้วัด:
+              </label>
+              <select
+                value={selectedMetric}
+                onChange={(e) => setSelectedMetric(e.target.value)}
+                className="text-xs px-2 py-1 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 flex-1"
+              >
+                {Object.entries(metrics).map(([key, label]) => (
+                  <option key={key} value={key}>{label}</option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
 
-        {/* Data Level Indicator */}
-        {dataLevel === 'district' && currentDistrictName && (
-          <div className="mt-2 text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
-            📍 แสดงข้อมูลระดับอำเภอ: {currentDistrictName}
-          </div>
-        )}
-        
         {/* Loading indicator for data fetching */}
         {isFetching && (
           <div className="mt-2 text-xs text-blue-600">
