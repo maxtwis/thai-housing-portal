@@ -33,23 +33,52 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
     }
   }, [dataLevel, hasDistrictData, selectedDistrict, districtsData]);
 
-  // House type mapping (updated for district data compatibility)
-  const houseTypeMapping = {
-    1: 'บ้านเดี่ยว',
-    2: 'ห้องแถว/ตึกแถว',
-    3: 'ทาวน์เฮ้าส์/ทาวโฮม',
-    4: 'หอพัก/แฟลต/อพาร์ทเมนต์',
-    5: 'ตึกแถวพาณิชย์'
+  // House type mapping - completely different for province vs district
+  const getHouseTypeMapping = () => {
+    if (dataLevel === 'province') {
+      // Province uses numeric IDs (1-5)
+      return {
+        1: 'บ้านเดี่ยว',
+        2: 'ห้องแถว',
+        3: 'ตึกแถว/ทาวน์เฮาส์',
+        4: 'แฟลต/อพาร์ทเม้นท์/คอนโดมิเนี่ยม',
+        5: 'ห้องแบ่งเช่า'
+      };
+    } else {
+      // District uses Thai names directly
+      return {
+        'ห้องแถว/ตึกแถว': 'ห้องแถว/ตึกแถว',
+        'ทาวน์เฮ้าส์/ทาวโฮม': 'ทาวน์เฮ้าส์/ทาวโฮม',
+        'บ้านเดี่ยว': 'บ้านเดี่ยว',
+        'ตึกแถวพาณิชย์': 'ตึกแถวพาณิชย์',
+        'หอพัก/แฟลต/อพาร์ทเมนต์': 'หอพัก/แฟลต/อพาร์ทเมนต์'
+      };
+    }
   };
 
-  // Color mapping for house types
-  const houseTypeColors = {
-    1: '#3B82F6', // Blue
-    2: '#10B981', // Green
-    3: '#F59E0B', // Yellow
-    4: '#EF4444', // Red
-    5: '#8B5CF6'  // Purple
+  // Color mapping - different keys for province vs district
+  const getHouseTypeColors = () => {
+    if (dataLevel === 'province') {
+      return {
+        1: '#3B82F6', // Blue
+        2: '#10B981', // Green
+        3: '#F59E0B', // Yellow
+        4: '#EF4444', // Red
+        5: '#8B5CF6'  // Purple
+      };
+    } else {
+      return {
+        'ห้องแถว/ตึกแถว': '#3B82F6', // Blue
+        'ทาวน์เฮ้าส์/ทาวโฮม': '#10B981', // Green
+        'บ้านเดี่ยว': '#F59E0B', // Yellow
+        'ตึกแถวพาณิชย์': '#EF4444', // Red
+        'หอพัก/แฟลต/อพาร์ทเมนต์': '#8B5CF6'  // Purple
+      };
+    }
   };
+
+  const houseTypeMapping = getHouseTypeMapping();
+  const houseTypeColors = getHouseTypeColors();
 
   // Available demand types
   const demandTypes = ['ผู้มีรายได้น้อย', 'First Jobber', 'ผู้สูงอายุที่อาศัยอยู่คนเดียว'];
@@ -60,7 +89,7 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
     'Exp_house': 'ค่าใช้จ่ายที่อยู่อาศัย (บาท)'
   };
 
-  // Process data for chart
+  // Process data for chart - completely different logic for province vs district
   const chartData = useMemo(() => {
     if (!rawData || !rawData.records || !rawData.records.length) {
       return [];
@@ -70,6 +99,9 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
     const filteredData = rawData.records.filter(item => 
       item.demand_type === selectedDemandType
     );
+
+    console.log('Filtered data:', filteredData);
+    console.log('Data level:', dataLevel);
 
     // Group by quintile (handle quintile 0 as "ไม่ระบุรายได้")
     const groupedByQuintile = {};
@@ -82,28 +114,49 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
         quintileNumber: q
       };
       
-      // Initialize house types
-      Object.keys(houseTypeMapping).forEach(houseTypeId => {
-        groupedByQuintile[q][houseTypeMapping[houseTypeId]] = 0;
+      // Initialize house types based on data level
+      Object.keys(houseTypeMapping).forEach(houseTypeKey => {
+        groupedByQuintile[q][houseTypeMapping[houseTypeKey]] = 0;
       });
     }
 
-    // Process the data
+    // Process the data - different logic for province vs district
     filteredData.forEach(item => {
       const quintile = parseInt(item.Quintile);
-      const houseType = parseInt(item.house_type);
+      let houseTypeKey, houseTypeName;
+      
+      if (dataLevel === 'province') {
+        // Province data: house_type is numeric (1-5)
+        houseTypeKey = parseInt(item.house_type);
+        houseTypeName = houseTypeMapping[houseTypeKey];
+      } else {
+        // District data: House_type is Thai name
+        houseTypeKey = item.House_type;
+        houseTypeName = houseTypeMapping[houseTypeKey];
+      }
+      
       const value = parseFloat(item[selectedMetric]);
       
+      console.log('Processing item:', {
+        quintile,
+        houseTypeKey,
+        houseTypeName,
+        value,
+        dataLevel
+      });
+      
       if (quintile >= 0 && quintile <= 5 && 
-          houseTypeMapping[houseType] && 
+          houseTypeName && 
           !isNaN(value) && value !== null && value !== undefined) {
-        groupedByQuintile[quintile][houseTypeMapping[houseType]] = value;
+        groupedByQuintile[quintile][houseTypeName] = value;
       }
     });
 
     // Convert to array and sort by quintile (Q0 first, then Q1-Q5)
-    return Object.values(groupedByQuintile).sort((a, b) => a.quintileNumber - b.quintileNumber);
-  }, [rawData, selectedDemandType, selectedMetric, houseTypeMapping]);
+    const result = Object.values(groupedByQuintile).sort((a, b) => a.quintileNumber - b.quintileNumber);
+    console.log('Final chart data:', result);
+    return result;
+  }, [rawData, selectedDemandType, selectedMetric, houseTypeMapping, dataLevel]);
 
   const customTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
@@ -302,15 +355,15 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
                 iconType="rect"
               />
               
-              {/* Create stacked bars for each house type */}
-              {Object.entries(houseTypeMapping).map(([houseTypeId, houseTypeName]) => (
+              {/* Create stacked bars for each house type - different iteration for province vs district */}
+              {Object.entries(houseTypeMapping).map(([houseTypeKey, houseTypeName]) => (
                 <Bar 
-                  key={houseTypeId}
+                  key={houseTypeKey}
                   dataKey={houseTypeName}
                   name={houseTypeName}
                   stackId="housing"
-                  fill={houseTypeColors[houseTypeId]}
-                  radius={houseTypeId === '5' ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+                  fill={houseTypeColors[houseTypeKey]}
+                  radius={Object.keys(houseTypeMapping).indexOf(houseTypeKey) === Object.keys(houseTypeMapping).length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
                 />
               ))}
             </BarChart>

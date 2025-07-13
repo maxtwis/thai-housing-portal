@@ -70,37 +70,42 @@ export const useHousingDemandData = (provinceId) => {
   });
 };
 
-// Updated hook for housing affordability data with district support
+// Updated hook for housing affordability data with district support (simplified)
 export const useHousingAffordabilityData = (provinceId, level = 'province', districtName = null) => {
   return useQuery({
     queryKey: ['housing-affordability', provinceId, level, districtName],
     queryFn: async () => {
-      let resourceId, filters;
-      
       if (level === 'district' && districtName) {
-        // Use district-level data from new resource
-        resourceId = DISTRICT_HOUSING_AFFORDABILITY_RESOURCE_ID;
-        filters = JSON.stringify({ 
-          geo_id: provinceId,
-          dname: districtName 
+        console.log(`Fetching district data for: ${districtName} in province ${provinceId}`);
+        
+        // Get all province data first, then filter in JavaScript to avoid CKAN conflicts
+        const result = await getCkanData(DISTRICT_HOUSING_AFFORDABILITY_RESOURCE_ID, {
+          filters: JSON.stringify({ geo_id: provinceId }),
+          limit: 1000
         });
-      } else {
-        // Use existing province-level data
-        resourceId = HOUSING_AFFORDABILITY_RESOURCE_ID;
-        filters = JSON.stringify({ geo_id: provinceId });
-      }
-      
-      const result = await getCkanData(resourceId, {
-        filters,
-        limit: 1000,
-        sort: 'Quintile asc, house_type asc'
-      });
-      
-      if (level === 'district') {
-        // For district data, transform the structure to match existing chart format
-        const transformedRecords = result.records.map(record => ({
+        
+        console.log('Raw district API response:', result);
+        
+        if (!result.records || result.records.length === 0) {
+          console.log('No records found for province:', provinceId);
+          return { records: [] };
+        }
+        
+        // Filter by district name using JavaScript
+        const districtRecords = result.records.filter(record => 
+          record.dname === districtName
+        );
+        
+        console.log(`Filtered records for ${districtName}:`, districtRecords);
+        
+        if (districtRecords.length === 0) {
+          console.warn(`No data found for district: ${districtName}`);
+          return { records: [] };
+        }
+        
+        // Transform the data to match expected format
+        const transformedRecords = districtRecords.map(record => ({
           ...record,
-          // Map the new field names to existing field names expected by the chart
           house_type: mapHouseTypeToId(record.House_type),
           demand_type: record.demand_type,
           Quintile: record.Quintile,
@@ -108,11 +113,19 @@ export const useHousingAffordabilityData = (provinceId, level = 'province', dist
           Exp_house: record.Exp_house
         }));
         
+        console.log('Transformed district records:', transformedRecords);
+        
         return {
-          ...result,
           records: transformedRecords
         };
       } else {
+        // Use existing province-level data
+        const result = await getCkanData(HOUSING_AFFORDABILITY_RESOURCE_ID, {
+          filters: JSON.stringify({ geo_id: provinceId }),
+          limit: 1000,
+          sort: 'Quintile asc, house_type asc'
+        });
+        
         // Filter out house_type 6 for province-level data as requested
         const filteredRecords = result.records.filter(record => 
           record.house_type && parseInt(record.house_type) <= 5
@@ -130,25 +143,37 @@ export const useHousingAffordabilityData = (provinceId, level = 'province', dist
   });
 };
 
-// New hook to get available districts for a province
+// New hook to get available districts for a province (simplified approach)
 export const useDistrictsData = (provinceId) => {
   return useQuery({
     queryKey: ['districts', provinceId],
     queryFn: async () => {
-      // Get distinct dname values for the province
+      // Get all records for the province first, then extract districts in JavaScript
       const result = await getCkanData(DISTRICT_HOUSING_AFFORDABILITY_RESOURCE_ID, {
         filters: JSON.stringify({ geo_id: provinceId }),
         limit: 1000
       });
       
-      // Extract unique districts using dname instead of district_id
+      console.log('District API response:', result);
+      
+      if (!result.records || result.records.length === 0) {
+        console.log('No district records found for province:', provinceId);
+        return [];
+      }
+      
+      // Log sample record to debug field structure
+      console.log('Sample district record:', result.records[0]);
+      console.log('Available fields:', Object.keys(result.records[0]));
+      
+      // Extract unique districts using JavaScript filtering
       const districts = [...new Set(result.records.map(record => record.dname))]
         .filter(Boolean)
         .map(districtName => ({
-          id: districtName, // Use district name as ID
+          id: districtName,
           name: districtName
         }));
       
+      console.log('Extracted districts:', districts);
       return districts;
     },
     enabled: !!provinceId,
@@ -430,7 +455,7 @@ export const usePrefetchProvinceData = () => {
       }),
       // Prefetch province-level housing affordability
       queryClient.prefetchQuery({
-        queryKey: ['housing-affordability', provinceId, 'province', null],
+        queryKey: ['province-housing-affordability', provinceId],
         queryFn: async () => {
           const result = await getCkanData(HOUSING_AFFORDABILITY_RESOURCE_ID, {
             filters: JSON.stringify({ geo_id: provinceId }),
@@ -440,7 +465,7 @@ export const usePrefetchProvinceData = () => {
           
           // Filter out house_type 6 as requested
           const filteredRecords = result.records.filter(record => 
-            record.house_type && parseInt(record.house_type) <= 5
+            record.house_type && parseInt(record.house_type) >= 1 && parseInt(record.house_type) <= 5
           );
           
           return {
@@ -450,7 +475,7 @@ export const usePrefetchProvinceData = () => {
         },
         staleTime: 5 * 60 * 1000,
       }),
-      // Prefetch districts data
+      // Prefetch districts data (simplified)
       queryClient.prefetchQuery({
         queryKey: ['districts', provinceId],
         queryFn: async () => {
@@ -459,11 +484,15 @@ export const usePrefetchProvinceData = () => {
             limit: 1000
           });
           
-          // Extract unique districts using dname instead of district_id
+          if (!result.records || result.records.length === 0) {
+            return [];
+          }
+          
+          // Extract unique districts using JavaScript filtering
           const districts = [...new Set(result.records.map(record => record.dname))]
             .filter(Boolean)
             .map(districtName => ({
-              id: districtName, // Use district name as ID
+              id: districtName,
               name: districtName
             }));
           
@@ -471,32 +500,25 @@ export const usePrefetchProvinceData = () => {
         },
         staleTime: 10 * 60 * 1000,
       }),
-      // Prefetch district-level housing affordability for สงขลา (geo_id = 90)
+      // Prefetch district-level housing affordability for สงขลา (geo_id = 90) - separate logic
       ...(provinceId === 90 ? [
         queryClient.prefetchQuery({
-          queryKey: ['housing-affordability', provinceId, 'district', 'เทศบาลนครหาดใหญ่'],
+          queryKey: ['district-housing-affordability', provinceId, 'เทศบาลนครหาดใหญ่'],
           queryFn: async () => {
+            // Get all province data first
             const result = await getCkanData(DISTRICT_HOUSING_AFFORDABILITY_RESOURCE_ID, {
-              filters: JSON.stringify({ 
-                geo_id: provinceId,
-                dname: 'เทศบาลนครหาดใหญ่' 
-              }),
-              limit: 1000,
-              sort: 'Quintile asc, House_type asc'
+              filters: JSON.stringify({ geo_id: provinceId }),
+              limit: 1000
             });
             
-            const transformedRecords = result.records.map(record => ({
-              ...record,
-              house_type: mapHouseTypeToId(record.House_type),
-              demand_type: record.demand_type,
-              Quintile: record.Quintile,
-              Total_Hburden: record.Total_Hburden,
-              Exp_house: record.Exp_house
-            }));
+            // Filter in JavaScript
+            const districtRecords = result.records.filter(record => 
+              record.dname === 'เทศบาลนครหาดใหญ่'
+            );
             
+            // No transformation needed - keep district data as-is
             return {
-              ...result,
-              records: transformedRecords
+              records: districtRecords
             };
           },
           staleTime: 5 * 60 * 1000,
