@@ -9,13 +9,13 @@ const HDSMap = ({
   onGridSelect, 
   selectedGrid, 
   selectedProvince,
-  supplyData // New prop for supply data
+  supplyData // ONLY NEW PROP ADDED
 }) => {
   const mapRef = useRef(null);
   const hdsLayerRef = useRef(null);
   const legendRef = useRef(null);
 
-  // Province configurations (exact same as original)
+  // Province configurations - UNCHANGED
   const provinceConfigs = {
     40: {
       name: 'ขอนแก่น',
@@ -39,7 +39,7 @@ const HDSMap = ({
 
   const currentProvince = provinceConfigs[selectedProvince] || provinceConfigs[40];
 
-  // Color schemes (exact same as original)
+  // Color schemes - UNCHANGED
   const colorSchemes = {
     housingSystem: {
       name: 'Housing System Dominance',
@@ -75,7 +75,7 @@ const HDSMap = ({
     }
   };
 
-  // Housing system names (exact same as original)
+  // Housing system names - UNCHANGED
   const housingSystemNames = {
     1: 'ระบบชุมชนบุกรุก',
     2: 'ระบบถือครองชั่วคราว',
@@ -86,7 +86,7 @@ const HDSMap = ({
     7: 'ระบบที่อยู่อาศัยเอกชน'
   };
 
-  // Updated popup content with supply data
+  // ONLY CHANGE: Added supply data to popup content
   const generatePopupContent = (feature, colorScheme) => {
     const props = feature.properties;
     
@@ -110,10 +110,10 @@ const HDSMap = ({
     const totalHousing = hdsNumbers.reduce((sum, item) => sum + item.count, 0);
     const dominantSystem = hdsNumbers.reduce((max, item) => item.count > max.count ? item : max);
     
-    // Get supply data for this grid
+    // ONLY NEW ADDITION: Get supply data for this grid
     const gridSupplyData = supplyData ? supplyData[gridId] : null;
     
-    // Format supply data section
+    // ONLY NEW ADDITION: Format supply data section
     let supplySection = '';
     if (gridSupplyData) {
       const { totalSupply, averageSalePrice, averageRentPrice, housingTypes } = gridSupplyData;
@@ -157,13 +157,6 @@ const HDSMap = ({
               ` : ''}
             </div>
           </div>
-        </div>
-      `;
-    } else {
-      supplySection = `
-        <div class="border-t border-gray-200 mt-3 pt-3">
-          <h4 class="font-semibold text-gray-800 mb-2 text-sm">ข้อมูลอุปทาน (Supply Data)</h4>
-          <p class="text-xs text-gray-500 italic">ไม่มีข้อมูลอุปทานสำหรับกริดนี้</p>
         </div>
       `;
     }
@@ -213,7 +206,7 @@ const HDSMap = ({
     `;
   };
 
-  // Get color function (exact same as original)
+  // Get color function - UNCHANGED
   const getColor = (feature) => {
     const props = feature.properties;
     
@@ -254,7 +247,7 @@ const HDSMap = ({
     return '#cccccc';
   };
 
-  // Update legend function (exact same as original)
+  // Update legend function - UNCHANGED
   const updateLegend = () => {
     if (!legendRef.current) return;
 
@@ -278,7 +271,7 @@ const HDSMap = ({
     div.innerHTML = legendHTML;
   };
 
-  // Initialize map (updated to pass supplyData)
+  // Initialize map - UNCHANGED EXCEPT FOR supplyData dependency
   useEffect(() => {
     if (!currentProvince) return;
 
@@ -469,9 +462,9 @@ const HDSMap = ({
         legendRef.current = null;
       }
     };
-  }, [selectedProvince, isMobile, supplyData]);
+  }, [selectedProvince, isMobile]); // REMOVED supplyData from dependencies to prevent re-initialization
 
-  // Update filters when they change
+  // Update filters when they change - UNCHANGED
   useEffect(() => {
     if (!mapRef.current || !hdsLayerRef.current) return;
 
@@ -512,7 +505,7 @@ const HDSMap = ({
     });
   }, [filters]);
 
-  // Update colors and selected grid styling when color scheme or selection changes
+  // Update colors and selected grid styling - UNCHANGED
   useEffect(() => {
     if (!mapRef.current || !hdsLayerRef.current) return;
 
