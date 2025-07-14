@@ -20,6 +20,8 @@ const HOUSING_AFFORDABILITY_RESOURCE_ID = '73ff152b-02fc-4468-a93b-1b29b53186eb'
 const HOUSING_DEMAND_RESOURCE_ID = '1417ade4-fe17-4558-868a-e1b1821c6a9e';
 // NEW: District-level housing affordability resource ID
 const DISTRICT_HOUSING_AFFORDABILITY_RESOURCE_ID = 'c0b992d2-58f0-49ac-a63b-a4d163b8a264';
+// NEW: Songkhla Housing Supply resource ID
+const SONGKHLA_HOUSING_SUPPLY_RESOURCE_ID = '9cfc5468-36f6-40d3-b76e-febf79e9ca9f';
 
 // Helper function to map house type names to IDs for district data
 const mapHouseTypeToId = (houseTypeName) => {
@@ -32,6 +34,14 @@ const mapHouseTypeToId = (houseTypeName) => {
   };
   
   return houseTypeMapping[houseTypeName] || '1';
+};
+
+// Helper function to calculate median
+const calculateMedian = (prices) => {
+  if (!prices || prices.length === 0) return 0;
+  const sorted = [...prices].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 };
 
 // Individual query hooks
@@ -143,94 +153,6 @@ export const useHousingAffordabilityData = (provinceId, level = 'province', dist
   });
 };
 
-// New hook to get available districts for a province (simplified approach)
-export const useDistrictsData = (provinceId) => {
-  return useQuery({
-    queryKey: ['districts', provinceId],
-    queryFn: async () => {
-      // Get all records for the province first, then extract districts in JavaScript
-      const result = await getCkanData(DISTRICT_HOUSING_AFFORDABILITY_RESOURCE_ID, {
-        filters: JSON.stringify({ geo_id: provinceId }),
-        limit: 1000
-      });
-      
-      console.log('District API response:', result);
-      
-      if (!result.records || result.records.length === 0) {
-        console.log('No district records found for province:', provinceId);
-        return [];
-      }
-      
-      // Log sample record to debug field structure
-      console.log('Sample district record:', result.records[0]);
-      console.log('Available fields:', Object.keys(result.records[0]));
-      
-      // Log all unique demand types found in the data
-      const uniqueDemandTypes = [...new Set(result.records.map(record => record.demand_type))];
-      console.log('Unique demand types found in district data:', uniqueDemandTypes);
-      
-      // Extract unique districts using JavaScript filtering
-      const districts = [...new Set(result.records.map(record => record.dname))]
-        .filter(Boolean)
-        .map(districtName => ({
-          id: districtName,
-          name: districtName
-        }));
-      
-      console.log('Extracted districts:', districts);
-      return districts;
-    },
-    enabled: !!provinceId,
-    staleTime: 10 * 60 * 1000,
-    cacheTime: 15 * 60 * 1000,
-  });
-};
-
-// Updated to use direct CKAN API call with new resource ID
-export const usePopulationData = (provinceId) => {
-  return useQuery({
-    queryKey: ['population', provinceId],
-    queryFn: async () => {
-      const result = await getCkanData(POPULATION_RESOURCE_ID, {
-        filters: JSON.stringify({ geo_id: provinceId }),
-        limit: 1000,
-        sort: 'year asc'
-      });
-      const transformedData = result.records.map(record => ({
-        year: record.year,
-        population: record.population
-      }));
-      
-      return transformedData;
-    },
-    enabled: !!provinceId,
-    staleTime: 5 * 60 * 1000,
-    cacheTime: 10 * 60 * 1000,
-  });
-};
-
-export const useHouseholdData = (provinceId) => {
-  return useQuery({
-    queryKey: ['household', provinceId],
-    queryFn: async () => {
-      const result = await getCkanData(HOUSEHOLD_RESOURCE_ID, {
-        filters: JSON.stringify({ geo_id: provinceId }),
-        limit: 1000,
-        sort: 'year asc'
-      });
-      const transformedData = result.records.map(record => ({
-        year: record.year,
-        household: record.household
-      }));
-      
-      return transformedData;
-    },
-    enabled: !!provinceId,
-    staleTime: 5 * 60 * 1000,
-    cacheTime: 10 * 60 * 1000,
-  });
-};
-
 export const useIncomeData = (provinceId) => {
   return useQuery({
     queryKey: ['income', provinceId],
@@ -333,6 +255,325 @@ export const usePolicyData = (provinceId) => {
   });
 };
 
+// New hook to get available districts for a province (simplified approach)
+export const useDistrictsData = (provinceId) => {
+  return useQuery({
+    queryKey: ['districts', provinceId],
+    queryFn: async () => {
+      // Get all records for the province first, then extract districts in JavaScript
+      const result = await getCkanData(DISTRICT_HOUSING_AFFORDABILITY_RESOURCE_ID, {
+        filters: JSON.stringify({ geo_id: provinceId }),
+        limit: 1000
+      });
+      
+      console.log('District API response:', result);
+      
+      if (!result.records || result.records.length === 0) {
+        console.log('No district records found for province:', provinceId);
+        return [];
+      }
+      
+      // Log sample record to debug field structure
+      console.log('Sample district record:', result.records[0]);
+      console.log('Available fields:', Object.keys(result.records[0]));
+      
+      // Extract unique districts using JavaScript filtering
+      const districts = [...new Set(result.records.map(record => record.dname))]
+        .filter(Boolean)
+        .map(districtName => ({
+          id: districtName,
+          name: districtName
+        }));
+      
+      console.log('Extracted districts:', districts);
+      return districts;
+    },
+    enabled: !!provinceId,
+    staleTime: 10 * 60 * 1000,
+    cacheTime: 15 * 60 * 1000,
+  });
+};
+
+// Updated to use direct CKAN API call with new resource ID
+export const usePopulationData = (provinceId) => {
+  return useQuery({
+    queryKey: ['population', provinceId],
+    queryFn: async () => {
+      const result = await getCkanData(POPULATION_RESOURCE_ID, {
+        filters: JSON.stringify({ geo_id: provinceId }),
+        limit: 1000,
+        sort: 'year asc'
+      });
+      const transformedData = result.records.map(record => ({
+        year: record.year,
+        population: record.population
+      }));
+      
+      return transformedData;
+    },
+    enabled: !!provinceId,
+    staleTime: 5 * 60 * 1000,
+    cacheTime: 10 * 60 * 1000,
+  });
+};
+
+export const useHouseholdData = (provinceId) => {
+  return useQuery({
+    queryKey: ['household', provinceId],
+    queryFn: async () => {
+      const result = await getCkanData(HOUSEHOLD_RESOURCE_ID, {
+        filters: JSON.stringify({ geo_id: provinceId }),
+        limit: 1000,
+        sort: 'year asc'
+      });
+      const transformedData = result.records.map(record => ({
+        year: record.year,
+        household: record.household
+      }));
+      
+      return transformedData;
+    },
+    enabled: !!provinceId,
+    staleTime: 5 * 60 * 1000,
+    cacheTime: 10 * 60 * 1000,
+  });
+};
+
+// NEW: Songkhla Housing Supply Data Hook
+export const useSongkhlaSupplyData = () => {
+  return useQuery({
+    queryKey: ['songkhla-supply'],
+    queryFn: async () => {
+      console.log('Fetching Songkhla housing supply data...');
+      
+      const result = await getCkanData(SONGKHLA_HOUSING_SUPPLY_RESOURCE_ID, {
+        limit: 10000, // High limit to get all records
+        sort: 'grid_id asc'
+      });
+      
+      if (!result.records || result.records.length === 0) {
+        console.log('No Songkhla supply data found');
+        return {};
+      }
+      
+      console.log(`Processing ${result.records.length} supply records`);
+      
+      // Process the CSV data into a grid-based structure
+      const processedData = {};
+      
+      result.records.forEach(record => {
+        const gridId = record.grid_id;
+        const houseType = record.House_type || 'ไม่ระบุ';
+        const supplyCount = parseInt(record.supply_count) || 0;
+        const salePrice = parseFloat(record.supply_sale_price) || null;
+        const rentPrice = parseFloat(record.supply_rent_price) || null;
+        
+        // Skip records without grid_id
+        if (!gridId) return;
+        
+        // Initialize grid data if it doesn't exist
+        if (!processedData[gridId]) {
+          processedData[gridId] = {
+            gridId: gridId,
+            totalSupply: 0,
+            totalForSale: 0,
+            totalForRent: 0,
+            houseTypes: {},
+            salePrices: [],
+            rentPrices: [],
+            averageSalePrice: 0,
+            averageRentPrice: 0,
+            medianSalePrice: 0,
+            medianRentPrice: 0,
+            priceRange: {
+              sale: { min: null, max: null },
+              rent: { min: null, max: null }
+            }
+          };
+        }
+        
+        const gridData = processedData[gridId];
+        
+        // Add to total supply count
+        gridData.totalSupply += supplyCount;
+        
+        // Initialize house type if it doesn't exist
+        if (!gridData.houseTypes[houseType]) {
+          gridData.houseTypes[houseType] = {
+            count: 0,
+            salePrices: [],
+            rentPrices: [],
+            averageSalePrice: 0,
+            averageRentPrice: 0
+          };
+        }
+        
+        const houseTypeData = gridData.houseTypes[houseType];
+        houseTypeData.count += supplyCount;
+        
+        // Process sale prices
+        if (salePrice && salePrice > 0) {
+          gridData.totalForSale += supplyCount;
+          gridData.salePrices.push(salePrice);
+          houseTypeData.salePrices.push(salePrice);
+          
+          // Update price range
+          if (!gridData.priceRange.sale.min || salePrice < gridData.priceRange.sale.min) {
+            gridData.priceRange.sale.min = salePrice;
+          }
+          if (!gridData.priceRange.sale.max || salePrice > gridData.priceRange.sale.max) {
+            gridData.priceRange.sale.max = salePrice;
+          }
+        }
+        
+        // Process rent prices
+        if (rentPrice && rentPrice > 0) {
+          gridData.totalForRent += supplyCount;
+          gridData.rentPrices.push(rentPrice);
+          houseTypeData.rentPrices.push(rentPrice);
+          
+          // Update price range
+          if (!gridData.priceRange.rent.min || rentPrice < gridData.priceRange.rent.min) {
+            gridData.priceRange.rent.min = rentPrice;
+          }
+          if (!gridData.priceRange.rent.max || rentPrice > gridData.priceRange.rent.max) {
+            gridData.priceRange.rent.max = rentPrice;
+          }
+        }
+      });
+      
+      // Calculate averages and medians for each grid
+      Object.values(processedData).forEach(gridData => {
+        // Calculate grid-level averages
+        if (gridData.salePrices.length > 0) {
+          gridData.averageSalePrice = gridData.salePrices.reduce((sum, price) => sum + price, 0) / gridData.salePrices.length;
+          gridData.medianSalePrice = calculateMedian(gridData.salePrices);
+        }
+        
+        if (gridData.rentPrices.length > 0) {
+          gridData.averageRentPrice = gridData.rentPrices.reduce((sum, price) => sum + price, 0) / gridData.rentPrices.length;
+          gridData.medianRentPrice = calculateMedian(gridData.rentPrices);
+        }
+        
+        // Calculate house type averages
+        Object.values(gridData.houseTypes).forEach(houseTypeData => {
+          if (houseTypeData.salePrices.length > 0) {
+            houseTypeData.averageSalePrice = houseTypeData.salePrices.reduce((sum, price) => sum + price, 0) / houseTypeData.salePrices.length;
+          }
+          
+          if (houseTypeData.rentPrices.length > 0) {
+            houseTypeData.averageRentPrice = houseTypeData.rentPrices.reduce((sum, price) => sum + price, 0) / houseTypeData.rentPrices.length;
+          }
+        });
+      });
+      
+      console.log(`Processed supply data for ${Object.keys(processedData).length} grids`);
+      return processedData;
+    },
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    cacheTime: 30 * 60 * 1000, // 30 minutes
+    retry: 2,
+    retryDelay: 1000,
+  });
+};
+
+// Enhanced hook for getting Songkhla supply statistics
+export const useSongkhlaSupplyStats = () => {
+  const { data: supplyData, isLoading, error } = useSongkhlaSupplyData();
+  
+  return useQuery({
+    queryKey: ['songkhla-supply-stats', supplyData],
+    queryFn: () => {
+      if (!supplyData || Object.keys(supplyData).length === 0) {
+        return null;
+      }
+      
+      const grids = Object.values(supplyData);
+      
+      // Calculate overall statistics
+      const stats = {
+        totalGrids: grids.length,
+        totalSupply: grids.reduce((sum, grid) => sum + grid.totalSupply, 0),
+        totalForSale: grids.reduce((sum, grid) => sum + grid.totalForSale, 0),
+        totalForRent: grids.reduce((sum, grid) => sum + grid.totalForRent, 0),
+        
+        // Price statistics
+        averageSalePrice: 0,
+        averageRentPrice: 0,
+        medianSalePrice: 0,
+        medianRentPrice: 0,
+        
+        // House type distribution
+        houseTypeDistribution: {},
+        
+        // Grid statistics
+        highestSupplyGrid: null,
+        lowestSupplyGrid: null,
+        mostExpensiveGrid: null,
+        mostAffordableGrid: null,
+      };
+      
+      // Collect all prices for overall averages
+      const allSalePrices = [];
+      const allRentPrices = [];
+      
+      grids.forEach(grid => {
+        allSalePrices.push(...grid.salePrices);
+        allRentPrices.push(...grid.rentPrices);
+        
+        // Aggregate house types
+        Object.entries(grid.houseTypes).forEach(([type, data]) => {
+          if (!stats.houseTypeDistribution[type]) {
+            stats.houseTypeDistribution[type] = 0;
+          }
+          stats.houseTypeDistribution[type] += data.count;
+        });
+      });
+      
+      // Calculate overall price statistics
+      if (allSalePrices.length > 0) {
+        stats.averageSalePrice = allSalePrices.reduce((sum, price) => sum + price, 0) / allSalePrices.length;
+        stats.medianSalePrice = calculateMedian(allSalePrices);
+      }
+      
+      if (allRentPrices.length > 0) {
+        stats.averageRentPrice = allRentPrices.reduce((sum, price) => sum + price, 0) / allRentPrices.length;
+        stats.medianRentPrice = calculateMedian(allRentPrices);
+      }
+      
+      // Find interesting grids
+      stats.highestSupplyGrid = grids.reduce((max, grid) => 
+        grid.totalSupply > (max?.totalSupply || 0) ? grid : max, null);
+        
+      stats.lowestSupplyGrid = grids.reduce((min, grid) => 
+        grid.totalSupply < (min?.totalSupply || Infinity) && grid.totalSupply > 0 ? grid : min, null);
+        
+      stats.mostExpensiveGrid = grids.reduce((max, grid) => 
+        grid.averageSalePrice > (max?.averageSalePrice || 0) ? grid : max, null);
+        
+      stats.mostAffordableGrid = grids.reduce((min, grid) => 
+        grid.averageSalePrice < (min?.averageSalePrice || Infinity) && grid.averageSalePrice > 0 ? grid : min, null);
+      
+      return stats;
+    },
+    enabled: !!supplyData && Object.keys(supplyData).length > 0,
+    staleTime: 10 * 60 * 1000,
+    cacheTime: 30 * 60 * 1000,
+  });
+};
+
+// Hook for specific grid supply data
+export const useGridSupplyData = (gridId) => {
+  const { data: supplyData, isLoading, error } = useSongkhlaSupplyData();
+  
+  return {
+    data: supplyData?.[gridId] || null,
+    isLoading,
+    error,
+    hasData: !!(supplyData?.[gridId])
+  };
+};
+
 // Composite hook for all province data
 export const useAllProvinceData = (provinceId) => {
   const population = usePopulationData(provinceId);
@@ -370,183 +611,194 @@ export const useAllProvinceData = (provinceId) => {
   };
 };
 
+// Enhanced composite hook that includes Songkhla supply data
+export const useAllProvinceDataWithSupply = (provinceId) => {
+  const baseData = useAllProvinceData(provinceId);
+  const songkhlaSupply = useSongkhlaSupplyData();
+  const songkhlaStats = useSongkhlaSupplyStats();
+  
+  return {
+    ...baseData,
+    songkhlaSupply: provinceId === 90 ? songkhlaSupply : { data: null, isLoading: false, error: null },
+    songkhlaStats: provinceId === 90 ? songkhlaStats : { data: null, isLoading: false, error: null },
+    isLoading: baseData.isLoading || (provinceId === 90 && (songkhlaSupply.isLoading || songkhlaStats.isLoading)),
+    isError: baseData.isError || (provinceId === 90 && (songkhlaSupply.isError || songkhlaStats.isError))
+  };
+};
+
 // Updated prefetch hook with district support
-export const usePrefetchProvinceData = () => {
+export const usePrefetchProvince = () => {
   const queryClient = useQueryClient();
   
-  const prefetchProvince = async (provinceId) => {
-    await Promise.all([
+  const prefetchProvince = (provinceId) => {
+    // Prefetch all main data
+    queryClient.prefetchQuery({
+      queryKey: ['population', provinceId],
+      queryFn: async () => {
+        const result = await getCkanData(POPULATION_RESOURCE_ID, {
+          filters: JSON.stringify({ geo_id: provinceId }),
+          limit: 1000,
+          sort: 'year asc'
+        });
+        return result.records.map(record => ({
+          year: record.year,
+          population: record.population
+        }));
+      },
+      staleTime: 5 * 60 * 1000,
+    });
+    
+    queryClient.prefetchQuery({
+      queryKey: ['household', provinceId],
+      queryFn: async () => {
+        const result = await getCkanData(HOUSEHOLD_RESOURCE_ID, {
+          filters: JSON.stringify({ geo_id: provinceId }),
+          limit: 1000,
+          sort: 'year asc'
+        });
+        return result.records.map(record => ({
+          year: record.year,
+          household: record.household
+        }));
+      },
+      staleTime: 5 * 60 * 1000,
+    });
+    
+    queryClient.prefetchQuery({
+      queryKey: ['income', provinceId],
+      queryFn: async () => {
+        const result = await getCkanData(INCOME_RESOURCE_ID, {
+          filters: JSON.stringify({ geo_id: provinceId }),
+          limit: 1000,
+          sort: 'year asc'
+        });
+        return result.records.map(record => ({
+          year: record.year,
+          income: record.income
+        }));
+      },
+      staleTime: 5 * 60 * 1000,
+    });
+    
+    // Prefetch Songkhla supply data if it's Songkhla province
+    if (provinceId === 90) {
       queryClient.prefetchQuery({
-        queryKey: ['population', provinceId],
+        queryKey: ['songkhla-supply'],
         queryFn: async () => {
-          const result = await getCkanData(POPULATION_RESOURCE_ID, {
-            filters: JSON.stringify({ geo_id: provinceId }),
-            limit: 1000,
-            sort: 'year asc'
-          });
-          const transformedData = result.records.map(record => ({
-            year: record.year,
-            population: record.population
-          }));
+          console.log('Prefetching Songkhla housing supply data...');
           
-          return transformedData;
-        },
-        staleTime: 5 * 60 * 1000,
-      }),
-      queryClient.prefetchQuery({
-        queryKey: ['household', provinceId],
-        queryFn: async () => {
-          const result = await getCkanData(HOUSEHOLD_RESOURCE_ID, {
-            filters: JSON.stringify({ geo_id: provinceId }),
-            limit: 1000,
-            sort: 'year asc'
-          });
-          const transformedData = result.records.map(record => ({
-            year: record.year,
-            household: record.household
-          }));
-          
-          return transformedData;
-        },
-        staleTime: 5 * 60 * 1000,
-      }),
-      queryClient.prefetchQuery({
-        queryKey: ['income', provinceId],
-        queryFn: async () => {
-          const result = await getCkanData(INCOME_RESOURCE_ID, {
-            filters: JSON.stringify({ geo_id: provinceId }),
-            limit: 1000,
-            sort: 'year asc'
-          });
-          const transformedData = result.records.map(record => ({
-            year: record.year,
-            income: record.income
-          }));
-          
-          return transformedData;
-        },
-        staleTime: 5 * 60 * 1000,
-      }),
-      queryClient.prefetchQuery({
-        queryKey: ['population-age', provinceId],
-        queryFn: async () => {
-          const result = await getCkanData(POPULATION_AGE_RESOURCE_ID, {
-            filters: JSON.stringify({ geo_id: provinceId }),
-            limit: 1000,
-            sort: 'year asc'
-          });
-          
-          // Return the transformed data directly
-          return result.records.map(record => ({
-            year: record.year,
-            age_group: record.age_group,
-            age_population: record.age_population
-          }));
-        },
-        staleTime: 5 * 60 * 1000,
-      }),
-      queryClient.prefetchQuery({
-        queryKey: ['housing-supply', provinceId],
-        queryFn: async () => {
-          const result = await getCkanData('15132377-edb0-40b0-9aad-8fd9f6769b92', {
-            filters: JSON.stringify({ geo_id: provinceId }),
-            limit: 1000,
-            sort: 'year asc'
-          });
-          return result;
-        },
-        staleTime: 5 * 60 * 1000,
-      }),
-      // Prefetch province-level housing affordability
-      queryClient.prefetchQuery({
-        queryKey: ['province-housing-affordability', provinceId],
-        queryFn: async () => {
-          const result = await getCkanData(HOUSING_AFFORDABILITY_RESOURCE_ID, {
-            filters: JSON.stringify({ geo_id: provinceId }),
-            limit: 1000,
-            sort: 'Quintile asc, house_type asc'
-          });
-          
-          // Filter out house_type 6 as requested
-          const filteredRecords = result.records.filter(record => 
-            record.house_type && parseInt(record.house_type) >= 1 && parseInt(record.house_type) <= 5
-          );
-          
-          return {
-            ...result,
-            records: filteredRecords
-          };
-        },
-        staleTime: 5 * 60 * 1000,
-      }),
-      // Prefetch districts data (simplified)
-      queryClient.prefetchQuery({
-        queryKey: ['districts', provinceId],
-        queryFn: async () => {
-          const result = await getCkanData(DISTRICT_HOUSING_AFFORDABILITY_RESOURCE_ID, {
-            filters: JSON.stringify({ geo_id: provinceId }),
-            limit: 1000
+          const result = await getCkanData(SONGKHLA_HOUSING_SUPPLY_RESOURCE_ID, {
+            limit: 10000,
+            sort: 'grid_id asc'
           });
           
           if (!result.records || result.records.length === 0) {
-            return [];
+            return {};
           }
           
-          // Extract unique districts using JavaScript filtering
-          const districts = [...new Set(result.records.map(record => record.dname))]
-            .filter(Boolean)
-            .map(districtName => ({
-              id: districtName,
-              name: districtName
-            }));
+          // Process the CSV data into a grid-based structure (same as useSongkhlaSupplyData)
+          const processedData = {};
           
-          return districts;
-        },
-        staleTime: 10 * 60 * 1000,
-      }),
-      // Prefetch district-level housing affordability for สงขลา (geo_id = 90) - separate logic
-      ...(provinceId === 90 ? [
-        queryClient.prefetchQuery({
-          queryKey: ['district-housing-affordability', provinceId, 'เทศบาลนครหาดใหญ่'],
-          queryFn: async () => {
-            // Get all province data first
-            const result = await getCkanData(DISTRICT_HOUSING_AFFORDABILITY_RESOURCE_ID, {
-              filters: JSON.stringify({ geo_id: provinceId }),
-              limit: 1000
-            });
+          result.records.forEach(record => {
+            const gridId = record.grid_id;
+            const houseType = record.House_type || 'ไม่ระบุ';
+            const supplyCount = parseInt(record.supply_count) || 0;
+            const salePrice = parseFloat(record.supply_sale_price) || null;
+            const rentPrice = parseFloat(record.supply_rent_price) || null;
             
-            // Filter in JavaScript
-            const districtRecords = result.records.filter(record => 
-              record.dname === 'เทศบาลนครหาดใหญ่'
-            );
+            if (!gridId) return;
             
-            // No transformation needed - keep district data as-is
-            return {
-              records: districtRecords
-            };
-          },
-          staleTime: 5 * 60 * 1000,
-        })
-      ] : []),
-      queryClient.prefetchQuery({
-        queryKey: ['housing-demand', provinceId],
-        queryFn: async () => {
-          const result = await getCkanData(HOUSING_DEMAND_RESOURCE_ID, {
-            filters: JSON.stringify({ geo_id: provinceId }),
-            limit: 1000,
-            sort: 'Quintile asc, current_house_type asc, future_house_type asc'
+            if (!processedData[gridId]) {
+              processedData[gridId] = {
+                gridId: gridId,
+                totalSupply: 0,
+                totalForSale: 0,
+                totalForRent: 0,
+                houseTypes: {},
+                salePrices: [],
+                rentPrices: [],
+                averageSalePrice: 0,
+                averageRentPrice: 0,
+                medianSalePrice: 0,
+                medianRentPrice: 0,
+                priceRange: {
+                  sale: { min: null, max: null },
+                  rent: { min: null, max: null }
+                }
+              };
+            }
+            
+            const gridData = processedData[gridId];
+            gridData.totalSupply += supplyCount;
+            
+            if (!gridData.houseTypes[houseType]) {
+              gridData.houseTypes[houseType] = {
+                count: 0,
+                salePrices: [],
+                rentPrices: [],
+                averageSalePrice: 0,
+                averageRentPrice: 0
+              };
+            }
+            
+            const houseTypeData = gridData.houseTypes[houseType];
+            houseTypeData.count += supplyCount;
+            
+            if (salePrice && salePrice > 0) {
+              gridData.totalForSale += supplyCount;
+              gridData.salePrices.push(salePrice);
+              houseTypeData.salePrices.push(salePrice);
+              
+              if (!gridData.priceRange.sale.min || salePrice < gridData.priceRange.sale.min) {
+                gridData.priceRange.sale.min = salePrice;
+              }
+              if (!gridData.priceRange.sale.max || salePrice > gridData.priceRange.sale.max) {
+                gridData.priceRange.sale.max = salePrice;
+              }
+            }
+            
+            if (rentPrice && rentPrice > 0) {
+              gridData.totalForRent += supplyCount;
+              gridData.rentPrices.push(rentPrice);
+              houseTypeData.rentPrices.push(rentPrice);
+              
+              if (!gridData.priceRange.rent.min || rentPrice < gridData.priceRange.rent.min) {
+                gridData.priceRange.rent.min = rentPrice;
+              }
+              if (!gridData.priceRange.rent.max || rentPrice > gridData.priceRange.rent.max) {
+                gridData.priceRange.rent.max = rentPrice;
+              }
+            }
           });
           
-          return result;
+          // Calculate averages and medians for each grid
+          Object.values(processedData).forEach(gridData => {
+            if (gridData.salePrices.length > 0) {
+              gridData.averageSalePrice = gridData.salePrices.reduce((sum, price) => sum + price, 0) / gridData.salePrices.length;
+              gridData.medianSalePrice = calculateMedian(gridData.salePrices);
+            }
+            
+            if (gridData.rentPrices.length > 0) {
+              gridData.averageRentPrice = gridData.rentPrices.reduce((sum, price) => sum + price, 0) / gridData.rentPrices.length;
+              gridData.medianRentPrice = calculateMedian(gridData.rentPrices);
+            }
+            
+            Object.values(gridData.houseTypes).forEach(houseTypeData => {
+              if (houseTypeData.salePrices.length > 0) {
+                houseTypeData.averageSalePrice = houseTypeData.salePrices.reduce((sum, price) => sum + price, 0) / houseTypeData.salePrices.length;
+              }
+              
+              if (houseTypeData.rentPrices.length > 0) {
+                houseTypeData.averageRentPrice = houseTypeData.rentPrices.reduce((sum, price) => sum + price, 0) / houseTypeData.rentPrices.length;
+              }
+            });
+          });
+          
+          return processedData;
         },
-        staleTime: 5 * 60 * 1000,
-      }),
-      queryClient.prefetchQuery({
-        queryKey: ['policy', provinceId],
-        queryFn: () => getPolicyData(provinceId),
-        staleTime: 5 * 60 * 1000,
-      }),
-    ]);
+        staleTime: 10 * 60 * 1000,
+      });
+    }
   };
   
   return { prefetchProvince };
