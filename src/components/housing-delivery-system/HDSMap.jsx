@@ -133,7 +133,7 @@ const HDSMap = ({
     
     // ONLY NEW ADDITION: Format supply data section
     let supplySection = '';
-    if (gridSupplyData) {
+    if (gridSupplyData && gridSupplyData.totalSupply > 0) {
       const { totalSupply, averageSalePrice, averageRentPrice, housingTypes } = gridSupplyData;
       
       supplySection = `
@@ -164,17 +164,25 @@ const HDSMap = ({
           <div class="mt-3">
             <h5 class="font-medium text-gray-700 text-xs mb-2">ประเภทที่อยู่อาศัย</h5>
             <div class="space-y-1 max-h-24 overflow-y-auto">
-              ${Object.entries(housingTypes).slice(0, 5).map(([type, data]) => `
+              ${Object.entries(housingTypes || {}).slice(0, 5).map(([type, data]) => `
                 <div class="flex justify-between text-xs">
                   <span class="text-gray-600 truncate" style="max-width: 120px;" title="${type}">${type}</span>
-                  <span class="font-medium text-gray-800">${data.supplyCount}</span>
+                  <span class="font-medium text-gray-800">${data.supplyCount || 0}</span>
                 </div>
               `).join('')}
-              ${Object.keys(housingTypes).length > 5 ? `
+              ${Object.keys(housingTypes || {}).length > 5 ? `
                 <div class="text-xs text-gray-500 italic">และอีก ${Object.keys(housingTypes).length - 5} ประเภท...</div>
               ` : ''}
             </div>
           </div>
+        </div>
+      `;
+    } else if (supplyData) {
+      // Show message that no supply data exists for this grid
+      supplySection = `
+        <div class="border-t border-gray-200 mt-3 pt-3">
+          <h4 class="font-semibold text-gray-800 mb-2 text-sm">ข้อมูลอุปทาน (Supply Data)</h4>
+          <p class="text-xs text-gray-500 italic">ไม่มีข้อมูลอุปทานสำหรับกริดนี้</p>
         </div>
       `;
     }
