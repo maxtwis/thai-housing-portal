@@ -1,14 +1,6 @@
 import React from 'react';
 
-const HDSStatistics = ({ 
-  stats, 
-  selectedGrid, 
-  onClearSelection, 
-  isMobile = false, 
-  provinceName = '',
-  supplyData = null,
-  supplyStats = null
-}) => {
+const HDSStatistics = ({ stats, selectedGrid, onClearSelection, isMobile = false, provinceName = '' }) => {
   
   // Define housing system names mapping
   const housingSystemNames = {
@@ -23,11 +15,8 @@ const HDSStatistics = ({
 
   // If a grid is selected, show statistics for that grid only
   if (selectedGrid) {
-    const gridId = selectedGrid.OBJECTID || selectedGrid.Grid_Code || selectedGrid.FID || 'ไม่ทราบ';
-    const gridSupplyData = supplyData?.[gridId];
-    
     const gridStats = {
-      gridId: gridId,
+      gridId: selectedGrid.OBJECTID || selectedGrid.Grid_Code || selectedGrid.FID || 'ไม่ทราบ',
       population: selectedGrid.Grid_POP || 0,
       housing: selectedGrid.Grid_House || 0,
       densityLevel: selectedGrid.Grid_Class || 'ไม่มีข้อมูล',
@@ -114,70 +103,6 @@ const HDSStatistics = ({
                       </div>
                     );
                   })}
-              </div>
-            </div>
-          )}
-
-          {/* Housing Supply Data for Selected Grid */}
-          {gridSupplyData && gridSupplyData.totalSupply > 0 && (
-            <div>
-              <h3 className="text-sm font-medium text-gray-500">ข้อมูลอุปทานที่อยู่อาศัย</h3>
-              <div className="mt-2 space-y-2">
-                <div>
-                  <span className="text-sm text-gray-500">อุปทานรวม:</span>
-                  <span className="block text-lg font-medium text-green-600">
-                    {gridSupplyData.totalSupply.toLocaleString()} หน่วย
-                  </span>
-                </div>
-                
-                {gridSupplyData.totalForSale > 0 && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <span className="text-sm text-gray-500">สำหรับขาย:</span>
-                      <span className="block text-base font-medium text-blue-600">
-                        {gridSupplyData.totalForSale.toLocaleString()}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-sm text-gray-500">ราคาเฉลี่ย:</span>
-                      <span className="block text-base font-medium text-blue-600">
-                        {(gridSupplyData.averageSalePrice / 1000000).toFixed(2)} ล้าน
-                      </span>
-                    </div>
-                  </div>
-                )}
-                
-                {gridSupplyData.totalForRent > 0 && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <span className="text-sm text-gray-500">สำหรับเช่า:</span>
-                      <span className="block text-base font-medium text-orange-600">
-                        {gridSupplyData.totalForRent.toLocaleString()}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-sm text-gray-500">ค่าเช่าเฉลี่ย:</span>
-                      <span className="block text-base font-medium text-orange-600">
-                        {gridSupplyData.averageRentPrice.toLocaleString()} บาท
-                      </span>
-                    </div>
-                  </div>
-                )}
-                
-                {gridSupplyData.houseTypes && Object.keys(gridSupplyData.houseTypes).length > 0 && (
-                  <div className="mt-3">
-                    <h4 className="text-xs font-medium text-gray-600 mb-2">ประเภทที่อยู่อาศัยในกริดนี้:</h4>
-                    {Object.entries(gridSupplyData.houseTypes)
-                      .sort(([,a], [,b]) => b.count - a.count)
-                      .slice(0, 5)
-                      .map(([type, data]) => (
-                        <div key={type} className="flex justify-between items-baseline mb-1">
-                          <span className="text-xs text-gray-500">{type}:</span>
-                          <span className="text-sm font-medium">{data.count}</span>
-                        </div>
-                      ))}
-                  </div>
-                )}
               </div>
             </div>
           )}
@@ -284,73 +209,6 @@ const HDSStatistics = ({
               })}
           </div>
         </div>
-
-        {/* Housing Supply Statistics - SAFE ACCESS */}
-        {supplyStats && typeof supplyStats === 'object' && supplyStats.totalSupply > 0 && (
-          <div>
-            <h3 className="text-sm font-medium text-gray-500">ข้อมูลอุปทานที่อยู่อาศัย</h3>
-            <div className="mt-2 space-y-2">
-              <div className="flex justify-between items-baseline">
-                <span className="text-sm text-gray-500">อุปทานรวม:</span>
-                <span className="text-base font-medium text-green-600">
-                  {supplyStats.totalSupply.toLocaleString()} หน่วย
-                </span>
-              </div>
-              
-              {supplyStats.averageSalePrice && supplyStats.averageSalePrice > 0 && (
-                <div className="flex justify-between items-baseline">
-                  <span className="text-sm text-gray-500">ราคาขายเฉลี่ย:</span>
-                  <span className="text-base font-medium text-blue-600">
-                    {(supplyStats.averageSalePrice / 1000000).toFixed(2)} ล้านบาท
-                  </span>
-                </div>
-              )}
-              
-              {supplyStats.averageRentPrice && supplyStats.averageRentPrice > 0 && (
-                <div className="flex justify-between items-baseline">
-                  <span className="text-sm text-gray-500">ราคาเช่าเฉลี่ย:</span>
-                  <span className="text-base font-medium text-orange-600">
-                    {supplyStats.averageRentPrice.toLocaleString()} บาท/เดือน
-                  </span>
-                </div>
-              )}
-              
-              {supplyStats.houseTypeDistribution && Object.keys(supplyStats.houseTypeDistribution).length > 0 && (
-                <div className="mt-3">
-                  <h4 className="text-xs font-medium text-gray-600 mb-2">ประเภทที่อยู่อาศัยยอดนิยม:</h4>
-                  {Object.entries(supplyStats.houseTypeDistribution)
-                    .sort(([,a], [,b]) => b - a)
-                    .slice(0, 5)
-                    .map(([type, count]) => (
-                      <div key={type} className="flex justify-between items-baseline">
-                        <span className="text-xs text-gray-500">{type}:</span>
-                        <span className="text-sm font-medium">{count.toLocaleString()}</span>
-                      </div>
-                    ))}
-                </div>
-              )}
-              
-              {supplyStats.highestSupplyGrid && (
-                <div className="mt-3 pt-2 border-t">
-                  <p className="text-xs text-gray-600">
-                    🏆 กริดที่มีอุปทานสูงสุด: กริด {supplyStats.highestSupplyGrid.gridId} 
-                    ({supplyStats.highestSupplyGrid.totalSupply.toLocaleString()} หน่วย)
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Show loading message for Songkhla when no supply data */}
-        {provinceName === 'สงขลา' && (!supplyStats || !supplyStats.totalSupply) && (
-          <div>
-            <h3 className="text-sm font-medium text-gray-500">ข้อมูลอุปทานที่อยู่อาศัย</h3>
-            <div className="mt-2 p-3 bg-gray-50 rounded-lg text-center">
-              <p className="text-sm text-gray-600">กำลังโหลดข้อมูลอุปทาน...</p>
-            </div>
-          </div>
-        )}
 
         {/* Density Distribution */}
         <div>

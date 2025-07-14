@@ -10,7 +10,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
-const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect, selectedGrid, selectedProvince = 40, supplyData = null }) => {
+const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect, selectedGrid, selectedProvince = 40 }) => {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const hdsLayerRef = useRef(null);
@@ -18,17 +18,6 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
 
   // Housing Delivery System categories
   const hdsCategories = {
-    1: 'ระบบของชุมชนแออัดบนที่ดินรัฐ/เอกชน',
-    2: 'ระบบการถือครองที่ดินชั่วคราว',
-    3: 'ระบบของกลุ่มประชากรแฝง',
-    4: 'ระบบที่อยู่อาศัยของลูกจ้าง',
-    5: 'ระบบที่อยู่อาศัยที่รัฐจัดสร้าง',
-    6: 'ระบบที่อยู่อาศัยที่รัฐสนับสนุน',
-    7: 'ระบบที่อยู่อาศัยเอกชน'
-  };
-
-  // Housing system names mapping for tooltips
-  const housingSystemNames = {
     1: 'ระบบของชุมชนแออัดบนที่ดินรัฐ/เอกชน',
     2: 'ระบบการถือครองที่ดินชั่วคราว',
     3: 'ระบบของกลุ่มประชากรแฝง',
@@ -72,18 +61,26 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
     }
   };
 
-  // Enhanced popup content with supply data
+  // Housing system names mapping for tooltips
+  const housingSystemNames = {
+    1: 'ระบบของชุมชนแออัดบนที่ดินรัฐ/เอกชน',
+    2: 'ระบบการถือครองที่ดินชั่วคราว',
+    3: 'ระบบของกลุ่มประชากรแฝง',
+    4: 'ระบบที่อยู่อาศัยของลูกจ้าง',
+    5: 'ระบบที่อยู่อาศัยที่รัฐจัดสร้าง',
+    6: 'ระบบที่อยู่อาศัยที่รัฐสนับสนุน',
+    7: 'ระบบที่อยู่อาศัยเอกชน'
+  };
+
+  // Detailed popup content with full information
   const generatePopupContent = (feature, colorScheme) => {
     const props = feature.properties;
     
     // Handle different property structures between provinces  
-    const gridId = props.FID || props.OBJECTID_1 || props.Grid_Code || props.Grid_CODE || props.OBJECTID;
+    const gridId = props.FID || props.OBJECTID_1 || props.Grid_Code || props.Grid_CODE;
     const gridPop = props.Grid_POP || 0;
     const gridHouse = props.Grid_House || 0;
     const gridClass = props.Grid_Class || 'ไม่มีข้อมูล';
-    
-    // Get supply data for this grid
-    const gridSupplyData = supplyData?.[gridId];
     
     // Calculate dominant housing system
     const hdsNumbers = [
@@ -100,60 +97,6 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
     const dominantSystem = hdsNumbers.reduce((max, item) => item.count > max.count ? item : max);
     
     const currentProvince = provinceConfigs[selectedProvince];
-    
-    // Supply data section
-    const supplySection = gridSupplyData ? `
-      <div class="bg-green-50 p-2 rounded border-t border-green-200 mt-3">
-        <h4 class="font-semibold text-green-800 text-sm mb-2">ข้อมูลอุปทานที่อยู่อาศัย</h4>
-        <div class="space-y-2 text-xs">
-          <div class="flex justify-between">
-            <span class="text-green-700">อุปทานรวม:</span>
-            <span class="font-medium">${gridSupplyData.totalSupply.toLocaleString()} หน่วย</span>
-          </div>
-          
-          ${gridSupplyData.totalForSale > 0 ? `
-            <div class="flex justify-between">
-              <span class="text-green-700">สำหรับขาย:</span>
-              <span class="font-medium">${gridSupplyData.totalForSale.toLocaleString()} หน่วย</span>
-            </div>
-          ` : ''}
-          
-          ${gridSupplyData.totalForRent > 0 ? `
-            <div class="flex justify-between">
-              <span class="text-green-700">สำหรับเช่า:</span>
-              <span class="font-medium">${gridSupplyData.totalForRent.toLocaleString()} หน่วย</span>
-            </div>
-          ` : ''}
-          
-          ${gridSupplyData.averageSalePrice > 0 ? `
-            <div class="flex justify-between">
-              <span class="text-green-700">ราคาขายเฉลี่ย:</span>
-              <span class="font-medium">${(gridSupplyData.averageSalePrice / 1000000).toFixed(2)} ล้านบาท</span>
-            </div>
-          ` : ''}
-          
-          ${gridSupplyData.averageRentPrice > 0 ? `
-            <div class="flex justify-between">
-              <span class="text-green-700">ราคาเช่าเฉลี่ย:</span>
-              <span class="font-medium">${gridSupplyData.averageRentPrice.toLocaleString()} บาท/เดือน</span>
-            </div>
-          ` : ''}
-          
-          <div class="mt-2">
-            <p class="font-medium text-green-700 text-xs mb-1">ประเภทที่อยู่อาศัยยอดนิยม:</p>
-            ${Object.entries(gridSupplyData.houseTypes)
-              .sort(([,a], [,b]) => b.count - a.count)
-              .slice(0, 3) // Show top 3 types
-              .map(([type, data]) => `
-                <div class="flex justify-between text-xs">
-                  <span class="text-green-600">${type}:</span>
-                  <span class="font-medium">${data.count} หน่วย</span>
-                </div>
-              `).join('')}
-          </div>
-        </div>
-      </div>
-    ` : '';
     
     return `
       <div class="p-3 min-w-[280px]">
@@ -202,8 +145,6 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
             </div>
           `}
           
-          ${supplySection}
-          
           ${props.Subsidies_ ? `
             <div class="bg-yellow-50 p-2 rounded text-xs">
               <strong class="text-yellow-800">เงินอุดหนุน:</strong> ${props.Subsidies_}
@@ -226,42 +167,11 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
     `;
   };
 
-  // Enhanced color function with supply data support
+  // Color function for grids based on scheme
   const getColor = (feature) => {
     const props = feature.properties;
-    const gridId = props.FID || props.OBJECTID_1 || props.Grid_Code || props.Grid_CODE || props.OBJECTID;
-    const gridSupplyData = supplyData?.[gridId];
     
     switch (colorScheme) {
-      case 'supplyDensity':
-        const supplyCount = gridSupplyData?.totalSupply || 0;
-        return supplyCount > 100 ? '#006837' :
-               supplyCount > 50  ? '#31a354' :
-               supplyCount > 20  ? '#78c679' :
-               supplyCount > 10  ? '#c2e699' :
-               supplyCount > 0   ? '#ffffcc' :
-                                  '#f0f0f0';
-
-      case 'averageSalePrice':
-        const avgSalePrice = gridSupplyData?.averageSalePrice || 0;
-        return avgSalePrice > 10000000 ? '#67000d' :
-               avgSalePrice > 5000000  ? '#a50f15' :
-               avgSalePrice > 3000000  ? '#cb181d' :
-               avgSalePrice > 2000000  ? '#ef3b2c' :
-               avgSalePrice > 1000000  ? '#fb6a4a' :
-               avgSalePrice > 0        ? '#fcae91' :
-                                        '#f0f0f0';
-
-      case 'averageRentPrice':
-        const avgRentPrice = gridSupplyData?.averageRentPrice || 0;
-        return avgRentPrice > 5000 ? '#08519c' :
-               avgRentPrice > 4000 ? '#3182bd' :
-               avgRentPrice > 3000 ? '#6baed6' :
-               avgRentPrice > 2000 ? '#9ecae1' :
-               avgRentPrice > 1000 ? '#c6dbef' :
-               avgRentPrice > 0    ? '#eff3ff' :
-                                    '#f0f0f0';
-    
       case 'populationDensity':
         const density = (props.Grid_POP || 0) / (props.Shape_Area || 4000000) * 1000000; // per km²
         return density > 1000 ? '#800026' :
@@ -318,41 +228,9 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
     }
   };
 
-  // Enhanced legend items including supply data schemes
+  // Legend items for different color schemes
   const getLegendItems = () => {
     switch (colorScheme) {
-      case 'supplyDensity':
-        return [
-          { color: '#006837', label: '> 100 หน่วย' },
-          { color: '#31a354', label: '50-100 หน่วย' },
-          { color: '#78c679', label: '20-50 หน่วย' },
-          { color: '#c2e699', label: '10-20 หน่วย' },
-          { color: '#ffffcc', label: '1-10 หน่วย' },
-          { color: '#f0f0f0', label: 'ไม่มีข้อมูล' }
-        ];
-        
-      case 'averageSalePrice':
-        return [
-          { color: '#67000d', label: '> 10 ล้านบาท' },
-          { color: '#a50f15', label: '5-10 ล้านบาท' },
-          { color: '#cb181d', label: '3-5 ล้านบาท' },
-          { color: '#ef3b2c', label: '2-3 ล้านบาท' },
-          { color: '#fb6a4a', label: '1-2 ล้านบาท' },
-          { color: '#fcae91', label: '< 1 ล้านบาท' },
-          { color: '#f0f0f0', label: 'ไม่มีข้อมูล' }
-        ];
-        
-      case 'averageRentPrice':
-        return [
-          { color: '#08519c', label: '> 5,000 บาท/เดือน' },
-          { color: '#3182bd', label: '4,000-5,000 บาท/เดือน' },
-          { color: '#6baed6', label: '3,000-4,000 บาท/เดือน' },
-          { color: '#9ecae1', label: '2,000-3,000 บาท/เดือน' },
-          { color: '#c6dbef', label: '1,000-2,000 บาท/เดือน' },
-          { color: '#eff3ff', label: '< 1,000 บาท/เดือน' },
-          { color: '#f0f0f0', label: 'ไม่มีข้อมูล' }
-        ];
-    
       case 'populationDensity':
         return [
           { color: '#800026', label: '> 1,000 คน/ตร.กม.' },
@@ -524,8 +402,7 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
                 const gridId = clickedFeature.properties.FID || 
                              clickedFeature.properties.OBJECTID_1 || 
                              clickedFeature.properties.Grid_Code || 
-                             clickedFeature.properties.Grid_CODE ||
-                             clickedFeature.properties.OBJECTID;
+                             clickedFeature.properties.Grid_CODE;
                 const gridPop = clickedFeature.properties.Grid_POP || 0;
                 
                 const popup = L.popup({
@@ -714,10 +591,7 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
       housingSystem: 'ระบบที่อยู่อาศัยหลัก',
       populationDensity: 'ความหนาแน่นประชากร',
       housingDensity: 'ความหนาแน่นที่อยู่อาศัย',
-      gridClass: 'ระดับความหนาแน่น',
-      supplyDensity: 'ความหนาแน่นอุปทานที่อยู่อาศัย',
-      averageSalePrice: 'ราคาขายเฉลี่ย',
-      averageRentPrice: 'ราคาเช่าเฉลี่ย'
+      gridClass: 'ระดับความหนาแน่น'
     }[colorScheme] || 'คำอธิบายสัญลักษณ์';
     
     // Different styling for mobile vs desktop

@@ -5,8 +5,7 @@ const HDSFilters = ({
   onFiltersChange, 
   colorScheme, 
   onColorSchemeChange, 
-  isMobile = false,
-  hasSupplyData = false 
+  isMobile = false 
 }) => {
   
   // Handle filter changes
@@ -36,13 +35,6 @@ const HDSFilters = ({
             <option value="populationDensity">ความหนาแน่นประชากร</option>
             <option value="housingDensity">ความหนาแน่นที่อยู่อาศัย</option>
             <option value="gridClass">ระดับความหนาแน่น</option>
-            {hasSupplyData && (
-              <>
-                <option value="supplyDensity">ความหนาแน่นอุปทานที่อยู่อาศัย</option>
-                <option value="averageSalePrice">ราคาขายเฉลี่ย</option>
-                <option value="averageRentPrice">ราคาเช่าเฉลี่ย</option>
-              </>
-            )}
           </select>
         </div>
 
