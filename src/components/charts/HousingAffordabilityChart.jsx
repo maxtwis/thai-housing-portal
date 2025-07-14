@@ -80,8 +80,41 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
   const houseTypeMapping = getHouseTypeMapping();
   const houseTypeColors = getHouseTypeColors();
 
-  // Available demand types
-  const demandTypes = ['ผู้มีรายได้น้อย', 'First Jobber', 'ผู้สูงอายุที่อาศัยอยู่คนเดียว'];
+  // Get available demand types based on actual data
+  const availableDemandTypes = useMemo(() => {
+    if (!rawData || !rawData.records || !rawData.records.length) {
+      return demandTypes; // Return all if no data yet
+    }
+    
+    // Get unique demand types from the actual data
+    const availableTypes = [...new Set(rawData.records.map(record => record.demand_type))]
+      .filter(Boolean);
+    
+    // Return only demand types that exist in the data and are in our predefined list
+    return demandTypes.filter(type => availableTypes.includes(type));
+  }, [rawData, demandTypes]);
+
+  // Get available quintiles based on actual data  
+  const availableQuintiles = useMemo(() => {
+    if (!rawData || !rawData.records || !rawData.records.length) {
+      return [0, 1, 2, 3, 4, 5]; // Return all if no data yet
+    }
+    
+    // Get unique quintiles from the actual data
+    const availableQuints = [...new Set(rawData.records.map(record => parseInt(record.Quintile)))]
+      .filter(q => !isNaN(q))
+      .sort((a, b) => a - b);
+    
+    return availableQuints;
+  }, [rawData]);
+
+  // Auto-adjust selected demand type if current selection is not available
+  React.useEffect(() => {
+    if (availableDemandTypes.length > 0 && !availableDemandTypes.includes(selectedDemandType)) {
+      console.log(`Selected demand type "${selectedDemandType}" not available, switching to "${availableDemandTypes[0]}"`);
+      setSelectedDemandType(availableDemandTypes[0]);
+    }
+  }, [availableDemandTypes, selectedDemandType]);
   
   // Available metrics (updated for district data)
   const metrics = {
@@ -106,8 +139,8 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
     // Group by quintile (handle quintile 0 as "ไม่ระบุรายได้")
     const groupedByQuintile = {};
     
-    // Initialize quintiles Q0-Q5 (Q0 for "ไม่ระบุรายได้")
-    for (let q = 0; q <= 5; q++) {
+    // Initialize quintiles based on available data only
+    for (let q of availableQuintiles) {
       const quintileLabel = q === 0 ? 'ไม่ระบุรายได้' : `Q${q}`;
       groupedByQuintile[q] = {
         quintile: quintileLabel,
@@ -146,17 +179,19 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
       });
       
       if (quintile >= 0 && quintile <= 5 && 
+          availableQuintiles.includes(quintile) && // Only process quintiles that exist in data
           houseTypeName && 
           !isNaN(value) && value !== null && value !== undefined) {
         groupedByQuintile[quintile][houseTypeName] = value;
       }
     });
 
-    // Convert to array and sort by quintile (Q0 first, then Q1-Q5)
+    // Convert to array and sort by quintile (only available quintiles)
     const result = Object.values(groupedByQuintile).sort((a, b) => a.quintileNumber - b.quintileNumber);
     console.log('Final chart data:', result);
+    console.log('Available quintiles used:', availableQuintiles);
     return result;
-  }, [rawData, selectedDemandType, selectedMetric, houseTypeMapping, dataLevel]);
+  }, [rawData, selectedDemandType, selectedMetric, houseTypeMapping, dataLevel, availableQuintiles]);
 
   const customTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
@@ -293,7 +328,7 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
                 onChange={(e) => setSelectedDemandType(e.target.value)}
                 className="text-xs px-2 py-1 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 flex-1"
               >
-                {demandTypes.map(type => (
+                {availableDemandTypes.map(type => (
                   <option key={type} value={type}>{type}</option>
                 ))}
               </select>
@@ -321,6 +356,18 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
         {isFetching && (
           <div className="mt-2 text-xs text-blue-600">
             🔄 กำลังอัปเดตข้อมูล...
+          </div>
+        )}
+
+        {/* Data availability info */}
+        {availableDemandTypes.length > 0 && (
+          <div className="mt-2 text-xs text-gray-500">
+            กลุ่มข้อมูลที่มี: {availableDemandTypes.join(', ')} 
+            {availableQuintiles.length > 0 && (
+              <span className="ml-2">
+                | กลุ่มรายได้: {availableQuintiles.map(q => q === 0 ? 'ไม่ระบุ' : `Q${q}`).join(', ')}
+              </span>
+            )}
           </div>
         )}
       </div>
