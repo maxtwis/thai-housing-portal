@@ -364,18 +364,6 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
             🔄 กำลังอัปเดตข้อมูล...
           </div>
         )}
-
-        {/* Data availability info */}
-        {availableDemandTypes.length > 0 && (
-          <div className="mt-2 text-xs text-gray-500">
-            กลุ่มข้อมูลที่มี: {availableDemandTypes.join(', ')} 
-            {availableQuintiles.length > 0 && (
-              <span className="ml-2">
-                | กลุ่มรายได้: {availableQuintiles.map(q => q === 0 ? 'ไม่ระบุ' : `Q${q}`).join(', ')}
-              </span>
-            )}
-          </div>
-        )}
       </div>
       
       <div className="px-2 py-1">
