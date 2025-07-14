@@ -33,6 +33,15 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
     }
   }, [dataLevel, hasDistrictData, selectedDistrict, districtsData]);
 
+  // Available demand types (define before useMemo)
+  const demandTypes = ['ผู้มีรายได้น้อย', 'First Jobber', 'ผู้สูงอายุที่อาศัยอยู่คนเดียว'];
+  
+  // Available metrics
+  const metrics = {
+    'Total_Hburden': 'อัตราส่วนค่าใช้จ่ายที่อยู่อาศัยรวม (%)',
+    'Exp_house': 'ค่าใช้จ่ายที่อยู่อาศัย (บาท)'
+  };
+
   // House type mapping - completely different for province vs district
   const getHouseTypeMapping = () => {
     if (dataLevel === 'province') {
@@ -90,6 +99,8 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
     const availableTypes = [...new Set(rawData.records.map(record => record.demand_type))]
       .filter(Boolean);
     
+    console.log('Available demand types in data:', availableTypes);
+    
     // Return only demand types that exist in the data and are in our predefined list
     return demandTypes.filter(type => availableTypes.includes(type));
   }, [rawData, demandTypes]);
@@ -105,6 +116,7 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
       .filter(q => !isNaN(q))
       .sort((a, b) => a - b);
     
+    console.log('Available quintiles in data:', availableQuints);
     return availableQuints;
   }, [rawData]);
 
@@ -115,12 +127,6 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
       setSelectedDemandType(availableDemandTypes[0]);
     }
   }, [availableDemandTypes, selectedDemandType]);
-  
-  // Available metrics (updated for district data)
-  const metrics = {
-    'Total_Hburden': 'อัตราส่วนค่าใช้จ่ายที่อยู่อาศัยรวม (%)',
-    'Exp_house': 'ค่าใช้จ่ายที่อยู่อาศัย (บาท)'
-  };
 
   // Process data for chart - completely different logic for province vs district
   const chartData = useMemo(() => {
