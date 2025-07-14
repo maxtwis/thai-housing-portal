@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import HDSMap from '../components/housing-delivery-system/HDSMap';
 import HDSFilters from '../components/housing-delivery-system/HDSFilters';
 import HDSStatistics from '../components/housing-delivery-system/HDSStatistics';
+import { useSupplyData } from '../hooks/useSupplyData'; // Add this import
 
 const HousingDeliverySystem = () => {
   const [loading, setLoading] = useState(true);
@@ -38,6 +39,9 @@ const HousingDeliverySystem = () => {
     { id: 90, name: 'สงขลา', file: '/data/HDS_HYT.geojson' }
   ];
 
+  // Fetch supply data from CKAN API
+  const { data: supplyData, isLoading: supplyLoading, error: supplyError } = useSupplyData();
+
   // Get current province info
   const getCurrentProvince = () => {
     return provinces.find(p => p.id === selectedProvince) || provinces[0];
@@ -59,56 +63,30 @@ const HousingDeliverySystem = () => {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Handle URL parameters - UPDATED TO INCLUDE SONGKHLA
+  // Load HDS data when province changes
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const provinceParam = urlParams.get('province');
+    const currentProvince = getCurrentProvince();
     
-    if (provinceParam) {
-      // Handle both numeric IDs and string codes
-      let provinceId;
-      if (provinceParam === 'kkn' || provinceParam === 'khonkaen') {
-        provinceId = 40;
-      } else if (provinceParam === 'cnx' || provinceParam === 'chiangmai') {
-        provinceId = 50;
-      } else if (provinceParam === 'hyt' || provinceParam === 'songkhla') {
-        provinceId = 90;
-      } else {
-        provinceId = parseInt(provinceParam);
-      }
-      
-      // Validate province exists
-      if (provinces.find(p => p.id === provinceId)) {
-        setSelectedProvince(provinceId);
-      }
-    }
-  }, []);
-
-  // Update URL when province changes
-  useEffect(() => {
-    const url = new URL(window.location);
-    url.searchParams.set('province', selectedProvince.toString());
-    window.history.replaceState({}, '', url);
-  }, [selectedProvince]);
-
-  // Load GeoJSON data and calculate statistics
-  useEffect(() => {
-    const loadHDSData = async () => {
-      setLoading(true);
-      setError(null);
-      
-      const currentProvince = getCurrentProvince();
-      console.log(`Loading HDS data for ${currentProvince.name}...`);
-      
+    setLoading(true);
+    setError(null);
+    setSelectedGrid(null);
+    
+    const loadHdsData = async () => {
       try {
         const response = await fetch(currentProvince.file);
         if (!response.ok) {
-          throw new Error(`Failed to load HDS GeoJSON data for ${currentProvince.name} (${response.status})`);
+          throw new Error(`Failed to load HDS data for ${currentProvince.name}`);
         }
         
         const geojsonData = await response.json();
+        console.log(`Loaded ${geojsonData.features?.length || 0} features for ${currentProvince.name}`);
         
-        console.log(`HDS Data loaded for ${currentProvince.name}:`, geojsonData.features.length, 'features');
+        if (!geojsonData.features || geojsonData.features.length === 0) {
+          throw new Error(`No features found in GeoJSON for ${currentProvince.name}`);
+        }
+        
+        console.log('Sample feature properties:', geojsonData.features[0]?.properties);
+        console.log('Total features loaded:', geojsonData.features?.length, 'features');
         setHdsData(geojsonData);
         
         // Calculate statistics
@@ -162,71 +140,65 @@ const HousingDeliverySystem = () => {
 
         setStats({
           totalGrids,
-          totalPopulation: totalPop,
-          totalHousing,
-          averageDensity,
+          totalPopulation: Math.round(totalPop),
+          totalHousing: Math.round(totalHousing),
+          averageDensity: Math.round(averageDensity),
           housingSystems,
           densityLevels,
           problemAreas: {
-            stability: (problemStability / totalGrids) * 100,
-            subsidies: (problemSubsidies / totalGrids) * 100,
-            supply: (problemSupply / totalGrids) * 100
+            supply: problemSupply,
+            subsidies: problemSubsidies,
+            stability: problemStability
           }
         });
 
-        setLoading(false);
-      } catch (error) {
-        console.error(`Error loading HDS data for ${currentProvince.name}:`, error);
-        setError(`Failed to load housing delivery system data for ${currentProvince.name}: ${error.message}`);
+      } catch (err) {
+        console.error('Error loading HDS data:', err);
+        setError(err.message);
+      } finally {
         setLoading(false);
       }
     };
-
-    loadHDSData();
+    
+    loadHdsData();
   }, [selectedProvince]);
 
-  // Handle grid selection
-  const handleGridSelect = (gridProperties) => {
-    setSelectedGrid(gridProperties);
-  };
-
-  // Clear grid selection
-  const handleClearSelection = () => {
-    setSelectedGrid(null);
-  };
-
-  // Toggle filters visibility on mobile
   const toggleFilters = () => {
     setShowFilters(!showFilters);
   };
 
-  // Handle province change
-  const handleProvinceChange = (provinceId) => {
-    setSelectedProvince(provinceId);
-    setSelectedGrid(null); // Clear selected grid when changing province
+  const handleGridSelect = (gridData) => {
+    setSelectedGrid(gridData);
+  };
+
+  const handleClearSelection = () => {
+    setSelectedGrid(null);
   };
 
   const currentProvince = getCurrentProvince();
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-gray-50">
-      <div className="container mx-auto px-4 py-4">
-        <div className="mb-4">
-          <h1 className="text-2xl font-bold text-gray-800">Housing Delivery System Analysis</h1>
-          <p className="text-gray-600 mt-2">
-            วิเคราะห์ระบบที่อยู่อาศัยในพื้นที่จังหวัด{currentProvince.name} แบ่งตามกริดความหนาแน่นและประเภทระบบที่อยู่อาศัย
+    <div className="min-h-screen bg-gray-100">
+      <div className="container mx-auto px-4 py-6">
+        {/* Header */}
+        <div className="mb-6">
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2">
+            Housing Delivery System Analysis
+          </h1>
+          <p className="text-gray-600">
+            Analysis of housing delivery systems and population distribution in Thailand
           </p>
         </div>
 
         {/* Province Selection */}
-        <div className="mb-4 bg-white rounded-lg shadow-md p-4">
-          <h3 className="font-semibold text-gray-800 mb-3">เลือกจังหวัด</h3>
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold text-gray-700 mb-3">Select Province</h2>
           <div className="flex flex-wrap gap-2">
             {provinces.map(province => (
               <button
                 key={province.id}
-                onClick={() => handleProvinceChange(province.id)}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                onClick={() => setSelectedProvince(province.id)}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                   selectedProvince === province.id
                     ? 'bg-blue-600 text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -310,6 +282,7 @@ const HousingDeliverySystem = () => {
                 onGridSelect={handleGridSelect}
                 selectedGrid={selectedGrid}
                 selectedProvince={selectedProvince}
+                supplyData={supplyData} // Pass supply data to map
               />
             </div>
           </div>
@@ -374,6 +347,7 @@ const HousingDeliverySystem = () => {
                   onGridSelect={handleGridSelect}
                   selectedGrid={selectedGrid}
                   selectedProvince={selectedProvince}
+                  supplyData={supplyData} // Pass supply data to map
                 />
               </div>
             </div>
