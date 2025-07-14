@@ -321,6 +321,7 @@ const HousingDemandChart = ({ provinceName, provinceId }) => {
                 angle={-45}
                 textAnchor="end"
                 height={80}
+                label={{ value: 'ที่อยู่อาศัยปัจจุบัน', position: 'insideBottom', offset: -5 }}
               />
               <YAxis 
                 fontSize={10}
