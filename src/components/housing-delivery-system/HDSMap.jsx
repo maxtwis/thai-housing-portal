@@ -57,7 +57,7 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
     if (isMobile) {
       return "60vh";
     } else {
-      return "calc(100vh - 150px)";
+      return "calc(100vh - 200px)"; // Reduced from 150px to account for headers and padding
     }
   };
 
@@ -611,13 +611,12 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden relative h-full">
+    <div className="bg-white rounded-lg shadow-md overflow-hidden relative" style={{ height: getMapHeight() }}>
       <div 
         ref={mapContainerRef}
         className="w-full h-full"
         style={{ 
-          minHeight: "400px", 
-          height: getMapHeight() 
+          minHeight: "400px"
         }}
       />
       <div className="absolute bottom-0 right-0 bg-white bg-opacity-75 px-2 py-1 text-xs text-gray-600">

@@ -343,7 +343,7 @@ const HousingDeliverySystem = () => {
 
             {/* Map */}
             <div className="col-span-8 relative">
-              <div className="bg-white rounded-lg shadow-md overflow-hidden h-full" style={{ minHeight: "calc(100vh - 120px)" }}>
+              <div className="bg-white rounded-lg shadow-md overflow-hidden" style={{ height: "calc(100vh - 240px)" }}>
                 {loading && (
                   <div className="absolute inset-0 bg-white bg-opacity-80 flex items-center justify-center z-10">
                     <div className="text-center">
