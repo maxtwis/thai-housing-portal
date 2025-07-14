@@ -165,6 +165,10 @@ export const useDistrictsData = (provinceId) => {
       console.log('Sample district record:', result.records[0]);
       console.log('Available fields:', Object.keys(result.records[0]));
       
+      // Log all unique demand types found in the data
+      const uniqueDemandTypes = [...new Set(result.records.map(record => record.demand_type))];
+      console.log('Unique demand types found in district data:', uniqueDemandTypes);
+      
       // Extract unique districts using JavaScript filtering
       const districts = [...new Set(result.records.map(record => record.dname))]
         .filter(Boolean)

@@ -7,7 +7,7 @@ import ExportButton from '../ExportButton';
 import { useHousingAffordabilityData, useDistrictsData } from '../../hooks/useCkanQueries';
 
 const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
-  const [selectedDemandType, setSelectedDemandType] = useState('ผู้มีรายได้น้อย');
+  const [selectedDemandType, setSelectedDemandType] = useState('First Jobber'); // Changed default
   const [selectedMetric, setSelectedMetric] = useState('Total_Hburden');
   const [dataLevel, setDataLevel] = useState('province'); // 'province' or 'district'
   const [selectedDistrict, setSelectedDistrict] = useState(null);
