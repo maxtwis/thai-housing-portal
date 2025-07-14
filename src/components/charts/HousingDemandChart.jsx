@@ -48,7 +48,7 @@ const HousingDemandChart = ({ provinceName, provinceId }) => {
   // Available views
   const views = [
     { value: 'transition', label: 'การเปลี่ยนประเภทที่อยู่อาศัย' },
-    { value: 'financing', label: 'ประเภทการจัดหาเงินทุน' },
+    { value: 'financing', label: 'ลักษณะการจ่ายค่าที่อยู่อาศัยที่ต้องการ' },
     { value: 'affordability', label: 'ความสามารถในการจ่าย' }
   ];
 
@@ -432,7 +432,7 @@ const HousingDemandChart = ({ provinceName, provinceId }) => {
             <p>แสดงราคาเฉลี่ยที่ผู้ตอบแบบสอบถามสามารถจ่ายได้ แยกตามกลุ่มรายได้</p>
           )}
           <p className="mt-1 text-gray-600">
-            ข้อมูลจากการสำรวจในจังหวัด{provinceName} เทศบาลนครหาดใหญ่
+            ข้อมูลจากการสำรวจในจังหวัด{provinceName} 
             {selectedQuintile !== 'all' && ` (${quintiles.find(q => q.value === selectedQuintile)?.label})`}
           </p>
         </div>
