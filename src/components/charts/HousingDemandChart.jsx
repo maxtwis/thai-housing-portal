@@ -418,24 +418,6 @@ const HousingDemandChart = ({ provinceName, provinceId }) => {
             </BarChart>
           </ResponsiveContainer>
         )}
-
-        {/* Summary statistics */}
-        <div className="mt-4 p-3 bg-gray-50 rounded text-xs">
-          <h4 className="font-semibold mb-2">สรุปข้อมูล</h4>
-          {selectedView === 'transition' && (
-            <p>แสดงการเปลี่ยนแปลงจากประเภทที่อยู่อาศัยปัจจุบันไปสู่ประเภทที่ต้องการในอนาคต</p>
-          )}
-          {selectedView === 'financing' && (
-            <p>แสดงลักษณะการจ่ายค่าที่อยู่อาศัยที่ผู้ตอบแบบสอบถามจะใช้ในการย้ายไปยังที่อยู่อาศัยใหม่</p>
-          )}
-          {selectedView === 'affordability' && (
-            <p>แสดงราคาเฉลี่ยที่ผู้ตอบแบบสอบถามสามารถจ่ายได้ แยกตามกลุ่มรายได้</p>
-          )}
-          <p className="mt-1 text-gray-600">
-            ข้อมูลจากการสำรวจในจังหวัด{provinceName} 
-            {selectedQuintile !== 'all' && ` (${quintiles.find(q => q.value === selectedQuintile)?.label})`}
-          </p>
-        </div>
       </div>
     </div>
   );
