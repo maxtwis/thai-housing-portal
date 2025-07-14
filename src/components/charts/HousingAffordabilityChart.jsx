@@ -33,8 +33,13 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
     }
   }, [dataLevel, hasDistrictData, selectedDistrict, districtsData]);
 
-  // Available demand types (define before useMemo)
-  const demandTypes = ['ผู้มีรายได้น้อย', 'First Jobber', 'ผู้สูงอายุที่อาศัยอยู่คนเดียว'];
+  // Available demand types (define before useMemo) - added new demand type
+  const demandTypes = [
+    'ผู้มีรายได้น้อย', 
+    'First Jobber', 
+    'ผู้สูงอายุที่อาศัยอยู่คนเดียว',
+    'กลุ่มประชากรทั่วไป'
+  ];
   
   // Available metrics (updated to include all three metrics)
   const metrics = {
