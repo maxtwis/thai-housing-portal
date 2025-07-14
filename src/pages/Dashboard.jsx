@@ -455,37 +455,37 @@ const Dashboard = () => {
           />
 
           {/* Province Summary Card */}
-          {metrics.population > 0 && (
-            <div className="bg-white rounded-lg shadow p-4 mt-4">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                {provinceName} Overview
-              </h3>
-              
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Population</span>
-                  <span className="font-medium">{metrics.population.toLocaleString()}</span>
-                </div>
+            {metrics.population > 0 && (
+              <div className="bg-white rounded-lg shadow p-4 mt-4">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                  สงขลา Overview
+                </h3>
                 
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Households</span>
-                  <span className="font-medium">{metrics.households.toLocaleString()}</span>
-                </div>
-                
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Avg Income</span>
-                  <span className="font-medium">฿{metrics.income.toLocaleString()}</span>
-                </div>
-                
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Income Growth</span>
-                  <span className={`font-medium ${metrics.incomeGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {metrics.incomeGrowth >= 0 ? '+' : ''}{metrics.incomeGrowth.toFixed(1)}%
-                  </span>
+                <div className="space-y-3">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">ประชากร</span>
+                    <span className="font-medium">{metrics.population.toLocaleString()}</span>
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">ครัวเรือน</span>
+                    <span className="font-medium">{metrics.households.toLocaleString()}</span>
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">รายได้เฉลี่ย</span>
+                    <span className="font-medium">฿{metrics.income.toLocaleString()}</span>
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">การเติบโตของรายได้</span>
+                    <span className={`font-medium ${metrics.incomeGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {metrics.incomeGrowth >= 0 ? '+' : ''}{metrics.incomeGrowth.toFixed(1)}%
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
           {/* Policy Summary */}
           {policy.data && policy.data.length > 0 && (
