@@ -359,6 +359,13 @@ const HDSMap = ({
                              clickedFeature.properties.Grid_CODE;
                 const gridPop = clickedFeature.properties.Grid_POP || 0;
                 
+                // Get supply data for mobile popup too
+                const gridSupplyData = supplyData ? supplyData[gridId] : null;
+                let mobileSupplyInfo = '';
+                if (gridSupplyData && gridSupplyData.totalSupply > 0) {
+                  mobileSupplyInfo = `<p class="text-xs text-blue-600 mt-1">Supply: ${gridSupplyData.totalSupply} หน่วย</p>`;
+                }
+                
                 const popup = L.popup({
                   maxWidth: 280,
                   className: 'hds-popup mobile-popup',
@@ -370,6 +377,7 @@ const HDSMap = ({
                   <div class="p-2">
                     <h4 class="font-bold text-sm">Grid ${gridId}</h4>
                     <p class="text-xs text-gray-600">${Math.round(gridPop).toLocaleString()} คน</p>
+                    ${mobileSupplyInfo}
                     <button onclick="this.closest('.leaflet-popup').remove()" class="text-xs text-blue-600 mt-1">ปิด</button>
                   </div>
                 `)
