@@ -434,7 +434,7 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
       <div className="px-4 py-2 border-t border-gray-100 text-xs text-gray-500">
         <div className="flex justify-between items-center">
           <span>
-            แหล่งข้อมูล: {dataLevel === 'district' ? 'ข้อมูลสำรวจระดับอำเภอ' : 'ข้อมูลระดับจังหวัด'}
+            แหล่งข้อมูล: {dataLevel === 'district' ? 'ข้อมูลสำรวจระดับเทศบาลนครหาดใหญ่' : 'สำนักงานสถิติแห่งชาติ'}
           </span>
           {chartData.length > 0 && (
             <span>
