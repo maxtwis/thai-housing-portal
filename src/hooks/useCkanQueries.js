@@ -626,8 +626,8 @@ export const useAllProvinceDataWithSupply = (provinceId) => {
   };
 };
 
-// Updated prefetch hook with district support
-export const usePrefetchProvince = () => {
+// Updated prefetch hook with district support - FIXED EXPORT NAME
+export const usePrefetchProvinceData = () => {
   const queryClient = useQueryClient();
   
   const prefetchProvince = (provinceId) => {
@@ -803,3 +803,6 @@ export const usePrefetchProvince = () => {
   
   return { prefetchProvince };
 };
+
+// Also export the old name for backward compatibility
+export const usePrefetchProvince = usePrefetchProvinceData;
