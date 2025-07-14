@@ -309,10 +309,10 @@ const HousingDemandChart = ({ provinceName, provinceId }) => {
       <div className="px-2 py-1">
         {/* Transition View - Stacked Bar Chart */}
         {selectedView === 'transition' && (
-          <ResponsiveContainer width="100%" height={450}>
+          <ResponsiveContainer width="100%" height={400}>
             <BarChart
               data={chartData}
-              margin={{ top: 20, right: 30, left: 20, bottom: 120 }}
+              margin={{ top: 20, right: 30, left: 20, bottom: 90 }}
             >
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis 
@@ -320,8 +320,8 @@ const HousingDemandChart = ({ provinceName, provinceId }) => {
                 fontSize={10}
                 angle={-45}
                 textAnchor="end"
-                height={80}
-                label={{ value: 'ที่อยู่อาศัยปัจจุบัน', position: 'insideBottom', offset: -40 }}
+                height={60}
+                label={{ value: 'ที่อยู่อาศัยปัจจุบัน', position: 'insideBottom', offset: -10 }}
               />
               <YAxis 
                 fontSize={10}
@@ -345,26 +345,28 @@ const HousingDemandChart = ({ provinceName, provinceId }) => {
 
         {/* Financing View - Pie Chart */}
         {selectedView === 'financing' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={pieData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percentage }) => `${name}: ${percentage}%`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {pieData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.fill} />
-                  ))}
-                </Pie>
-                <Tooltip content={pieTooltip} />
-              </PieChart>
-            </ResponsiveContainer>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="lg:col-span-2">
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percentage }) => `${name}: ${percentage}%`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {pieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                    ))}
+                  </Pie>
+                  <Tooltip content={pieTooltip} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
             
             <div className="flex flex-col justify-center">
               <h3 className="text-sm font-semibold mb-3">สรุปลักษณะการจ่ายค่าที่อยู่อาศัย</h3>
