@@ -303,7 +303,7 @@ const HDSStatistics = ({ stats, selectedGrid, onClearSelection, isMobile = false
         </div>
 
         {/* Housing Supply Statistics */}
-        {supplyStats && (
+        {supplyStats && supplyStats.totalSupply > 0 && (
           <div>
             <h3 className="text-sm font-medium text-gray-500">ข้อมูลอุปทานที่อยู่อาศัย</h3>
             <div className="mt-2 space-y-2">
@@ -332,18 +332,20 @@ const HDSStatistics = ({ stats, selectedGrid, onClearSelection, isMobile = false
                 </div>
               )}
               
-              <div className="mt-3">
-                <h4 className="text-xs font-medium text-gray-600 mb-2">ประเภทที่อยู่อาศัยยอดนิยม:</h4>
-                {Object.entries(supplyStats.houseTypeDistribution || {})
-                  .sort(([,a], [,b]) => b - a)
-                  .slice(0, 5)
-                  .map(([type, count]) => (
-                    <div key={type} className="flex justify-between items-baseline">
-                      <span className="text-xs text-gray-500">{type}:</span>
-                      <span className="text-sm font-medium">{count.toLocaleString()}</span>
-                    </div>
-                  ))}
-              </div>
+              {supplyStats.houseTypeDistribution && Object.keys(supplyStats.houseTypeDistribution).length > 0 && (
+                <div className="mt-3">
+                  <h4 className="text-xs font-medium text-gray-600 mb-2">ประเภทที่อยู่อาศัยยอดนิยม:</h4>
+                  {Object.entries(supplyStats.houseTypeDistribution)
+                    .sort(([,a], [,b]) => b - a)
+                    .slice(0, 5)
+                    .map(([type, count]) => (
+                      <div key={type} className="flex justify-between items-baseline">
+                        <span className="text-xs text-gray-500">{type}:</span>
+                        <span className="text-sm font-medium">{count.toLocaleString()}</span>
+                      </div>
+                    ))}
+                </div>
+              )}
               
               {supplyStats.highestSupplyGrid && (
                 <div className="mt-3 pt-2 border-t">
@@ -353,6 +355,16 @@ const HDSStatistics = ({ stats, selectedGrid, onClearSelection, isMobile = false
                   </p>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Show placeholder when no supply data available */}
+        {provinceName === 'สงขลา' && (!supplyStats || supplyStats.totalSupply === 0) && (
+          <div className="mt-6">
+            <h3 className="text-sm font-medium text-gray-500">ข้อมูลอุปทานที่อยู่อาศัย</h3>
+            <div className="mt-2 p-3 bg-gray-50 rounded-lg text-center">
+              <p className="text-sm text-gray-600">กำลังโหลดข้อมูลอุปทาน...</p>
             </div>
           </div>
         )}
