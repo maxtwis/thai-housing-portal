@@ -61,6 +61,17 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
     }
   };
 
+  // Housing system names mapping for tooltips
+  const housingSystemNames = {
+    1: 'ระบบของชุมชนแออัดบนที่ดินรัฐ/เอกชน',
+    2: 'ระบบการถือครองที่ดินชั่วคราว',
+    3: 'ระบบของกลุ่มประชากรแฝง',
+    4: 'ระบบที่อยู่อาศัยของลูกจ้าง',
+    5: 'ระบบที่อยู่อาศัยที่รัฐจัดสร้าง',
+    6: 'ระบบที่อยู่อาศัยที่รัฐสนับสนุน',
+    7: 'ระบบที่อยู่อาศัยเอกชน'
+  };
+
   // Detailed popup content with full information
   const generatePopupContent = (feature, colorScheme) => {
     const props = feature.properties;
@@ -114,7 +125,7 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
             <div class="bg-blue-50 p-2 rounded border-t border-blue-200 mt-3">
               <h4 class="font-semibold text-blue-800 text-sm mb-2">ระบบที่อยู่อาศัยหลัก</h4>
               <div class="text-sm">
-                <span class="font-medium text-blue-700">${hdsCategories[dominantSystem.code]}</span>
+                <span class="font-medium text-blue-700">${housingSystemNames[dominantSystem.code]}</span>
                 <span class="text-blue-600 block">${dominantSystem.count.toLocaleString()} หน่วย (${((dominantSystem.count / totalHousing) * 100).toFixed(1)}%)</span>
               </div>
             </div>
@@ -123,7 +134,7 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
               <h5 class="font-medium text-gray-700">รายละเอียดระบบที่อยู่อาศัย:</h5>
               ${hdsNumbers.filter(item => item.count > 0).map(item => `
                 <div class="flex justify-between">
-                  <span class="text-gray-600">C${item.code}:</span>
+                  <span class="text-gray-600">${housingSystemNames[item.code]}:</span>
                   <span class="font-medium">${item.count.toLocaleString()}</span>
                 </div>
               `).join('')}
