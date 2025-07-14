@@ -47,8 +47,8 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
       name: 'สงขลา',
       file: '/data/HDS_HYT.geojson',
       needsTransformation: false, // Already in WGS84 format
-      center: [7.0, 100.45], // Based on the coordinates in your GeoJSON data
-      bounds: [[6.8, 100.3], [7.2, 100.6]]
+      center: [7.01, 100.465], // More precise center based on your data
+      bounds: [[6.975, 100.425], [7.045, 100.505]] // Tighter bounds around actual data
     }
   };
 
@@ -486,16 +486,21 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
         
         console.log('Calculated bounds:', bounds.isValid() ? bounds.toString() : 'Invalid bounds');
         
-        // Only fit bounds on initial load, don't force it afterwards
+        // Use calculated bounds if valid, otherwise fall back to province bounds
         if (bounds.isValid()) {
-          console.log('Fitting map to bounds...');
+          console.log('Fitting map to calculated bounds...');
           map.fitBounds(bounds, {
-            padding: isMobile ? [20, 20] : [50, 50],
-            maxZoom: isMobile ? 14 : 16
+            padding: isMobile ? [10, 10] : [20, 20], // Reduced padding for tighter fit
+            maxZoom: isMobile ? 12 : 14
           });
         } else {
-          console.log('Bounds invalid, using province center');
-          map.setView(currentProvince.center, isMobile ? 9 : 10);
+          console.log('Bounds invalid, using province bounds');
+          // Use the predefined province bounds as fallback
+          const provinceBounds = L.latLngBounds(currentProvince.bounds);
+          map.fitBounds(provinceBounds, {
+            padding: isMobile ? [10, 10] : [20, 20],
+            maxZoom: isMobile ? 12 : 14
+          });
         }
 
         // Update legend initially
