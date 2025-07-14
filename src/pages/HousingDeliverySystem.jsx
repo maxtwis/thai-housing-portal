@@ -39,8 +39,8 @@ const HousingDeliverySystem = () => {
     { id: 90, name: 'สงขลา', file: '/data/HDS_HYT.geojson' }
   ];
 
-  // Fetch supply data from CKAN API
-  const { data: supplyData, isLoading: supplyLoading, error: supplyError } = useSupplyData();
+  // Fetch supply data from CKAN API with province filtering
+  const { data: supplyData, isLoading: supplyLoading, error: supplyError } = useSupplyData(selectedProvince);
 
   // Get current province info
   const getCurrentProvince = () => {

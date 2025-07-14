@@ -516,7 +516,7 @@ const HDSMap = ({
         legendRef.current = null;
       }
     };
-  }, [selectedProvince, isMobile]); // REMOVED supplyData from dependencies to prevent re-initialization
+  }, [selectedProvince, isMobile, supplyData]); // ADDED supplyData to dependencies
 
   // Update filters when they change - UNCHANGED
   useEffect(() => {
