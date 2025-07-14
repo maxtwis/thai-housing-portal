@@ -15,71 +15,89 @@ const HDSMap = ({
   const hdsLayerRef = useRef(null);
   const legendRef = useRef(null);
 
-  // Province configurations - UNCHANGED
+  // Province configurations - FIXED FOR SONGKHLA
   const provinceConfigs = {
     40: {
       name: 'ขอนแก่น',
-      center: [16.4322, 102.8236],
-      bounds: [[15.5, 101.8], [17.5, 103.8]],
-      file: '/data/HDS_KKN01.geojson'
+      file: '/data/HDS_KKN01.geojson',
+      center: [16.4419, 102.8359],
+      bounds: [[15.5, 101.5], [17.5, 104.0]]
     },
     50: {
       name: 'เชียงใหม่',
-      center: [18.7883, 98.9853],
-      bounds: [[17.8, 97.9], [19.8, 99.9]],
-      file: '/data/HDS_CNX_02GJSON.geojson'
+      file: '/data/HDS_CNX_02GJSON.geojson',
+      center: [18.7883, 98.9817],
+      bounds: [[18.0, 98.0], [19.5, 100.0]]
     },
     90: {
       name: 'สงขลา',
-      center: [7.0063, 100.4665],
-      bounds: [[6.0, 99.5], [8.0, 101.5]],
-      file: '/data/HDS_HYT.geojson'
+      file: '/data/HDS_HYT.geojson',
+      center: [7.01, 100.465], // Fixed center
+      bounds: [[6.975, 100.425], [7.045, 100.505]] // Tighter bounds
     }
   };
 
   const currentProvince = provinceConfigs[selectedProvince] || provinceConfigs[40];
 
-  // Color schemes - UNCHANGED
+  // Color schemes - REVERTED TO ORIGINAL
   const colorSchemes = {
     housingSystem: {
-      name: 'Housing System Dominance',
+      name: 'ระบบที่อยู่อาศัยหลัก',
       colors: [
-        { min: 1, max: 1, color: '#d73027', label: 'C1: ระบบชุมชนบุกรุก' },
-        { min: 2, max: 2, color: '#f46d43', label: 'C2: ระบบถือครองชั่วคราว' },
-        { min: 3, max: 3, color: '#fdae61', label: 'C3: ระบบกลุ่มประชากรแฝง' },
-        { min: 4, max: 4, color: '#fee08b', label: 'C4: ระบบที่อยู่อาศัยลูกจ้าง' },
-        { min: 5, max: 5, color: '#e6f598', label: 'C5: ระบบที่อยู่อาศัยรัฐ' },
-        { min: 6, max: 6, color: '#abdda4', label: 'C6: ระบบที่อยู่อาศัยรัฐสนับสนุน' },
-        { min: 7, max: 7, color: '#66c2a5', label: 'C7: ระบบที่อยู่อาศัยเอกชน' }
+        { min: 1, max: 1, color: '#ff6b6b', label: 'ระบบของชุมชนแออัดบนที่ดินรัฐ/เอกชน' },
+        { min: 2, max: 2, color: '#4ecdc4', label: 'ระบบการถือครองที่ดินชั่วคราว' },
+        { min: 3, max: 3, color: '#45b7d1', label: 'ระบบของกลุ่มประชากรแฝง' },
+        { min: 4, max: 4, color: '#96ceb4', label: 'ระบบที่อยู่อาศัยของลูกจ้าง' },
+        { min: 5, max: 5, color: '#feca57', label: 'ระบบที่อยู่อาศัยที่รัฐจัดสร้าง' },
+        { min: 6, max: 6, color: '#ff9ff3', label: 'ระบบที่อยู่อาศัยที่รัฐสนับสนุน' },
+        { min: 7, max: 7, color: '#a8e6cf', label: 'ระบบที่อยู่อาศัยเอกชน' }
       ]
     },
-    population: {
-      name: 'Population Density',
+    populationDensity: {
+      name: 'ความหนาแน่นประชากร',
       colors: [
-        { min: 0, max: 100, color: '#ffffcc', label: '0-100 คน' },
-        { min: 101, max: 500, color: '#c7e9b4', label: '101-500 คน' },
-        { min: 501, max: 1000, color: '#7fcdbb', label: '501-1,000 คน' },
-        { min: 1001, max: 2000, color: '#41b6c4', label: '1,001-2,000 คน' },
-        { min: 2001, max: 5000, color: '#2c7fb8', label: '2,001-5,000 คน' },
-        { min: 5001, max: Infinity, color: '#253494', label: '5,001+ คน' }
+        { min: 0, max: 10, color: '#FFEDA0', label: '< 10 คน/ตร.กม.' },
+        { min: 10, max: 20, color: '#FED976', label: '10-20 คน/ตร.กม.' },
+        { min: 20, max: 50, color: '#FEB24C', label: '20-50 คน/ตร.กม.' },
+        { min: 50, max: 100, color: '#FD8D3C', label: '50-100 คน/ตร.กม.' },
+        { min: 100, max: 200, color: '#FC4E2A', label: '100-200 คน/ตร.กม.' },
+        { min: 200, max: 500, color: '#E31A1C', label: '200-500 คน/ตร.กม.' },
+        { min: 500, max: 1000, color: '#BD0026', label: '500-1,000 คน/ตร.กม.' },
+        { min: 1000, max: Infinity, color: '#800026', label: '> 1,000 คน/ตร.กม.' }
       ]
     },
-    problems: {
-      name: 'Problem Areas',
+    housingDensity: {
+      name: 'ความหนาแน่นที่อยู่อาศัย',
       colors: [
-        { min: 0, max: 0, color: '#d9f0a3', label: 'No Problems' },
-        { min: 1, max: 1, color: '#addd8e', label: 'One Problem' },
-        { min: 2, max: 2, color: '#78c679', label: 'Two Problems' },
-        { min: 3, max: 3, color: '#31a354', label: 'Three Problems' }
+        { min: 0, max: 20, color: '#FFEDA0', label: '< 20 หน่วย/ตร.กม.' },
+        { min: 20, max: 50, color: '#FED976', label: '20-50 หน่วย/ตร.กม.' },
+        { min: 50, max: 100, color: '#FEB24C', label: '50-100 หน่วย/ตร.กม.' },
+        { min: 100, max: 200, color: '#FD8D3C', label: '100-200 หน่วย/ตร.กม.' },
+        { min: 200, max: 500, color: '#FC4E2A', label: '200-500 หน่วย/ตร.กม.' },
+        { min: 500, max: 1000, color: '#E31A1C', label: '500-1,000 หน่วย/ตร.กม.' },
+        { min: 1000, max: 2000, color: '#BD0026', label: '1,000-2,000 หน่วย/ตร.กม.' },
+        { min: 2000, max: Infinity, color: '#800026', label: '> 2,000 หน่วย/ตร.กม.' }
+      ]
+    },
+    gridClass: {
+      name: 'ระดับความหนาแน่น',
+      colors: [
+        { min: 1, max: 1, color: '#ffffcc', label: 'Class 1' },
+        { min: 2, max: 2, color: '#fed976', label: 'Class 2' },
+        { min: 3, max: 3, color: '#feb24c', label: 'Class 3' },
+        { min: 4, max: 4, color: '#fd8d3c', label: 'Class 4' },
+        { min: 5, max: 5, color: '#fc4e2a', label: 'Class 5' },
+        { min: 6, max: 6, color: '#e31a1c', label: 'Class 6' },
+        { min: 7, max: 7, color: '#bd0026', label: 'Class 7' }
       ]
     }
   };
 
-  // Housing system names - UNCHANGED
+  // Housing system names - REVERTED TO ORIGINAL
   const housingSystemNames = {
-    1: 'ระบบชุมชนบุกรุก',
-    2: 'ระบบถือครองชั่วคราว',
-    3: 'ระบบกลุ่มประชากรแฝง',
+    1: 'ระบบของชุมชนแออัดบนที่ดินรัฐ/เอกชน',
+    2: 'ระบบการถือครองที่ดินชั่วคราว',
+    3: 'ระบบของกลุ่มประชากรแฝง',
     4: 'ระบบที่อยู่อาศัยของลูกจ้าง',
     5: 'ระบบที่อยู่อาศัยที่รัฐจัดสร้าง',
     6: 'ระบบที่อยู่อาศัยที่รัฐสนับสนุน',
@@ -206,45 +224,65 @@ const HDSMap = ({
     `;
   };
 
-  // Get color function - UNCHANGED
+  // Get color function - REVERTED TO ORIGINAL LOGIC
   const getColor = (feature) => {
     const props = feature.properties;
     
-    if (colorScheme === 'housingSystem') {
-      const hdsNumbers = [
-        { code: 1, count: props.HDS_C1_num || 0 },
-        { code: 2, count: props.HDS_C2_num || 0 },
-        { code: 3, count: props.HDS_C3_num || 0 },
-        { code: 4, count: props.HDS_C4_num || 0 },
-        { code: 5, count: props.HDS_C5_num || 0 },
-        { code: 6, count: props.HDS_C6_num || 0 },
-        { code: 7, count: props.HDS_C7_num || 0 }
-      ];
+    switch (colorScheme) {
+      case 'populationDensity':
+        const density = (props.Grid_POP || 0) / (props.Shape_Area || 4000000) * 1000000; // per km²
+        return density > 1000 ? '#800026' :
+               density > 500  ? '#BD0026' :
+               density > 200  ? '#E31A1C' :
+               density > 100  ? '#FC4E2A' :
+               density > 50   ? '#FD8D3C' :
+               density > 20   ? '#FEB24C' :
+               density > 10   ? '#FED976' :
+                               '#FFEDA0';
       
-      const dominantSystem = hdsNumbers.reduce((max, item) => item.count > max.count ? item : max);
+      case 'housingDensity':
+        const housingDensity = (props.Grid_House || 0) / (props.Shape_Area || 4000000) * 1000000; // per km²
+        return housingDensity > 2000 ? '#800026' :
+               housingDensity > 1000 ? '#BD0026' :
+               housingDensity > 500  ? '#E31A1C' :
+               housingDensity > 200  ? '#FC4E2A' :
+               housingDensity > 100  ? '#FD8D3C' :
+               housingDensity > 50   ? '#FEB24C' :
+               housingDensity > 20   ? '#FED976' :
+                                      '#FFEDA0';
       
-      if (dominantSystem.count > 0) {
-        const colorSchemeItem = colorSchemes.housingSystem.colors.find(c => c.min === dominantSystem.code);
-        return colorSchemeItem ? colorSchemeItem.color : '#cccccc';
-      }
-      return '#cccccc';
-    } 
-    else if (colorScheme === 'population') {
-      const population = props.Grid_POP || 0;
-      const colorRange = colorSchemes.population.colors.find(c => population >= c.min && population <= c.max);
-      return colorRange ? colorRange.color : '#cccccc';
+      case 'gridClass':
+        const gridClass = props.Grid_Class;
+        switch (gridClass) {
+          case 1: return '#ffffcc';
+          case 2: return '#fed976';
+          case 3: return '#feb24c';
+          case 4: return '#fd8d3c';
+          case 5: return '#fc4e2a';
+          case 6: return '#e31a1c';
+          case 7: return '#bd0026';
+          default: return '#f0f0f0';
+        }
+      
+      case 'housingSystem':
+      default:
+        // Find dominant housing system - ORIGINAL COLORS
+        const hdsNumbers = [
+          { code: 1, count: props.HDS_C1_num || 0, color: '#ff6b6b' }, // Light red
+          { code: 2, count: props.HDS_C2_num || 0, color: '#4ecdc4' }, // Teal
+          { code: 3, count: props.HDS_C3_num || 0, color: '#45b7d1' }, // Light blue
+          { code: 4, count: props.HDS_C4_num || 0, color: '#96ceb4' }, // Light green
+          { code: 5, count: props.HDS_C5_num || 0, color: '#feca57' }, // Yellow
+          { code: 6, count: props.HDS_C6_num || 0, color: '#ff9ff3' }, // Pink
+          { code: 7, count: props.HDS_C7_num || 0, color: '#a8e6cf' }  // Mint green
+        ];
+        
+        const dominantSystem = hdsNumbers.reduce((max, current) => 
+          current.count > max.count ? current : max
+        );
+        
+        return dominantSystem.count > 0 ? dominantSystem.color : '#f0f0f0';
     }
-    else if (colorScheme === 'problems') {
-      let problemCount = 0;
-      if (props.Supply_Pro) problemCount++;
-      if (props.Subsidies_) problemCount++;
-      if (props.Stability_) problemCount++;
-      
-      const colorRange = colorSchemes.problems.colors.find(c => problemCount >= c.min && problemCount <= c.max);
-      return colorRange ? colorRange.color : '#cccccc';
-    }
-    
-    return '#cccccc';
   };
 
   // Update legend function - UNCHANGED
@@ -513,23 +551,17 @@ const HDSMap = ({
     });
   }, [filters]);
 
-  // Update colors and selected grid styling - UNCHANGED
+  // Update colors and selected grid styling - REMOVED BLACK BORDER
   useEffect(() => {
     if (!mapRef.current || !hdsLayerRef.current) return;
 
     hdsLayerRef.current.eachLayer((layer) => {
-      const isSelected = selectedGrid && 
-        (layer.feature.properties.FID === selectedGrid.properties.FID ||
-         layer.feature.properties.OBJECTID_1 === selectedGrid.properties.OBJECTID_1 ||
-         layer.feature.properties.Grid_Code === selectedGrid.properties.Grid_Code ||
-         layer.feature.properties.Grid_CODE === selectedGrid.properties.Grid_CODE);
-
       layer.setStyle({
         fillColor: getColor(layer.feature),
-        weight: isSelected ? 3 : 1,
-        opacity: isSelected ? 1 : 0.3,
-        color: isSelected ? '#000000' : '#666666',
-        fillOpacity: isSelected ? 1 : 0.8
+        weight: 1, // Thin border always
+        opacity: 0.3, // Low opacity border
+        color: '#666666', // Gray border - NO BLACK BORDER
+        fillOpacity: 0.8
       });
     });
 
