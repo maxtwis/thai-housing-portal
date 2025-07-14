@@ -36,11 +36,28 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
   // Available demand types (define before useMemo)
   const demandTypes = ['ผู้มีรายได้น้อย', 'First Jobber', 'ผู้สูงอายุที่อาศัยอยู่คนเดียว'];
   
-  // Available metrics
+  // Available metrics (updated to include all three metrics)
   const metrics = {
     'Total_Hburden': 'อัตราส่วนค่าใช้จ่ายที่อยู่อาศัยรวม (%)',
+    'Exp_hbrent': 'อัตราส่วนค่าใช้จ่ายที่อยู่อาศัย เช่า (%)',
+    'Exp_hbmort': 'อัตราส่วนค่าใช้จ่ายที่อยู่อาศัย ผ่อน (%)',
     'Exp_house': 'ค่าใช้จ่ายที่อยู่อาศัย (บาท)'
   };
+
+  // Get available metrics based on data level
+  const getAvailableMetrics = () => {
+    if (dataLevel === 'province') {
+      // Province level only has Total_Hburden (no rent/mortgage breakdown)
+      return {
+        'Total_Hburden': 'อัตราส่วนค่าใช้จ่ายที่อยู่อาศัยรวม (%)'
+      };
+    } else {
+      // District level has all metrics including rent and mortgage breakdown
+      return metrics;
+    }
+  };
+
+  const availableMetrics = getAvailableMetrics();
 
   // House type mapping - completely different for province vs district
   const getHouseTypeMapping = () => {
@@ -128,6 +145,15 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
     }
   }, [availableDemandTypes, selectedDemandType]);
 
+  // Auto-adjust selected metric if current selection is not available when switching levels
+  React.useEffect(() => {
+    const currentAvailableMetrics = Object.keys(getAvailableMetrics());
+    if (!currentAvailableMetrics.includes(selectedMetric)) {
+      console.log(`Selected metric "${selectedMetric}" not available for ${dataLevel} level, switching to "${currentAvailableMetrics[0]}"`);
+      setSelectedMetric(currentAvailableMetrics[0]);
+    }
+  }, [dataLevel, selectedMetric]);
+
   // Process data for chart - completely different logic for province vs district
   const chartData = useMemo(() => {
     if (!rawData || !rawData.records || !rawData.records.length) {
@@ -210,7 +236,7 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
         <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
           <h4 className="font-semibold text-gray-800 mb-2 text-sm">{label}</h4>
           <p className="text-xs text-gray-600 mb-2">
-            {selectedDemandType} • {metrics[selectedMetric]}
+            {selectedDemandType} • {availableMetrics[selectedMetric]}
             {dataLevel === 'district' && selectedDistrict && (
               <span className="ml-1">• {selectedDistrict}</span>
             )}
@@ -223,9 +249,9 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
               ></div>
               <span className="text-gray-600">{entry.dataKey}:</span>
               <span className="font-medium">
-                {selectedMetric === 'Total_Hburden' 
-                  ? `${entry.value}%` 
-                  : `${entry.value.toLocaleString()} บาท`
+                {selectedMetric === 'Exp_house' 
+                  ? `${entry.value.toLocaleString()} บาท`
+                  : `${entry.value}%`
                 }
               </span>
             </div>
@@ -350,7 +376,7 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
                 onChange={(e) => setSelectedMetric(e.target.value)}
                 className="text-xs px-2 py-1 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 flex-1"
               >
-                {Object.entries(metrics).map(([key, label]) => (
+                {Object.entries(availableMetrics).map(([key, label]) => (
                   <option key={key} value={key}>{label}</option>
                 ))}
               </select>
@@ -384,7 +410,7 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
               <YAxis 
                 fontSize={10}
                 label={{ 
-                  value: selectedMetric === 'Total_Hburden' ? '%' : 'บาท', 
+                  value: selectedMetric === 'Exp_house' ? 'บาท' : '%', 
                   angle: -90, 
                   position: 'insideLeft' 
                 }}
@@ -434,7 +460,7 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
       <div className="px-4 py-2 border-t border-gray-100 text-xs text-gray-500">
         <div className="flex justify-between items-center">
           <span>
-            แหล่งข้อมูล: {dataLevel === 'district' ? 'ข้อมูลสำรวจระดับเทศบาลนครหาดใหญ่' : 'สำนักงานสถิติแห่งชาติ'}
+            แหล่งข้อมูล: {dataLevel === 'district' ? 'ข้อมูลสำรวจระดับอำเภอ' : 'ข้อมูลระดับจังหวัด'}
           </span>
           {chartData.length > 0 && (
             <span>
