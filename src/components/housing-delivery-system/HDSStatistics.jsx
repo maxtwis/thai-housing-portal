@@ -1,6 +1,14 @@
 import React from 'react';
 
-const HDSStatistics = ({ stats, selectedGrid, onClearSelection, isMobile = false, provinceName = '' }) => {
+const HDSStatistics = ({ 
+  stats, 
+  selectedGrid, 
+  onClearSelection, 
+  isMobile = false, 
+  provinceName = '',
+  supplyData = null,
+  supplyStats = null
+}) => {
   
   // Define housing system names mapping
   const housingSystemNames = {
@@ -111,7 +119,7 @@ const HDSStatistics = ({ stats, selectedGrid, onClearSelection, isMobile = false
           )}
 
           {/* Housing Supply Data for Selected Grid */}
-          {gridSupplyData && (
+          {gridSupplyData && gridSupplyData.totalSupply > 0 && (
             <div>
               <h3 className="text-sm font-medium text-gray-500">ข้อมูลอุปทานที่อยู่อาศัย</h3>
               <div className="mt-2 space-y-2">
@@ -156,18 +164,20 @@ const HDSStatistics = ({ stats, selectedGrid, onClearSelection, isMobile = false
                   </div>
                 )}
                 
-                <div className="mt-3">
-                  <h4 className="text-xs font-medium text-gray-600 mb-2">ประเภทที่อยู่อาศัยในกริดนี้:</h4>
-                  {Object.entries(gridSupplyData.houseTypes)
-                    .sort(([,a], [,b]) => b.count - a.count)
-                    .slice(0, 5)
-                    .map(([type, data]) => (
-                      <div key={type} className="flex justify-between items-baseline mb-1">
-                        <span className="text-xs text-gray-500">{type}:</span>
-                        <span className="text-sm font-medium">{data.count}</span>
-                      </div>
-                    ))}
-                </div>
+                {gridSupplyData.houseTypes && Object.keys(gridSupplyData.houseTypes).length > 0 && (
+                  <div className="mt-3">
+                    <h4 className="text-xs font-medium text-gray-600 mb-2">ประเภทที่อยู่อาศัยในกริดนี้:</h4>
+                    {Object.entries(gridSupplyData.houseTypes)
+                      .sort(([,a], [,b]) => b.count - a.count)
+                      .slice(0, 5)
+                      .map(([type, data]) => (
+                        <div key={type} className="flex justify-between items-baseline mb-1">
+                          <span className="text-xs text-gray-500">{type}:</span>
+                          <span className="text-sm font-medium">{data.count}</span>
+                        </div>
+                      ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -275,35 +285,8 @@ const HDSStatistics = ({ stats, selectedGrid, onClearSelection, isMobile = false
           </div>
         </div>
 
-        {/* Density Distribution */}
-        <div>
-          <h3 className="text-sm font-medium text-gray-500">การกระจายตามระดับความหนาแน่น</h3>
-          <div className="mt-2 space-y-3">
-            {Object.entries(stats.densityLevels || {})
-              .sort(([a], [b]) => parseInt(a) - parseInt(b))
-              .map(([level, count]) => {
-                const percentage = ((count / (stats.totalGrids || 1)) * 100).toFixed(1);
-                return (
-                  <div key={level} className="flex justify-between items-center">
-                    <span className="text-sm text-gray-500">ระดับ {level}:</span>
-                    <div className="flex items-center">
-                      <span className="text-sm font-medium mr-2">{count} กริด</span>
-                      <div className="w-20 h-2 bg-gray-200 rounded-full">
-                        <div 
-                          className="h-full bg-blue-500 rounded-full" 
-                          style={{ width: `${percentage}%` }}
-                        ></div>
-                      </div>
-                      <span className="text-xs text-gray-500 ml-2">{percentage}%</span>
-                    </div>
-                  </div>
-                );
-              })}
-          </div>
-        </div>
-
-        {/* Housing Supply Statistics */}
-        {supplyStats && supplyStats.totalSupply > 0 && (
+        {/* Housing Supply Statistics - SAFE ACCESS */}
+        {supplyStats && typeof supplyStats === 'object' && supplyStats.totalSupply > 0 && (
           <div>
             <h3 className="text-sm font-medium text-gray-500">ข้อมูลอุปทานที่อยู่อาศัย</h3>
             <div className="mt-2 space-y-2">
@@ -314,7 +297,7 @@ const HDSStatistics = ({ stats, selectedGrid, onClearSelection, isMobile = false
                 </span>
               </div>
               
-              {supplyStats.averageSalePrice > 0 && (
+              {supplyStats.averageSalePrice && supplyStats.averageSalePrice > 0 && (
                 <div className="flex justify-between items-baseline">
                   <span className="text-sm text-gray-500">ราคาขายเฉลี่ย:</span>
                   <span className="text-base font-medium text-blue-600">
@@ -323,7 +306,7 @@ const HDSStatistics = ({ stats, selectedGrid, onClearSelection, isMobile = false
                 </div>
               )}
               
-              {supplyStats.averageRentPrice > 0 && (
+              {supplyStats.averageRentPrice && supplyStats.averageRentPrice > 0 && (
                 <div className="flex justify-between items-baseline">
                   <span className="text-sm text-gray-500">ราคาเช่าเฉลี่ย:</span>
                   <span className="text-base font-medium text-orange-600">
@@ -359,15 +342,42 @@ const HDSStatistics = ({ stats, selectedGrid, onClearSelection, isMobile = false
           </div>
         )}
 
-        {/* Show placeholder when no supply data available */}
-        {provinceName === 'สงขลา' && (!supplyStats || supplyStats.totalSupply === 0) && (
-          <div className="mt-6">
+        {/* Show loading message for Songkhla when no supply data */}
+        {provinceName === 'สงขลา' && (!supplyStats || !supplyStats.totalSupply) && (
+          <div>
             <h3 className="text-sm font-medium text-gray-500">ข้อมูลอุปทานที่อยู่อาศัย</h3>
             <div className="mt-2 p-3 bg-gray-50 rounded-lg text-center">
               <p className="text-sm text-gray-600">กำลังโหลดข้อมูลอุปทาน...</p>
             </div>
           </div>
         )}
+
+        {/* Density Distribution */}
+        <div>
+          <h3 className="text-sm font-medium text-gray-500">การกระจายตามระดับความหนาแน่น</h3>
+          <div className="mt-2 space-y-3">
+            {Object.entries(stats.densityLevels || {})
+              .sort(([a], [b]) => parseInt(a) - parseInt(b))
+              .map(([level, count]) => {
+                const percentage = ((count / (stats.totalGrids || 1)) * 100).toFixed(1);
+                return (
+                  <div key={level} className="flex justify-between items-center">
+                    <span className="text-sm text-gray-500">ระดับ {level}:</span>
+                    <div className="flex items-center">
+                      <span className="text-sm font-medium mr-2">{count} กริด</span>
+                      <div className="w-20 h-2 bg-gray-200 rounded-full">
+                        <div 
+                          className="h-full bg-blue-500 rounded-full" 
+                          style={{ width: `${percentage}%` }}
+                        ></div>
+                      </div>
+                      <span className="text-xs text-gray-500 ml-2">{percentage}%</span>
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        </div>
 
         {/* Problem Areas */}
         <div>
