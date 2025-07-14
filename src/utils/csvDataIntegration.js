@@ -18,7 +18,7 @@ export class HousingSupplyDataManager {
 
   /**
    * Get housing supply data for Songkhla province (id: 90)
-   * Uses your existing getCkanData function
+   * Uses your existing getCkanData function with multiple fallback strategies
    */
   async getHousingSupplyData(forceRefresh = false) {
     const now = Date.now();
@@ -34,17 +34,73 @@ export class HousingSupplyDataManager {
     try {
       console.log('Fetching housing supply data from CKAN...');
       
-      // Use your existing getCkanData function with Songkhla province filter
-      const result = await getCkanData(this.resourceId, {
-        filters: JSON.stringify({ province_id: 90 }), // Songkhla province
-        limit: 10000,
-        sort: 'OBJECTID asc, House_type asc'
-      });
+      let result = null;
       
-      console.log('Raw CKAN response:', result);
+      // Strategy 1: Try with no filters first (get all data)
+      try {
+        console.log('Trying strategy 1: No filters');
+        result = await getCkanData(this.resourceId, {
+          limit: 10000,
+          sort: 'OBJECTID asc'
+        });
+        console.log('Strategy 1 successful:', result?.records?.length || 0, 'records');
+      } catch (error) {
+        console.log('Strategy 1 failed:', error.message);
+      }
+      
+      // Strategy 2: Try with geo_id filter (most common in your system)
+      if (!result || !result.records) {
+        try {
+          console.log('Trying strategy 2: geo_id filter');
+          result = await getCkanData(this.resourceId, {
+            filters: JSON.stringify({ geo_id: 90 }),
+            limit: 10000,
+            sort: 'OBJECTID asc'
+          });
+          console.log('Strategy 2 successful:', result?.records?.length || 0, 'records');
+        } catch (error) {
+          console.log('Strategy 2 failed:', error.message);
+        }
+      }
+      
+      // Strategy 3: Try with province_id filter
+      if (!result || !result.records) {
+        try {
+          console.log('Trying strategy 3: province_id filter');
+          result = await getCkanData(this.resourceId, {
+            filters: JSON.stringify({ province_id: 90 }),
+            limit: 10000,
+            sort: 'OBJECTID asc'
+          });
+          console.log('Strategy 3 successful:', result?.records?.length || 0, 'records');
+        } catch (error) {
+          console.log('Strategy 3 failed:', error.message);
+        }
+      }
+      
+      // Strategy 4: Try with province_code filter
+      if (!result || !result.records) {
+        try {
+          console.log('Trying strategy 4: province_code filter');
+          result = await getCkanData(this.resourceId, {
+            filters: JSON.stringify({ province_code: 90 }),
+            limit: 10000,
+            sort: 'OBJECTID asc'
+          });
+          console.log('Strategy 4 successful:', result?.records?.length || 0, 'records');
+        } catch (error) {
+          console.log('Strategy 4 failed:', error.message);
+        }
+      }
       
       if (!result || !result.records) {
-        throw new Error('Invalid response format from CKAN API');
+        throw new Error('All filter strategies failed. Resource might not exist or have different field structure.');
+      }
+      
+      // Log sample record to understand structure
+      if (result.records.length > 0) {
+        console.log('Sample record structure:', Object.keys(result.records[0]));
+        console.log('First record:', result.records[0]);
       }
       
       // Process and clean the data
@@ -67,15 +123,55 @@ export class HousingSupplyDataManager {
    * Process raw housing data - similar to your existing data processing patterns
    */
   processHousingData(rawData) {
-    return rawData.map(record => ({
-      objectId: parseInt(record.OBJECTID) || null,
-      houseType: record.House_type || '',
-      supplyCount: parseInt(record.supply_count) || 0,
-      supplySalePrice: parseFloat(record.supply_sale_price) || null,
-      supplyRentPrice: parseFloat(record.supply_rent_price) || null,
-      // Keep original record for debugging
-      _raw: record
-    })).filter(record => record.objectId !== null && record.supplyCount > 0);
+    if (!rawData || !Array.isArray(rawData)) {
+      console.warn('Invalid rawData provided to processHousingData');
+      return [];
+    }
+
+    return rawData.map(record => {
+      // Try different possible field names for OBJECTID
+      const objectId = parseInt(record.OBJECTID) || 
+                      parseInt(record.objectid) || 
+                      parseInt(record.grid_id) || 
+                      parseInt(record.Grid_ID) || 
+                      parseInt(record.id) || 
+                      null;
+
+      // Try different possible field names for house type
+      const houseType = record.House_type || 
+                       record.house_type || 
+                       record.HouseType || 
+                       record.type || 
+                       '';
+
+      // Try different possible field names for supply count
+      const supplyCount = parseInt(record.supply_count) || 
+                         parseInt(record.Supply_count) || 
+                         parseInt(record.count) || 
+                         parseInt(record.units) || 
+                         0;
+
+      // Try different possible field names for prices
+      const supplySalePrice = parseFloat(record.supply_sale_price) || 
+                             parseFloat(record.sale_price) || 
+                             parseFloat(record.price_sale) || 
+                             null;
+
+      const supplyRentPrice = parseFloat(record.supply_rent_price) || 
+                             parseFloat(record.rent_price) || 
+                             parseFloat(record.price_rent) || 
+                             null;
+
+      return {
+        objectId,
+        houseType,
+        supplyCount,
+        supplySalePrice,
+        supplyRentPrice,
+        // Keep original record for debugging
+        _raw: record
+      };
+    }).filter(record => record.objectId !== null && record.supplyCount > 0);
   }
 
   /**
@@ -218,6 +314,8 @@ export const useHousingSupplyByGridData = (provinceId) => {
     enabled: provinceId === 90, // Only enable for Songkhla
     staleTime: 5 * 60 * 1000, // Same as your existing queries
     cacheTime: 10 * 60 * 1000, // Same as your existing queries
+    retry: 3, // Retry failed requests
+    retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
   });
 };
 
@@ -238,6 +336,8 @@ export const useHousingSupplyStats = (provinceId) => {
     enabled: provinceId === 90,
     staleTime: 5 * 60 * 1000,
     cacheTime: 10 * 60 * 1000,
+    retry: 3,
+    retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 };
 
@@ -393,4 +493,4 @@ export class GeoJSONCSVIntegrator {
 
 // Export instances for easy use - following your existing patterns
 export const housingSupplyManager = new HousingSupplyDataManager();
-export const geoJsonIntegrator = new GeoJSONCSVIntegrator();
+export const geoJsonIntegrator = new GeoJSONCSVIntegrator();DataManager = new HousingSupplyDataManager();
