@@ -2,26 +2,20 @@ import React, { useState, useEffect } from 'react';
 import HDSMap from '../components/housing-delivery-system/HDSMap';
 import HDSFilters from '../components/housing-delivery-system/HDSFilters';
 import HDSStatistics from '../components/housing-delivery-system/HDSStatistics';
-import { useHousingSupplyByGridData, useHousingSupplyStats, geoJsonIntegrator } from '../utils/csvDataIntegration';
 
 const HousingDeliverySystem = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [hdsData, setHdsData] = useState(null);
-  const [enrichedGeoJSON, setEnrichedGeoJSON] = useState(null);
   const [colorScheme, setColorScheme] = useState('housingSystem');
   const [isMobile, setIsMobile] = useState(false);
   const [showFilters, setShowFilters] = useState(true);
   const [selectedGrid, setSelectedGrid] = useState(null);
-  const [selectedProvince, setSelectedProvince] = useState(90); // Default to สงขลา for CSV data
+  const [selectedProvince, setSelectedProvince] = useState(40); // Default to ขอนแก่น
   const [filters, setFilters] = useState({
     housingSystem: 'all',
     densityLevel: 'all',
-    populationRange: 'all',
-    // New CSV-based filters
-    supplyRange: 'all',
-    priceRange: 'all',
-    houseType: 'all'
+    populationRange: 'all'
   });
   const [stats, setStats] = useState({
     totalGrids: 0,
@@ -34,45 +28,26 @@ const HousingDeliverySystem = () => {
       supply: 0,
       subsidies: 0,
       stability: 0
-    },
-    // New CSV-based stats
-    csvStats: {
-      totalSupply: 0,
-      averageSalePrice: 0,
-      averageRentPrice: 0,
-      gridsWithData: 0,
-      dominantHouseTypes: {}
     }
   });
 
-  // Available provinces - Focus on สงขลา for CSV data
+  // Available provinces - UPDATED TO INCLUDE SONGKHLA
   const provinces = [
-    { id: 40, name: 'ขอนแก่น', file: '/data/HDS_KKN01.geojson', hasCSVData: false },
-    { id: 50, name: 'เชียงใหม่', file: '/data/HDS_CNX_02GJSON.geojson', hasCSVData: false },
-    { id: 90, name: 'สงขลา', file: '/data/HDS_HYT.geojson', hasCSVData: true }
+    { id: 40, name: 'ขอนแก่น', file: '/data/HDS_KKN01.geojson' },
+    { id: 50, name: 'เชียงใหม่', file: '/data/HDS_CNX_02GJSON.geojson' },
+    { id: 90, name: 'สงขลา', file: '/data/HDS_HYT.geojson' }
   ];
-
-  // Use React Query hooks for CSV data - following your existing patterns
-  const { 
-    data: csvData, 
-    isLoading: csvLoading, 
-    error: csvError 
-  } = useHousingSupplyByGridData(selectedProvince);
-
-  const { 
-    data: csvStats, 
-    isLoading: csvStatsLoading 
-  } = useHousingSupplyStats(selectedProvince);
 
   // Get current province info
   const getCurrentProvince = () => {
-    return provinces.find(p => p.id === selectedProvince) || provinces[2]; // Default to สงขลา
+    return provinces.find(p => p.id === selectedProvince) || provinces[0];
   };
 
   // Check if device is mobile
   useEffect(() => {
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768);
+      // Always show filters on desktop
       if (window.innerWidth >= 768) {
         setShowFilters(true);
       }
@@ -80,332 +55,331 @@ const HousingDeliverySystem = () => {
     
     checkMobile();
     window.addEventListener('resize', checkMobile);
+    
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Update stats when CSV data changes
+  // Handle URL parameters - UPDATED TO INCLUDE SONGKHLA
   useEffect(() => {
-    if (csvStats && selectedProvince === 90) {
-      setStats(prevStats => ({
-        ...prevStats,
-        csvStats: {
-          totalSupply: csvStats.totalSupply,
-          averageSalePrice: csvStats.averageSalePrice,
-          averageRentPrice: csvStats.averageRentPrice,
-          gridsWithData: csvStats.totalGrids,
-          dominantHouseTypes: csvStats.houseTypeDistribution
-        }
-      }));
-    }
-  }, [csvStats, selectedProvince]);
-
-  // Load GeoJSON data and enrich with CSV
-  const loadHDSData = async () => {
-    try {
-      setLoading(true);
-      const currentProvince = getCurrentProvince();
-      
-      console.log('Loading HDS data for:', currentProvince.name);
-      
-      // Load GeoJSON
-      const response = await fetch(currentProvince.file);
-      if (!response.ok) {
-        throw new Error(`Failed to load GeoJSON: ${response.statusText}`);
-      }
-      
-      const geojsonData = await response.json();
-      console.log('GeoJSON loaded:', geojsonData.features.length, 'features');
-      
-      setHdsData(geojsonData);
-      
-      // Enrich with CSV data if available for this province
-      if (currentProvince.hasCSVData && csvData && Object.keys(csvData).length > 0) {
-        console.log('Enriching GeoJSON with CSV data...');
-        const enriched = await geoJsonIntegrator.enrichGeoJSONWithCSVData(geojsonData);
-        setEnrichedGeoJSON(enriched);
-        console.log('GeoJSON enriched with CSV data');
+    const urlParams = new URLSearchParams(window.location.search);
+    const provinceParam = urlParams.get('province');
+    
+    if (provinceParam) {
+      // Handle both numeric IDs and string codes
+      let provinceId;
+      if (provinceParam === 'kkn' || provinceParam === 'khonkaen') {
+        provinceId = 40;
+      } else if (provinceParam === 'cnx' || provinceParam === 'chiangmai') {
+        provinceId = 50;
+      } else if (provinceParam === 'hyt' || provinceParam === 'songkhla') {
+        provinceId = 90;
       } else {
-        setEnrichedGeoJSON(geojsonData);
-        console.log('No CSV data available for this province or CSV data not loaded yet');
+        provinceId = parseInt(provinceParam);
       }
       
-      // Calculate original HDS statistics
-      calculateHDSStatistics(geojsonData);
-      
-    } catch (error) {
-      console.error('Error loading HDS data:', error);
-      setError(error.message);
-    } finally {
-      setLoading(false);
+      // Validate province exists
+      if (provinces.find(p => p.id === provinceId)) {
+        setSelectedProvince(provinceId);
+      }
     }
-  };
+  }, []);
 
-  // Calculate HDS statistics from GeoJSON
-  const calculateHDSStatistics = (geojsonData) => {
-    const features = geojsonData.features;
-    let totalPop = 0;
-    let totalHousing = 0;
-    const housingSystems = {
-      HDS_C1: 0, HDS_C2: 0, HDS_C3: 0, HDS_C4: 0,
-      HDS_C5: 0, HDS_C6: 0, HDS_C7: 0
-    };
-    const densityLevels = {};
-    let problemStability = 0;
-    let problemSubsidies = 0;
-    let problemSupply = 0;
-
-    features.forEach(feature => {
-      const props = feature.properties;
-      
-      totalPop += props.Grid_POP || 0;
-      totalHousing += props.Grid_House || 0;
-      
-      // Count housing systems
-      housingSystems.HDS_C1 += props.HDS_C1_num || 0;
-      housingSystems.HDS_C2 += props.HDS_C2_num || 0;
-      housingSystems.HDS_C3 += props.HDS_C3_num || 0;
-      housingSystems.HDS_C4 += props.HDS_C4_num || 0;
-      housingSystems.HDS_C5 += props.HDS_C5_num || 0;
-      housingSystems.HDS_C6 += props.HDS_C6_num || 0;
-      housingSystems.HDS_C7 += props.HDS_C7_num || 0;
-      
-      // Count density levels
-      const densityClass = props.Grid_Class;
-      if (densityClass) {
-        densityLevels[densityClass] = (densityLevels[densityClass] || 0) + 1;
-      }
-      
-      // Count problem areas
-      if (props.Stability_) problemStability++;
-      if (props.Subsidies_) problemSubsidies++;
-      if (props.Supply_Pro) problemSupply++;
-    });
-
-    const totalGrids = features.length;
-    const averageDensity = totalGrids > 0 ? totalPop / totalGrids : 0;
-
-    setStats(prevStats => ({
-      ...prevStats,
-      totalGrids,
-      totalPopulation: totalPop,
-      totalHousing,
-      averageDensity,
-      housingSystems,
-      densityLevels,
-      problemAreas: {
-        supply: problemSupply,
-        subsidies: problemSubsidies,
-        stability: problemStability
-      }
-    }));
-  };
-
-  // Load data when component mounts or province changes
+  // Update URL when province changes
   useEffect(() => {
-    loadHDSData();
+    const url = new URL(window.location);
+    url.searchParams.set('province', selectedProvince.toString());
+    window.history.replaceState({}, '', url);
   }, [selectedProvince]);
 
-  // Re-enrich GeoJSON when CSV data becomes available
+  // Load GeoJSON data and calculate statistics
   useEffect(() => {
-    if (hdsData && csvData && selectedProvince === 90 && Object.keys(csvData).length > 0) {
-      const enrichData = async () => {
-        console.log('Re-enriching GeoJSON with newly loaded CSV data...');
-        const enriched = await geoJsonIntegrator.enrichGeoJSONWithCSVData(hdsData);
-        setEnrichedGeoJSON(enriched);
-      };
-      enrichData();
-    }
-  }, [csvData, hdsData, selectedProvince]);
+    const loadHDSData = async () => {
+      setLoading(true);
+      setError(null);
+      
+      const currentProvince = getCurrentProvince();
+      console.log(`Loading HDS data for ${currentProvince.name}...`);
+      
+      try {
+        const response = await fetch(currentProvince.file);
+        if (!response.ok) {
+          throw new Error(`Failed to load HDS GeoJSON data for ${currentProvince.name} (${response.status})`);
+        }
+        
+        const geojsonData = await response.json();
+        
+        console.log(`HDS Data loaded for ${currentProvince.name}:`, geojsonData.features.length, 'features');
+        setHdsData(geojsonData);
+        
+        // Calculate statistics
+        const features = geojsonData.features;
+        let totalPop = 0;
+        let totalHousing = 0;
+        const housingSystems = {
+          HDS_C1: 0, // ระบบชุมชนบุกรุก
+          HDS_C2: 0, // ระบบถือครองชั่วคราว
+          HDS_C3: 0, // ระบบกลุ่มประชากรแฝง
+          HDS_C4: 0, // ระบบที่อยู่อาศัยลูกจ้าง
+          HDS_C5: 0, // ระบบที่อยู่อาศัยรัฐ
+          HDS_C6: 0, // ระบบที่อยู่อาศัยรัฐสนับสนุน
+          HDS_C7: 0  // ระบบที่อยู่อาศัยเอกชน
+        };
+        const densityLevels = {};
+        let problemStability = 0;
+        let problemSubsidies = 0;
+        let problemSupply = 0;
+
+        features.forEach(feature => {
+          const props = feature.properties;
+          
+          // Add to totals
+          totalPop += props.Grid_POP || 0;
+          totalHousing += props.Grid_House || 0;
+          
+          // Count housing systems
+          housingSystems.HDS_C1 += props.HDS_C1_num || 0;
+          housingSystems.HDS_C2 += props.HDS_C2_num || 0;
+          housingSystems.HDS_C3 += props.HDS_C3_num || 0;
+          housingSystems.HDS_C4 += props.HDS_C4_num || 0;
+          housingSystems.HDS_C5 += props.HDS_C5_num || 0;
+          housingSystems.HDS_C6 += props.HDS_C6_num || 0;
+          housingSystems.HDS_C7 += props.HDS_C7_num || 0;
+          
+          // Count density levels
+          const densityClass = props.Grid_Class;
+          if (densityClass) {
+            densityLevels[densityClass] = (densityLevels[densityClass] || 0) + 1;
+          }
+          
+          // Count problem areas
+          if (props.Stability_) problemStability++;
+          if (props.Subsidies_) problemSubsidies++;
+          if (props.Supply_Pro) problemSupply++;
+        });
+
+        const totalGrids = features.length;
+        const averageDensity = totalGrids > 0 ? totalPop / totalGrids : 0;
+
+        setStats({
+          totalGrids,
+          totalPopulation: totalPop,
+          totalHousing,
+          averageDensity,
+          housingSystems,
+          densityLevels,
+          problemAreas: {
+            stability: (problemStability / totalGrids) * 100,
+            subsidies: (problemSubsidies / totalGrids) * 100,
+            supply: (problemSupply / totalGrids) * 100
+          }
+        });
+
+        setLoading(false);
+      } catch (error) {
+        console.error(`Error loading HDS data for ${currentProvince.name}:`, error);
+        setError(`Failed to load housing delivery system data for ${currentProvince.name}: ${error.message}`);
+        setLoading(false);
+      }
+    };
+
+    loadHDSData();
+  }, [selectedProvince]);
 
   // Handle grid selection
   const handleGridSelect = (gridProperties) => {
     setSelectedGrid(gridProperties);
-    
-    // Log CSV data for selected grid if available
-    if (csvData && gridProperties) {
-      const objectId = gridProperties.OBJECTID || 
-                      gridProperties.OBJECTID_1 || 
-                      gridProperties.FID || 
-                      gridProperties.Grid_Code;
-      
-      const gridCSVData = csvData[objectId];
-      if (gridCSVData) {
-        console.log('CSV data for selected grid:', gridCSVData);
-      }
-    }
+  };
+
+  // Clear grid selection
+  const handleClearSelection = () => {
+    setSelectedGrid(null);
+  };
+
+  // Toggle filters visibility on mobile
+  const toggleFilters = () => {
+    setShowFilters(!showFilters);
   };
 
   // Handle province change
   const handleProvinceChange = (provinceId) => {
     setSelectedProvince(provinceId);
-    setSelectedGrid(null);
-    setError(null);
+    setSelectedGrid(null); // Clear selected grid when changing province
   };
-
-  // Handle filter changes
-  const handleFilterChange = (newFilters) => {
-    setFilters({ ...filters, ...newFilters });
-  };
-
-  // Handle color scheme change
-  const handleColorSchemeChange = (scheme) => {
-    setColorScheme(scheme);
-  };
-
-  if (loading || (selectedProvince === 90 && csvLoading)) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">กำลังโหลดข้อมูลระบบที่อยู่อาศัย...</p>
-          {selectedProvince === 90 && csvLoading && (
-            <p className="text-blue-600 text-sm mt-2">รวมถึงข้อมูลอุปทานจาก CKAN API...</p>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-red-600 text-xl mb-4">เกิดข้อผิดพลาด</div>
-          <p className="text-gray-600 mb-4">{error}</p>
-          {csvError && (
-            <p className="text-orange-600 text-sm mb-4">CSV Error: {csvError.message}</p>
-          )}
-          <button
-            onClick={() => window.location.reload()}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-          >
-            โหลดใหม่
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   const currentProvince = getCurrentProvince();
-  const hasCSVData = currentProvince.hasCSVData && csvData && Object.keys(csvData).length > 0;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div>
-              <h1 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold text-gray-900`}>
-                ระบบที่อยู่อาศัย
-              </h1>
-              <p className="text-sm text-gray-600 mt-1">
-                {currentProvince.name}
-                {hasCSVData && (
-                  <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-                    รวมข้อมูลอุปทาน
-                  </span>
-                )}
-                {selectedProvince === 90 && csvLoading && (
-                  <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                    โหลดข้อมูล CSV...
-                  </span>
-                )}
-              </p>
-            </div>
-            
-            {/* Province Selector */}
-            <div className="flex items-center space-x-4">
-              <select
-                value={selectedProvince}
-                onChange={(e) => handleProvinceChange(parseInt(e.target.value))}
-                className="text-sm border border-gray-300 rounded-md px-3 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+    <div className="min-h-[calc(100vh-4rem)] bg-gray-50">
+      <div className="container mx-auto px-4 py-4">
+        <div className="mb-4">
+          <h1 className="text-2xl font-bold text-gray-800">Housing Delivery System Analysis</h1>
+          <p className="text-gray-600 mt-2">
+            วิเคราะห์ระบบที่อยู่อาศัยในพื้นที่จังหวัด{currentProvince.name} แบ่งตามกริดความหนาแน่นและประเภทระบบที่อยู่อาศัย
+          </p>
+        </div>
+
+        {/* Province Selection */}
+        <div className="mb-4 bg-white rounded-lg shadow-md p-4">
+          <h3 className="font-semibold text-gray-800 mb-3">เลือกจังหวัด</h3>
+          <div className="flex flex-wrap gap-2">
+            {provinces.map(province => (
+              <button
+                key={province.id}
+                onClick={() => handleProvinceChange(province.id)}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  selectedProvince === province.id
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
               >
-                {provinces.map(province => (
-                  <option key={province.id} value={province.id}>
-                    {province.name}
-                    {province.hasCSVData ? ' (มีข้อมูลอุปทาน)' : ''}
-                  </option>
-                ))}
-              </select>
-              
-              {isMobile && (
-                <button
-                  onClick={() => setShowFilters(!showFilters)}
-                  className="bg-blue-600 text-white px-3 py-1 rounded text-sm"
-                >
-                  {showFilters ? 'ซ่อน' : 'แสดง'} ตัวกรอง
-                </button>
-              )}
-            </div>
+                {province.name}
+              </button>
+            ))}
           </div>
         </div>
-      </div>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-12'} gap-6`}>
-          
-          {/* Filters Panel */}
-          {showFilters && (
-            <div className={`${isMobile ? 'order-1' : 'col-span-3'}`}>
-              <HDSFilters
-                filters={filters}
-                onFilterChange={handleFilterChange}
-                colorScheme={colorScheme}
-                onColorSchemeChange={handleColorSchemeChange}
+        {/* Filter Toggle for Mobile */}
+        {isMobile && (
+          <div className="mb-4">
+            <button
+              onClick={toggleFilters}
+              className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg font-medium"
+            >
+              {showFilters ? 'Hide Filters' : 'Show Filters'}
+            </button>
+          </div>
+        )}
+
+        {/* Main Content */}
+        {isMobile ? (
+          // Mobile Layout - Stack vertically
+          <div className="space-y-4">
+            {/* Filters */}
+            {showFilters && (
+              <div className="bg-white rounded-lg shadow-md">
+                <HDSFilters
+                  filters={filters}
+                  onFiltersChange={setFilters}
+                  colorScheme={colorScheme}
+                  onColorSchemeChange={setColorScheme}
+                  isMobile={true}
+                />
+              </div>
+            )}
+
+            {/* Statistics */}
+            <div className="bg-white rounded-lg shadow-md">
+              <HDSStatistics
+                stats={stats}
                 selectedGrid={selectedGrid}
-                isMobile={isMobile}
-                hasCSVData={hasCSVData}
-                csvData={csvData}
+                onClearSelection={handleClearSelection}
+                isMobile={true}
+                provinceName={currentProvince.name}
               />
             </div>
-          )}
 
-          {/* Map Panel */}
-          <div className={`${isMobile ? 'order-2' : showFilters ? 'col-span-6' : 'col-span-9'}`}>
-            <HDSMap
-              filters={filters}
-              colorScheme={colorScheme}
-              isMobile={isMobile}
-              onGridSelect={handleGridSelect}
-              selectedGrid={selectedGrid}
-              selectedProvince={selectedProvince}
-              hdsData={enrichedGeoJSON || hdsData}
-              csvData={csvData}
-              hasCSVData={hasCSVData}
-            />
-          </div>
+            {/* Map */}
+            <div className="bg-white rounded-lg shadow-md overflow-hidden" style={{ height: "60vh" }}>
+              {loading && (
+                <div className="absolute inset-0 bg-white bg-opacity-80 flex items-center justify-center z-10">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+                    <p className="mt-3 text-gray-600">Loading HDS data for {currentProvince.name}...</p>
+                  </div>
+                </div>
+              )}
+              
+              {error && (
+                <div className="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center z-10">
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4 max-w-md">
+                    <p className="text-red-800">{error}</p>
+                    <button 
+                      onClick={() => window.location.reload()}
+                      className="mt-4 w-full px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                </div>
+              )}
 
-          {/* Statistics Panel */}
-          <div className={`${isMobile ? 'order-3' : 'col-span-3'}`}>
-            <HDSStatistics
-              stats={stats}
-              selectedGrid={selectedGrid}
-              isMobile={isMobile}
-              provinceName={currentProvince.name}
-              hasCSVData={hasCSVData}
-              csvData={csvData}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* CSV Data Info Panel for Development */}
-      {process.env.NODE_ENV === 'development' && hasCSVData && (
-        <div className="fixed bottom-4 right-4 bg-white p-4 rounded-lg shadow-lg border max-w-sm">
-          <h4 className="font-semibold text-sm mb-2">CSV Data Status</h4>
-          <div className="text-xs space-y-1">
-            <div>Grids with CSV data: {Object.keys(csvData).length}</div>
-            <div>Total supply: {stats.csvStats.totalSupply?.toLocaleString() || 0}</div>
-            <div>Avg sale price: ฿{stats.csvStats.averageSalePrice?.toLocaleString() || 'N/A'}</div>
-            <div>Avg rent price: ฿{stats.csvStats.averageRentPrice?.toLocaleString() || 'N/A'}</div>
-            <div>Match rate: {stats.totalGrids > 0 ? 
-              Math.round((Object.keys(csvData).length / stats.totalGrids) * 100) : 0}%
+              <HDSMap 
+                filters={filters}
+                colorScheme={colorScheme}
+                isMobile={isMobile}
+                onGridSelect={handleGridSelect}
+                selectedGrid={selectedGrid}
+                selectedProvince={selectedProvince}
+              />
             </div>
           </div>
-        </div>
-      )}
+        ) : (
+          // Desktop Layout - Side by side
+          <div className="grid grid-cols-12 gap-4 h-full">
+            {/* Sidebar */}
+            <div className="col-span-4 space-y-4">
+              {/* Filters */}
+              <div className="bg-white rounded-lg shadow-md">
+                <HDSFilters
+                  filters={filters}
+                  onFiltersChange={setFilters}
+                  colorScheme={colorScheme}
+                  onColorSchemeChange={setColorScheme}
+                  isMobile={false}
+                />
+              </div>
+
+              {/* Statistics */}
+              <div className="bg-white rounded-lg shadow-md">
+                <HDSStatistics
+                  stats={stats}
+                  selectedGrid={selectedGrid}
+                  onClearSelection={handleClearSelection}
+                  isMobile={false}
+                  provinceName={currentProvince.name}
+                />
+              </div>
+            </div>
+
+            {/* Map */}
+            <div className="col-span-8 relative">
+              <div className="bg-white rounded-lg shadow-md overflow-hidden" style={{ height: "calc(100vh - 240px)" }}>
+                {loading && (
+                  <div className="absolute inset-0 bg-white bg-opacity-80 flex items-center justify-center z-10">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+                      <p className="mt-3 text-gray-600">Loading HDS data for {currentProvince.name}...</p>
+                    </div>
+                  </div>
+                )}
+                
+                {error && (
+                  <div className="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center z-10">
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4 max-w-md">
+                      <p className="text-red-800">{error}</p>
+                      <button 
+                        onClick={() => window.location.reload()}
+                        className="mt-4 w-full px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+                      >
+                        Retry
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <HDSMap 
+                  filters={filters}
+                  colorScheme={colorScheme}
+                  isMobile={isMobile}
+                  onGridSelect={handleGridSelect}
+                  selectedGrid={selectedGrid}
+                  selectedProvince={selectedProvince}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
