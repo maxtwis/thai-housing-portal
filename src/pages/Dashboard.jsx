@@ -432,7 +432,7 @@ const Dashboard = () => {
           <div className="mb-4">
             <div className="flex items-center gap-2">
               <label className="text-sm font-medium text-gray-700">
-                Select Province:
+                เลือกจังหวัด:
               </label>
               <select
                 value={activeProvince}
