@@ -42,6 +42,13 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
       needsTransformation: false, // Already in WGS84 format
       center: [18.7883, 98.9817],
       bounds: [[18.0, 98.0], [19.5, 100.0]]
+    },
+    90: {
+      name: 'สงขลา',
+      file: '/data/HDS_HYT.geojson',
+      needsTransformation: false, // Already in WGS84 format
+      center: [7.0, 100.45], // Based on the coordinates in your GeoJSON data
+      bounds: [[6.8, 100.3], [7.2, 100.6]]
     }
   };
 
@@ -54,106 +61,102 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
     }
   };
 
-        // Detailed popup content with full information
-        const generatePopupContent = (feature, colorScheme) => {
-          const props = feature.properties;
+  // Detailed popup content with full information
+  const generatePopupContent = (feature, colorScheme) => {
+    const props = feature.properties;
+    
+    // Handle different property structures between provinces  
+    const gridId = props.FID || props.OBJECTID_1 || props.Grid_Code || props.Grid_CODE;
+    const gridPop = props.Grid_POP || 0;
+    const gridHouse = props.Grid_House || 0;
+    const gridClass = props.Grid_Class || 'ไม่มีข้อมูล';
+    
+    // Calculate dominant housing system
+    const hdsNumbers = [
+      { code: 1, count: props.HDS_C1_num || 0 },
+      { code: 2, count: props.HDS_C2_num || 0 },
+      { code: 3, count: props.HDS_C3_num || 0 },
+      { code: 4, count: props.HDS_C4_num || 0 },
+      { code: 5, count: props.HDS_C5_num || 0 },
+      { code: 6, count: props.HDS_C6_num || 0 },
+      { code: 7, count: props.HDS_C7_num || 0 }
+    ];
+    
+    const totalHousing = hdsNumbers.reduce((sum, item) => sum + item.count, 0);
+    const dominantSystem = hdsNumbers.reduce((max, item) => item.count > max.count ? item : max);
+    
+    const currentProvince = provinceConfigs[selectedProvince];
+    
+    return `
+      <div class="p-3 min-w-[280px]">
+        <div class="bg-gray-50 -m-3 p-3 mb-3 border-b">
+          <h3 class="font-bold text-gray-800">พื้นที่กริด ID: ${gridId}</h3>
+          <p class="text-sm text-gray-600 mt-1">${currentProvince?.name || 'ไม่ทราบจังหวัด'} - ระบบที่อยู่อาศัย</p>
+        </div>
+        
+        <div class="space-y-2">
+          <div class="flex justify-between items-baseline text-sm">
+            <span class="text-gray-600">ประชากรรวม</span>
+            <span class="font-medium text-gray-800">${gridPop ? Math.round(gridPop).toLocaleString() : 'ไม่มีข้อมูล'} คน</span>
+          </div>
           
-          // Handle different property structures between provinces  
-          const gridId = props.FID || props.OBJECTID_1 || props.Grid_Code || props.Grid_CODE;
-          const gridPop = props.Grid_POP || 0;
-          const gridHouse = props.Grid_House || 0;
-          const gridClass = props.Grid_Class || 'ไม่มีข้อมูล';
+          <div class="flex justify-between items-baseline text-sm">
+            <span class="text-gray-600">ที่อยู่อาศัยรวม</span>
+            <span class="font-medium text-gray-800">${gridHouse ? Math.round(gridHouse).toLocaleString() : 'ไม่มีข้อมูล'} หน่วย</span>
+          </div>
           
-          // Calculate dominant housing system
-          const hdsNumbers = [
-            { code: 1, count: props.HDS_C1_num || 0 },
-            { code: 2, count: props.HDS_C2_num || 0 },
-            { code: 3, count: props.HDS_C3_num || 0 },
-            { code: 4, count: props.HDS_C4_num || 0 },
-            { code: 5, count: props.HDS_C5_num || 0 },
-            { code: 6, count: props.HDS_C6_num || 0 },
-            { code: 7, count: props.HDS_C7_num || 0 }
-          ];
+          <div class="flex justify-between items-baseline text-sm">
+            <span class="text-gray-600">ระดับความหนาแน่น</span>
+            <span class="font-medium text-gray-800">Class ${gridClass}</span>
+          </div>
           
-          const totalHousing = hdsNumbers.reduce((sum, item) => sum + item.count, 0);
-          const dominantSystem = hdsNumbers.reduce((max, item) => item.count > max.count ? item : max);
-          
-          const currentProvince = provinceConfigs[selectedProvince];
-          
-          return `
-            <div class="p-3 min-w-[280px]">
-              <div class="bg-gray-50 -m-3 p-3 mb-3 border-b">
-                <h3 class="font-bold text-gray-800">พื้นที่กริด ID: ${gridId}</h3>
-                <p class="text-sm text-gray-600 mt-1">${currentProvince?.name || 'ไม่ทราบจังหวัด'} - ระบบที่อยู่อาศัย</p>
-              </div>
-              
-              <div class="space-y-2">
-                <div class="flex justify-between items-baseline text-sm">
-                  <span class="text-gray-600">ประชากรรวม</span>
-                  <span class="font-medium text-gray-800">${gridPop ? Math.round(gridPop).toLocaleString() : 'ไม่มีข้อมูล'} คน</span>
-                </div>
-                
-                <div class="flex justify-between items-baseline text-sm">
-                  <span class="text-gray-600">ที่อยู่อาศัยรวม</span>
-                  <span class="font-medium text-gray-800">${gridHouse ? Math.round(gridHouse).toLocaleString() : 'ไม่มีข้อมูล'} หน่วย</span>
-                </div>
-                
-                <div class="flex justify-between items-baseline text-sm">
-                  <span class="text-gray-600">ระดับความหนาแน่น</span>
-                  <span class="font-medium text-gray-800">Class ${gridClass}</span>
-                </div>
-                
-                ${totalHousing > 0 ? `
-                  <div class="border-t pt-2 mt-3">
-                    <h4 class="text-sm font-medium text-gray-700 mb-2">ระบบที่อยู่อาศัยหลัก</h4>
-                    <div class="text-xs text-gray-600">
-                      <div class="font-medium text-blue-600">${hdsCategories[dominantSystem.code]} (${dominantSystem.count.toLocaleString()} หน่วย)</div>
-                      <div class="mt-1 text-xs">
-                        รวม ${totalHousing.toLocaleString()} หน่วย | คิดเป็น ${((dominantSystem.count / totalHousing) * 100).toFixed(1)}%
-                      </div>
-                    </div>
-                  </div>
-                ` : ''}
-                
-                ${totalHousing > 0 ? `
-                  <div class="border-t pt-3 mt-3">
-                    <h4 class="text-sm font-medium text-gray-700 mb-2">รายละเอียดระบบที่อยู่อาศัย</h4>
-                    <div class="grid grid-cols-1 gap-1 text-xs">
-                      ${hdsNumbers.map(hds => 
-                        hds.count > 0 ? `
-                          <div class="flex justify-between">
-                            <span class="text-gray-600">${hdsCategories[hds.code]}</span>
-                            <span class="font-medium">${hds.count.toLocaleString()}</span>
-                          </div>
-                        ` : ''
-                      ).join('')}
-                    </div>
-                  </div>
-                ` : ''}
-                
-                ${(props.Stability_ || props.Supply_Pro || props.Subsidies_) ? `
-                  <div class="border-t pt-3 mt-3">
-                    <h4 class="text-sm font-medium text-gray-700 mb-2">ปัญหาที่พบ</h4>
-                    <div class="text-xs text-gray-600 space-y-1">
-                      ${props.Stability_ ? `<div><span class="font-medium text-red-600">ความมั่นคง:</span> ${props.Stability_}</div>` : ''}
-                      ${props.Supply_Pro ? `<div><span class="font-medium text-orange-600">อุปทาน:</span> ${props.Supply_Pro}</div>` : ''}
-                      ${props.Subsidies_ ? `<div><span class="font-medium text-blue-600">เงินอุดหนุน:</span> ${props.Subsidies_}</div>` : ''}
-                    </div>
-                  </div>
-                ` : ''}
-                
-                <div class="border-t pt-2 mt-3">
-                  <div class="flex justify-between items-baseline text-xs text-gray-500">
-                    <span>ความหนาแน่น</span>
-                    <span>${gridPop && props.Shape_Area ? ((gridPop / props.Shape_Area) * 1000000).toFixed(1) : '0'} คน/ตร.กม.</span>
-                  </div>
-                </div>
+          ${totalHousing > 0 ? `
+            <div class="bg-blue-50 p-2 rounded border-t border-blue-200 mt-3">
+              <h4 class="font-semibold text-blue-800 text-sm mb-2">ระบบที่อยู่อาศัยหลัก</h4>
+              <div class="text-sm">
+                <span class="font-medium text-blue-700">${hdsCategories[dominantSystem.code]}</span>
+                <span class="text-blue-600 block">${dominantSystem.count.toLocaleString()} หน่วย (${((dominantSystem.count / totalHousing) * 100).toFixed(1)}%)</span>
               </div>
             </div>
-          `;
-        };
+            
+            <div class="space-y-1 text-xs">
+              <h5 class="font-medium text-gray-700">รายละเอียดระบบที่อยู่อาศัย:</h5>
+              ${hdsNumbers.filter(item => item.count > 0).map(item => `
+                <div class="flex justify-between">
+                  <span class="text-gray-600">C${item.code}:</span>
+                  <span class="font-medium">${item.count.toLocaleString()}</span>
+                </div>
+              `).join('')}
+            </div>
+          ` : `
+            <div class="bg-gray-50 p-2 rounded text-center text-sm text-gray-500">
+              ไม่มีข้อมูลระบบที่อยู่อาศัย
+            </div>
+          `}
+          
+          ${props.Subsidies_ ? `
+            <div class="bg-yellow-50 p-2 rounded text-xs">
+              <strong class="text-yellow-800">เงินอุดหนุน:</strong> ${props.Subsidies_}
+            </div>
+          ` : ''}
+          
+          ${props.Stability_ ? `
+            <div class="bg-red-50 p-2 rounded text-xs">
+              <strong class="text-red-800">ความมั่นคง:</strong> ${props.Stability_}
+            </div>
+          ` : ''}
+          
+          ${props.Supply_Pro ? `
+            <div class="bg-green-50 p-2 rounded text-xs">
+              <strong class="text-green-800">อุปทาน:</strong> ${props.Supply_Pro}
+            </div>
+          ` : ''}
+        </div>
+      </div>
+    `;
+  };
 
-  // Color functions for different schemes
+  // Color function for grids based on scheme
   const getColor = (feature) => {
     const props = feature.properties;
     
@@ -356,7 +359,7 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
         processedGeoJSON = geojsonData;
 
         console.log('Processed GeoJSON:', processedGeoJSON.features.length, 'features');
-        console.log('Sample processed coordinates:', processedGeoJSON.features[0]?.geometry?.coordinates[0]?.[0]);
+        console.log('Sample processed coordinates:', processedGeoJSON.features[0]?.geometry?.coordinates[0]?.slice(0, 2));
         console.log('First feature geometry type:', processedGeoJSON.features[0]?.geometry?.type);
 
         // Style function for HDS grids - LOW OPACITY BORDERS
@@ -394,44 +397,40 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
                 const popup = L.popup({
                   maxWidth: 280,
                   className: 'hds-popup mobile-popup',
-                  closeButton: true,
-                  offset: [0, -10]
+                  autoPan: true,
+                  keepInView: true
                 })
-                  .setLatLng(e.latlng)
-                  .setContent(`
-                    <div class="p-2 text-sm">
-                      <h3 class="font-bold text-gray-800 mb-1">กริด ID: ${gridId}</h3>
-                      <p class="text-xs text-gray-600 mb-2">ประชากร: ${Math.round(gridPop).toLocaleString()} คน</p>
-                      <p class="text-xs text-blue-600">ดูรายละเอียดในแผงสถิติด้านล่าง</p>
-                    </div>
-                  `)
-                  .openOn(map);
-                
-                // Auto-close popup after 3 seconds on mobile
-                setTimeout(() => {
-                  map.closePopup(popup);
-                }, 3000);
+                .setLatLng(e.latlng)
+                .setContent(`
+                  <div class="p-2">
+                    <h4 class="font-bold text-sm">Grid ${gridId}</h4>
+                    <p class="text-xs text-gray-600">${Math.round(gridPop).toLocaleString()} คน</p>
+                    <button onclick="this.closest('.leaflet-popup').remove()" class="text-xs text-blue-600 mt-1">ปิด</button>
+                  </div>
+                `)
+                .openOn(map);
               } else {
-                // Desktop: show full popup
+                // Desktop - show full popup
+                const popupContent = generatePopupContent(clickedFeature, colorScheme);
+                
                 const popup = L.popup({
-                  maxWidth: 400,
+                  maxWidth: 350,
                   className: 'hds-popup',
-                  closeButton: true
+                  autoPan: true,
+                  keepInView: true
                 })
-                  .setLatLng(e.latlng)
-                  .setContent(generatePopupContent(clickedFeature, colorScheme))
-                  .openOn(map);
+                .setLatLng(e.latlng)
+                .setContent(popupContent)
+                .openOn(map);
               }
             });
 
-            // Add hover effect for desktop only (slightly brighter border on hover)
+            // Hover effects for better interaction
             if (!isMobile) {
               layer.on('mouseover', (e) => {
-                // Slightly brighter border and fill on hover
                 layer.setStyle({
-                  fillColor: getColor(layer.feature),
-                  weight: 1,
-                  opacity: 0.6, // Slightly more visible border on hover
+                  weight: 2,
+                  opacity: 0.8, // Higher opacity on hover
                   color: '#333333', // Darker border on hover
                   fillOpacity: 0.9
                 });

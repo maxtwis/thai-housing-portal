@@ -31,10 +31,11 @@ const HousingDeliverySystem = () => {
     }
   });
 
-  // Available provinces
+  // Available provinces - UPDATED TO INCLUDE SONGKHLA
   const provinces = [
-    { id: 40, name: 'ขอนแก่น', file: 'data/HDS_KKN01.geojson' },
-    { id: 50, name: 'เชียงใหม่', file: '/data/HDS_CNX_02GJSON.geojson' }
+    { id: 40, name: 'ขอนแก่น', file: '/data/HDS_KKN01.geojson' },
+    { id: 50, name: 'เชียงใหม่', file: '/data/HDS_CNX_02GJSON.geojson' },
+    { id: 90, name: 'สงขลา', file: '/data/HDS_HYT.geojson' }
   ];
 
   // Get current province info
@@ -58,7 +59,7 @@ const HousingDeliverySystem = () => {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Handle URL parameters
+  // Handle URL parameters - UPDATED TO INCLUDE SONGKHLA
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const provinceParam = urlParams.get('province');
@@ -70,6 +71,8 @@ const HousingDeliverySystem = () => {
         provinceId = 40;
       } else if (provinceParam === 'cnx' || provinceParam === 'chiangmai') {
         provinceId = 50;
+      } else if (provinceParam === 'hyt' || provinceParam === 'songkhla') {
+        provinceId = 90;
       } else {
         provinceId = parseInt(provinceParam);
       }
@@ -122,18 +125,18 @@ const HousingDeliverySystem = () => {
           HDS_C7: 0  // ระบบที่อยู่อาศัยเอกชน
         };
         const densityLevels = {};
-        let problemSupply = 0;
-        let problemSubsidies = 0;
         let problemStability = 0;
-        
+        let problemSubsidies = 0;
+        let problemSupply = 0;
+
         features.forEach(feature => {
           const props = feature.properties;
           
-          // Population and housing totals
+          // Add to totals
           totalPop += props.Grid_POP || 0;
           totalHousing += props.Grid_House || 0;
           
-          // Housing systems
+          // Count housing systems
           housingSystems.HDS_C1 += props.HDS_C1_num || 0;
           housingSystems.HDS_C2 += props.HDS_C2_num || 0;
           housingSystems.HDS_C3 += props.HDS_C3_num || 0;
@@ -142,37 +145,32 @@ const HousingDeliverySystem = () => {
           housingSystems.HDS_C6 += props.HDS_C6_num || 0;
           housingSystems.HDS_C7 += props.HDS_C7_num || 0;
           
-          // Density levels
-          const gridClass = props.Grid_Class;
-          if (gridClass) {
-            densityLevels[gridClass] = (densityLevels[gridClass] || 0) + 1;
+          // Count density levels
+          const densityClass = props.Grid_Class;
+          if (densityClass) {
+            densityLevels[densityClass] = (densityLevels[densityClass] || 0) + 1;
           }
           
-          // Problem areas
-          if (props.Supply_Pro && props.Supply_Pro.trim()) {
-            problemSupply++;
-          }
-          if (props.Subsidies_ && props.Subsidies_.trim()) {
-            problemSubsidies++;
-          }
-          if (props.Stability_ && props.Stability_.trim()) {
-            problemStability++;
-          }
+          // Count problem areas
+          if (props.Stability_) problemStability++;
+          if (props.Subsidies_) problemSubsidies++;
+          if (props.Supply_Pro) problemSupply++;
         });
-        
+
         const totalGrids = features.length;
-        
+        const averageDensity = totalGrids > 0 ? totalPop / totalGrids : 0;
+
         setStats({
           totalGrids,
           totalPopulation: totalPop,
-          totalHousing: totalHousing,
-          averageDensity: totalPop / totalGrids,
+          totalHousing,
+          averageDensity,
           housingSystems,
           densityLevels,
           problemAreas: {
-            supply: (problemSupply / totalGrids) * 100,
+            stability: (problemStability / totalGrids) * 100,
             subsidies: (problemSubsidies / totalGrids) * 100,
-            stability: (problemStability / totalGrids) * 100
+            supply: (problemSupply / totalGrids) * 100
           }
         });
 
@@ -231,48 +229,57 @@ const HousingDeliverySystem = () => {
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                   selectedProvince === province.id
                     ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
                 {province.name}
               </button>
             ))}
           </div>
-          <div className="mt-2 text-xs text-gray-500">
-            แสดงข้อมูลสำหรับจังหวัด{currentProvince.name}
-          </div>
         </div>
 
-        {/* Mobile toggle button for filters */}
+        {/* Filter Toggle for Mobile */}
         {isMobile && (
           <div className="mb-4">
-            <button 
+            <button
               onClick={toggleFilters}
-              className="w-full py-2 px-4 bg-blue-600 text-white rounded-md shadow flex items-center justify-center"
+              className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg font-medium"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clipRule="evenodd" />
-              </svg>
               {showFilters ? 'Hide Filters' : 'Show Filters'}
             </button>
           </div>
         )}
 
-        {/* Mobile layout - stacked vertically */}
-        {isMobile && (
+        {/* Main Content */}
+        {isMobile ? (
+          // Mobile Layout - Stack vertically
           <div className="space-y-4">
             {/* Filters */}
             {showFilters && (
-              <HDSFilters 
-                filters={filters} 
-                setFilters={setFilters}
-                colorScheme={colorScheme}
-                setColorScheme={setColorScheme}
-              />
+              <div className="bg-white rounded-lg shadow-md">
+                <HDSFilters
+                  filters={filters}
+                  onFiltersChange={setFilters}
+                  colorScheme={colorScheme}
+                  onColorSchemeChange={setColorScheme}
+                  isMobile={true}
+                />
+              </div>
             )}
-            
+
+            {/* Statistics */}
+            <div className="bg-white rounded-lg shadow-md">
+              <HDSStatistics
+                stats={stats}
+                selectedGrid={selectedGrid}
+                onClearSelection={handleClearSelection}
+                isMobile={true}
+                provinceName={currentProvince.name}
+              />
+            </div>
+
             {/* Map */}
-            <div className="relative" style={{ height: "60vh" }}>
+            <div className="bg-white rounded-lg shadow-md overflow-hidden" style={{ height: "60vh" }}>
               {loading && (
                 <div className="absolute inset-0 bg-white bg-opacity-80 flex items-center justify-center z-10">
                   <div className="text-center">
@@ -303,71 +310,72 @@ const HousingDeliverySystem = () => {
                 onGridSelect={handleGridSelect}
                 selectedGrid={selectedGrid}
                 selectedProvince={selectedProvince}
-              />
-            </div>
-            
-            {/* Statistics - always shown on mobile */}
-            <div className="w-full">
-              <HDSStatistics 
-                stats={stats} 
-                selectedGrid={selectedGrid}
-                onClearSelection={handleClearSelection}
               />
             </div>
           </div>
-        )}
+        ) : (
+          // Desktop Layout - Side by side
+          <div className="grid grid-cols-12 gap-4 h-full">
+            {/* Sidebar */}
+            <div className="col-span-4 space-y-4">
+              {/* Filters */}
+              <div className="bg-white rounded-lg shadow-md">
+                <HDSFilters
+                  filters={filters}
+                  onFiltersChange={setFilters}
+                  colorScheme={colorScheme}
+                  onColorSchemeChange={setColorScheme}
+                  isMobile={false}
+                />
+              </div>
 
-        {/* Desktop layout - side by side */}
-        {!isMobile && (
-          <div className="flex flex-row gap-4">
-            {/* Left sidebar - Filters and Statistics */}
-            <div className="w-1/4 space-y-4">
-              <HDSFilters 
-                filters={filters} 
-                setFilters={setFilters}
-                colorScheme={colorScheme}
-                setColorScheme={setColorScheme}
-              />
-              <HDSStatistics 
-                stats={stats} 
-                selectedGrid={selectedGrid}
-                onClearSelection={handleClearSelection}
-              />
+              {/* Statistics */}
+              <div className="bg-white rounded-lg shadow-md">
+                <HDSStatistics
+                  stats={stats}
+                  selectedGrid={selectedGrid}
+                  onClearSelection={handleClearSelection}
+                  isMobile={false}
+                  provinceName={currentProvince.name}
+                />
+              </div>
             </div>
-            
-            {/* Right side - Map - INCREASED HEIGHT */}
-            <div className="w-3/4" style={{ height: "calc(100vh - 120px)" }}>
-              {loading && (
-                <div className="absolute inset-0 bg-white bg-opacity-80 flex items-center justify-center z-10">
-                  <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
-                    <p className="mt-3 text-gray-600">Loading HDS data for {currentProvince.name}...</p>
-                  </div>
-                </div>
-              )}
-              
-              {error && (
-                <div className="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center z-10">
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-4 max-w-md">
-                    <p className="text-red-800">{error}</p>
-                    <button 
-                      onClick={() => window.location.reload()}
-                      className="mt-4 w-full px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-                    >
-                      Retry
-                    </button>
-                  </div>
-                </div>
-              )}
 
-              <HDSMap 
-                filters={filters}
-                colorScheme={colorScheme}
-                isMobile={isMobile}
-                onGridSelect={handleGridSelect}
-                selectedGrid={selectedGrid}
-                selectedProvince={selectedProvince}
-              />
+            {/* Map */}
+            <div className="col-span-8 relative">
+              <div className="bg-white rounded-lg shadow-md overflow-hidden h-full" style={{ minHeight: "calc(100vh - 120px)" }}>
+                {loading && (
+                  <div className="absolute inset-0 bg-white bg-opacity-80 flex items-center justify-center z-10">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+                      <p className="mt-3 text-gray-600">Loading HDS data for {currentProvince.name}...</p>
+                    </div>
+                  </div>
+                )}
+                
+                {error && (
+                  <div className="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center z-10">
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4 max-w-md">
+                      <p className="text-red-800">{error}</p>
+                      <button 
+                        onClick={() => window.location.reload()}
+                        className="mt-4 w-full px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+                      >
+                        Retry
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <HDSMap 
+                  filters={filters}
+                  colorScheme={colorScheme}
+                  isMobile={isMobile}
+                  onGridSelect={handleGridSelect}
+                  selectedGrid={selectedGrid}
+                  selectedProvince={selectedProvince}
+                />
+              </div>
             </div>
           </div>
         )}
