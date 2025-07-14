@@ -366,7 +366,7 @@ const HousingDemandChart = ({ provinceName, provinceId }) => {
             </ResponsiveContainer>
             
             <div className="flex flex-col justify-center">
-              <h3 className="text-sm font-semibold mb-3">สรุปการจัดหาเงินทุน</h3>
+              <h3 className="text-sm font-semibold mb-3">สรุปลักษณะการจ่ายค่าที่อยู่อาศัย</h3>
               <div className="space-y-2">
                 {pieData.map((item, index) => (
                   <div key={index} className="flex items-center text-sm">
