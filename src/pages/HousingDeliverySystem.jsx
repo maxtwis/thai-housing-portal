@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import HDSMap from '../components/housing-delivery-system/HDSMap';
 import HDSFilters from '../components/housing-delivery-system/HDSFilters';
 import HDSStatistics from '../components/housing-delivery-system/HDSStatistics';
-import { useSupplyData } from '../hooks/useSupplyData'; // Add this import
 
 const HousingDeliverySystem = () => {
   const [loading, setLoading] = useState(true);
@@ -39,9 +38,6 @@ const HousingDeliverySystem = () => {
     { id: 90, name: 'สงขลา', file: '/data/HDS_HYT.geojson' }
   ];
 
-  // Fetch supply data from CKAN API with province filtering
-  const { data: supplyData, isLoading: supplyLoading, error: supplyError } = useSupplyData(selectedProvince);
-
   // Get current province info
   const getCurrentProvince = () => {
     return provinces.find(p => p.id === selectedProvince) || provinces[0];
@@ -59,34 +55,24 @@ const HousingDeliverySystem = () => {
     
     checkMobile();
     window.addEventListener('resize', checkMobile);
-    
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Load HDS data when province changes
+  // Load HDS data for selected province
   useEffect(() => {
-    const currentProvince = getCurrentProvince();
-    
-    setLoading(true);
-    setError(null);
-    setSelectedGrid(null);
-    
-    const loadHdsData = async () => {
+    const loadHDSData = async () => {
+      setLoading(true);
+      setError(null);
+      
       try {
+        const currentProvince = getCurrentProvince();
+        
         const response = await fetch(currentProvince.file);
         if (!response.ok) {
           throw new Error(`Failed to load HDS data for ${currentProvince.name}`);
         }
         
         const geojsonData = await response.json();
-        console.log(`Loaded ${geojsonData.features?.length || 0} features for ${currentProvince.name}`);
-        
-        if (!geojsonData.features || geojsonData.features.length === 0) {
-          throw new Error(`No features found in GeoJSON for ${currentProvince.name}`);
-        }
-        
-        console.log('Sample feature properties:', geojsonData.features[0]?.properties);
-        console.log('Total features loaded:', geojsonData.features?.length, 'features');
         setHdsData(geojsonData);
         
         // Calculate statistics
@@ -138,39 +124,44 @@ const HousingDeliverySystem = () => {
         const totalGrids = features.length;
         const averageDensity = totalGrids > 0 ? totalPop / totalGrids : 0;
 
+        // Calculate problem percentages
+        const problemPercentages = {
+          supply: totalGrids > 0 ? (problemSupply / totalGrids) * 100 : 0,
+          subsidies: totalGrids > 0 ? (problemSubsidies / totalGrids) * 100 : 0,
+          stability: totalGrids > 0 ? (problemStability / totalGrids) * 100 : 0
+        };
+
         setStats({
           totalGrids,
-          totalPopulation: Math.round(totalPop),
-          totalHousing: Math.round(totalHousing),
-          averageDensity: Math.round(averageDensity),
+          totalPopulation: totalPop,
+          totalHousing,
+          averageDensity,
           housingSystems,
           densityLevels,
-          problemAreas: {
-            supply: problemSupply,
-            subsidies: problemSubsidies,
-            stability: problemStability
-          }
+          problemAreas: problemPercentages
         });
-
+        
       } catch (err) {
-        console.error('Error loading HDS data:', err);
         setError(err.message);
       } finally {
         setLoading(false);
       }
     };
-    
-    loadHdsData();
+
+    loadHDSData();
   }, [selectedProvince]);
 
+  // Toggle filters visibility for mobile
   const toggleFilters = () => {
     setShowFilters(!showFilters);
   };
 
-  const handleGridSelect = (gridData) => {
-    setSelectedGrid(gridData);
+  // Handle grid selection
+  const handleGridSelect = (gridProperties) => {
+    setSelectedGrid(gridProperties);
   };
 
+  // Handle clearing grid selection
   const handleClearSelection = () => {
     setSelectedGrid(null);
   };
@@ -178,21 +169,23 @@ const HousingDeliverySystem = () => {
   const currentProvince = getCurrentProvince();
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <div className="container mx-auto px-4 py-6">
+    <div className="min-h-screen bg-gray-50">
+      <div className="container mx-auto p-4 max-w-7xl">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2">
-            Housing Delivery System Analysis
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+            ระบบการส่งมอบที่อยู่อาศัย (Housing Delivery System)
           </h1>
-          <p className="text-gray-600">
-            Analysis of housing delivery systems and population distribution in Thailand
+          <p className="mt-2 text-gray-600">
+            วิเคราะห์และแสดงข้อมูลระบบที่อยู่อาศัยในแต่ละพื้นที่
           </p>
         </div>
 
-        {/* Province Selection */}
+        {/* Province Selector */}
         <div className="mb-6">
-          <h2 className="text-lg font-semibold text-gray-700 mb-3">Select Province</h2>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            เลือกจังหวัด
+          </label>
           <div className="flex flex-wrap gap-2">
             {provinces.map(province => (
               <button
@@ -282,7 +275,6 @@ const HousingDeliverySystem = () => {
                 onGridSelect={handleGridSelect}
                 selectedGrid={selectedGrid}
                 selectedProvince={selectedProvince}
-                supplyData={supplyData} // Pass supply data to map
               />
             </div>
           </div>
@@ -347,7 +339,6 @@ const HousingDeliverySystem = () => {
                   onGridSelect={handleGridSelect}
                   selectedGrid={selectedGrid}
                   selectedProvince={selectedProvince}
-                  supplyData={supplyData} // Pass supply data to map
                 />
               </div>
             </div>

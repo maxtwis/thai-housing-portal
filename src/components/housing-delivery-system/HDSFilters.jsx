@@ -69,14 +69,12 @@ const HDSFilters = ({
             value={filters.densityLevel}
             onChange={(e) => handleFilterChange('densityLevel', e.target.value)}
           >
-            <option value="all">ทั้งหมด</option>
-            <option value="1">ระดับ 1 (ต่ำสุด)</option>
-            <option value="2">ระดับ 2</option>
-            <option value="3">ระดับ 3</option>
-            <option value="4">ระดับ 4</option>
-            <option value="5">ระดับ 5</option>
-            <option value="6">ระดับ 6</option>
-            <option value="7">ระดับ 7 (สูงสุด)</option>
+            <option value="all">ทุกระดับ</option>
+            <option value="1">ระดับ 1 (ต่ำมาก)</option>
+            <option value="2">ระดับ 2 (ต่ำ)</option>
+            <option value="3">ระดับ 3 (ปานกลาง)</option>
+            <option value="4">ระดับ 4 (สูง)</option>
+            <option value="5">ระดับ 5 (สูงมาก)</option>
           </select>
         </div>
 
@@ -90,8 +88,10 @@ const HDSFilters = ({
             value={filters.populationRange}
             onChange={(e) => handleFilterChange('populationRange', e.target.value)}
           >
-            <option value="all">ทั้งหมด</option>
-            <option value="0-500">น้อยกว่า 500 คน</option>
+            <option value="all">ทุกช่วง</option>
+            <option value="0-50">0-50 คน</option>
+            <option value="50-200">50-200 คน</option>
+            <option value="200-500">200-500 คน</option>
             <option value="500-1000">500-1,000 คน</option>
             <option value="1000-2000">1,000-2,000 คน</option>
             <option value="2000-3000">2,000-3,000 คน</option>

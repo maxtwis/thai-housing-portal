@@ -1,25 +1,31 @@
 import React from 'react';
 
-const HDSStatistics = ({ stats, selectedGrid, onClearSelection, isMobile = false, provinceName = '' }) => {
+const HDSStatistics = ({ 
+  stats, 
+  selectedGrid, 
+  onClearSelection, 
+  isMobile = false, 
+  provinceName 
+}) => {
   
-  // Define housing system names mapping
+  // Housing system names mapping
   const housingSystemNames = {
-    'HDS_C1': 'ระบบของชุมชนแออัดบนที่ดินรัฐ/เอกชน',
-    'HDS_C2': 'ระบบการถือครองที่ดินชั่วคราว', 
-    'HDS_C3': 'ระบบของกลุ่มประชากรแฝง',
-    'HDS_C4': 'ระบบที่อยู่อาศัยของลูกจ้าง',
-    'HDS_C5': 'ระบบที่อยู่อาศัยที่รัฐจัดสร้าง',
-    'HDS_C6': 'ระบบที่อยู่อาศัยที่รัฐสนับสนุน',
-    'HDS_C7': 'ระบบที่อยู่อาศัยเอกชน'
+    HDS_C1: 'ระบบชุมชนบุกรุกบนที่ดินรัฐ/เอกชน',
+    HDS_C2: 'ระบบการถือครองที่ดินชั่วคราว',
+    HDS_C3: 'ระบบของกลุ่มประชากรแฝง',
+    HDS_C4: 'ระบบที่อยู่อาศัยของลูกจ้าง',
+    HDS_C5: 'ระบบที่อยู่อาศัยที่รัฐจัดสร้าง',
+    HDS_C6: 'ระบบที่อยู่อาศัยที่รัฐสนับสนุน',
+    HDS_C7: 'ระบบที่อยู่อาศัยเอกชน'
   };
 
-  // If a grid is selected, show statistics for that grid only
+  // If a grid is selected, show detailed grid information
   if (selectedGrid) {
     const gridStats = {
-      gridId: selectedGrid.OBJECTID || selectedGrid.Grid_Code || selectedGrid.FID || 'ไม่ทราบ',
+      id: selectedGrid.Grid_ID || 'N/A',
       population: selectedGrid.Grid_POP || 0,
       housing: selectedGrid.Grid_House || 0,
-      densityLevel: selectedGrid.Grid_Class || 'ไม่มีข้อมูล',
+      densityClass: selectedGrid.Grid_Class || 'N/A',
       housingSystems: {
         HDS_C1: selectedGrid.HDS_C1_num || 0,
         HDS_C2: selectedGrid.HDS_C2_num || 0,
@@ -30,86 +36,76 @@ const HDSStatistics = ({ stats, selectedGrid, onClearSelection, isMobile = false
         HDS_C7: selectedGrid.HDS_C7_num || 0
       },
       problems: {
-        supply: selectedGrid.Supply_Pro && selectedGrid.Supply_Pro.trim(),
-        subsidies: selectedGrid.Subsidies_ && selectedGrid.Subsidies_.trim(),
-        stability: selectedGrid.Stability_ && selectedGrid.Stability_.trim()
+        supply: selectedGrid.Supply_Pro ? 'มีปัญหาด้านอุปทาน' : null,
+        subsidies: selectedGrid.Subsidies_ ? 'มีปัญหาด้านเงินอุดหนุน' : null,
+        stability: selectedGrid.Stability_ ? 'มีปัญหาด้านความมั่นคง' : null
       }
     };
 
-    const totalHousingInGrid = Object.values(gridStats.housingSystems).reduce((sum, count) => sum + count, 0);
-
     return (
       <div className="p-4">
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex justify-between items-start mb-4">
           <h2 className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold`}>
-            สถิติกริด ID: {gridStats.gridId}
+            รายละเอียดกริด {gridStats.id}
           </h2>
-          <button 
+          <button
             onClick={onClearSelection}
-            className="text-sm text-blue-600 hover:text-blue-800 underline"
+            className="text-sm bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded transition-colors"
           >
-            ดูภาพรวมทั้งหมด
+            ← กลับ
           </button>
         </div>
-      
-        <div className="space-y-4">
-          {/* Selected Grid Overview */}
+        
+        <div className="space-y-6">
+          {/* Basic Information */}
           <div>
-            <h3 className="text-sm font-medium text-gray-500">ข้อมูลกริดที่เลือก</h3>
-            <div className="mt-2 space-y-2">
+            <h3 className="text-sm font-medium text-gray-500">ข้อมูลพื้นฐาน</h3>
+            <div className="mt-2 grid grid-cols-2 gap-4">
               <div>
-                <span className="text-sm text-gray-500">ประชากร:</span>
+                <span className="text-sm text-gray-500">ประชากร</span>
                 <span className="block text-lg font-medium">
                   {Math.round(gridStats.population).toLocaleString()} คน
                 </span>
               </div>
               <div>
-                <span className="text-sm text-gray-500">ที่อยู่อาศัยรวม:</span>
+                <span className="text-sm text-gray-500">ที่อยู่อาศัย</span>
                 <span className="block text-lg font-medium">
                   {gridStats.housing.toLocaleString()} หน่วย
                 </span>
               </div>
-              <div>
-                <span className="text-sm text-gray-500">ระดับความหนาแน่น:</span>
+              <div className="col-span-2">
+                <span className="text-sm text-gray-500">ระดับความหนาแน่น</span>
                 <span className="block text-lg font-medium">
-                  ระดับ {gridStats.densityLevel}
+                  ระดับ {gridStats.densityClass}
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Housing Systems in Selected Grid */}
-          {totalHousingInGrid > 0 && (
-            <div>
-              <h3 className="text-sm font-medium text-gray-500">ระบบที่อยู่อาศัยในกริดนี้</h3>
-              <div className="mt-2 space-y-2">
-                {Object.entries(gridStats.housingSystems)
-                  .filter(([, count]) => count > 0)
-                  .sort(([,a], [,b]) => b - a)
-                  .map(([system, count]) => {
-                    return (
-                      <div key={system} className="flex justify-between items-baseline">
-                        <span className="text-sm text-gray-500 pr-2 flex-1">
-                          {housingSystemNames[system] || system}:
-                        </span>
-                        <div className="text-right">
-                          <span className="text-base font-medium">
-                            {count.toLocaleString()}
-                          </span>
-                          <span className="text-sm text-gray-500 ml-1">
-                            ({((count / totalHousingInGrid) * 100).toFixed(1)}%)
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-              </div>
-            </div>
-          )}
-
-          {/* Problem Areas in Selected Grid */}
+          {/* Housing Systems in this Grid */}
           <div>
-            <h3 className="text-sm font-medium text-gray-500">ปัญหาในกริดนี้</h3>
+            <h3 className="text-sm font-medium text-gray-500">ระบบที่อยู่อาศัยในกริดนี้</h3>
+            <div className="mt-2 space-y-2">
+              {Object.entries(gridStats.housingSystems)
+                .filter(([, count]) => count > 0)
+                .sort(([,a], [,b]) => b - a)
+                .map(([system, count]) => (
+                  <div key={system} className="flex justify-between items-baseline">
+                    <span className="text-sm text-gray-500 pr-2 flex-1">
+                      {housingSystemNames[system] || system}:
+                    </span>
+                    <span className="text-base font-medium">{count.toLocaleString()}</span>
+                  </div>
+                ))}
+              {Object.values(gridStats.housingSystems).every(count => count === 0) && (
+                <div className="text-sm text-gray-500 italic">ไม่มีข้อมูลที่อยู่อาศัยในกริดนี้</div>
+              )}
+            </div>
+          </div>
+
+          {/* Problem Areas */}
+          <div>
+            <h3 className="text-sm font-medium text-gray-500">สถานะปัญหา</h3>
             <div className="mt-2 space-y-2">
               {gridStats.problems.supply ? (
                 <div className="bg-red-50 p-2 rounded">
