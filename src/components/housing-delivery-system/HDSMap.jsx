@@ -2,48 +2,78 @@ import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-// Import GeoJSON data for provinces
-import songkhlaGeoJSON from '../data/songkhla_hds.json';
-import bangkokGeoJSON from '../data/bangkok_hds.json';
-import khonkaenGeoJSON from '../data/khonkaen_hds.json';
-import chiangmaiGeoJSON from '../data/chiangmai_hds.json';
+// Fix for default markers in Leaflet with webpack
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
 
-// Province configuration
-const PROVINCES = {
-  'songkhla': {
-    name: 'สงขลา',
-    bounds: [[6.5, 100.0], [7.8, 101.2]],
-    center: [7.1891, 100.5951],
-    file: songkhlaGeoJSON
-  },
-  'bangkok': {
-    name: 'กรุงเทพมหานคร',
-    bounds: [[13.4, 100.2], [14.0, 100.9]],
-    center: [13.7563, 100.5018],
-    file: bangkokGeoJSON
-  },
-  'khonkaen': {
+// Housing Delivery System categories
+const hdsCategories = {
+  1: 'ระบบของชุมชนแออัดบนที่ดินรัฐ/เอกชน',
+  2: 'ระบบการถือครองที่ดินชั่วคราว',
+  3: 'ระบบของกลุ่มประชากรแฝง',
+  4: 'ระบบที่อยู่อาศัยของลูกจ้าง',
+  5: 'ระบบที่อยู่อาศัยที่รัฐจัดสร้าง',
+  6: 'ระบบที่อยู่อาศัยที่รัฐสนับสนุน',
+  7: 'ระบบที่อยู่อาศัยเอกชน'
+};
+
+// Province configurations with their corresponding GeoJSON files
+const provinceConfigs = {
+  40: {
     name: 'ขอนแก่น',
-    bounds: [[15.8, 102.2], [17.0, 103.4]],
+    file: '/data/HDS_KKN01.geojson',
+    needsTransformation: false, // New coordinate system, already in WGS84
     center: [16.4419, 102.8359],
-    file: khonkaenGeoJSON
+    bounds: [[15.5, 101.5], [17.5, 104.0]]
   },
-  'chiangmai': {
+  50: {
     name: 'เชียงใหม่',
-    bounds: [[18.2, 98.2], [19.4, 99.8]],
+    file: '/data/HDS_CNX_02GJSON.geojson',
+    needsTransformation: false, // Already in WGS84 format
     center: [18.7883, 98.9817],
-    file: chiangmaiGeoJSON
+    bounds: [[18.0, 98.0], [19.5, 100.0]]
+  },
+  90: {
+    name: 'สงขลา',
+    file: '/data/HDS_HYT.geojson',
+    needsTransformation: false, // Already in WGS84 format
+    center: [7.01, 100.465], // More precise center based on your data
+    bounds: [[6.975, 100.425], [7.045, 100.505]] // Tighter bounds around actual data
   }
 };
 
-const HDSMap = ({ filters, colorScheme, isMobile, onGridSelect, selectedGrid, selectedProvince }) => {
+const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect, selectedGrid, selectedProvince = 40 }) => {
+  const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const hdsLayerRef = useRef(null);
   const legendRef = useRef(null);
-  const [loading, setLoading] = useState(true);
 
   // Get current province configuration
-  const currentProvince = PROVINCES[selectedProvince] || PROVINCES['songkhla'];
+  const currentProvince = provinceConfigs[selectedProvince] || provinceConfigs[40];
+
+  // Dynamic height calculation based on viewport
+  const getMapHeight = () => {
+    if (isMobile) {
+      return "60vh";
+    } else {
+      return "calc(100vh - 200px)"; // Reduced from 150px to account for headers and padding
+    }
+  };
+
+  // Housing system names mapping for tooltips
+  const housingSystemNames = {
+    1: 'ระบบของชุมชนแออัดบนที่ดินรัฐ/เอกชน',
+    2: 'ระบบการถือครองที่ดินชั่วคราว',
+    3: 'ระบบของกลุ่มประชากรแฝง',
+    4: 'ระบบที่อยู่อาศัยของลูกจ้าง',
+    5: 'ระบบที่อยู่อาศัยที่รัฐจัดสร้าง',
+    6: 'ระบบที่อยู่อาศัยที่รัฐสนับสนุน',
+    7: 'ระบบที่อยู่อาศัยเอกชน'
+  };
 
   // Color schemes for different visualizations
   const colorSchemes = {
@@ -138,9 +168,7 @@ const HDSMap = ({ filters, colorScheme, isMobile, onGridSelect, selectedGrid, se
 
   // Initialize map
   useEffect(() => {
-    if (!mapRef.current) return;
-
-    setLoading(true);
+    if (!mapContainerRef.current) return;
     
     // Clear existing map
     if (mapRef.current) {
@@ -151,9 +179,9 @@ const HDSMap = ({ filters, colorScheme, isMobile, onGridSelect, selectedGrid, se
     }
 
     // Create new map
-    const map = L.map(mapRef.current, {
+    const map = L.map(mapContainerRef.current, {
       center: currentProvince.center,
-      zoom: isMobile ? 10 : 10,
+      zoom: isMobile ? 9 : 10,
       zoomControl: !isMobile,
       attributionControl: false
     });
@@ -315,10 +343,9 @@ const HDSMap = ({ filters, colorScheme, isMobile, onGridSelect, selectedGrid, se
 
         // Update legend initially
         updateLegend();
-        setLoading(false);
       })
       .catch(error => {
-        setLoading(false);
+        // Error handling without console.error
       });
 
     return () => {
@@ -410,22 +437,13 @@ const HDSMap = ({ filters, colorScheme, isMobile, onGridSelect, selectedGrid, se
 
   return (
     <div 
-      ref={mapRef} 
+      ref={mapContainerRef} 
       style={{ 
         width: '100%', 
-        height: '100%', 
+        height: getMapHeight(), 
         position: 'relative' 
       }}
-    >
-      {loading && (
-        <div className="absolute inset-0 bg-white bg-opacity-80 flex items-center justify-center z-50">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
-            <p className="mt-2 text-sm text-gray-600">Loading map...</p>
-          </div>
-        </div>
-      )}
-    </div>
+    />
   );
 };
 
