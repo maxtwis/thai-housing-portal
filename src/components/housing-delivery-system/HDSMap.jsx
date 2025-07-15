@@ -14,6 +14,7 @@ const HDSMap = ({
   const mapRef = useRef(null);
   const hdsLayerRef = useRef(null);
   const legendRef = useRef(null);
+  const supplyDataRef = useRef(null); // Add ref to store current supply data
 
   // Province configurations - FIXED FOR SONGKHLA
   const provinceConfigs = {
@@ -38,6 +39,12 @@ const HDSMap = ({
   };
 
   const currentProvince = provinceConfigs[selectedProvince] || provinceConfigs[40];
+
+  // Update supply data ref whenever supplyData prop changes
+  useEffect(() => {
+    supplyDataRef.current = supplyData;
+    console.log('Supply data updated in ref:', supplyData);
+  }, [supplyData]);
 
   // Color schemes - REVERTED TO ORIGINAL
   const colorSchemes = {
@@ -394,10 +401,13 @@ const HDSMap = ({
             layer.on('click', (e) => {
               const clickedFeature = e.target.feature;
               
+              // Get current supply data from ref
+              const currentSupplyData = supplyDataRef.current;
+              
               // Debug logging
               console.log('Grid clicked:', clickedFeature.properties);
-              console.log('Current supplyData:', supplyData);
-              console.log('SupplyData keys:', supplyData ? Object.keys(supplyData) : 'No supply data');
+              console.log('Current supplyData from ref:', currentSupplyData);
+              console.log('SupplyData keys:', currentSupplyData ? Object.keys(currentSupplyData) : 'No supply data');
               
               if (onGridSelect) {
                 // Pass the properties object, not the entire feature
@@ -408,11 +418,12 @@ const HDSMap = ({
                 const gridId = clickedFeature.properties.FID || 
                              clickedFeature.properties.OBJECTID_1 || 
                              clickedFeature.properties.Grid_Code || 
-                             clickedFeature.properties.Grid_CODE;
-                const gridPop = clickedFeature.properties.Grid_POP || 0;
+                             clickedFeature.properties.Grid_CODE ||
+                             clickedFeature.properties.OBJECTID;
+                const gridPop = clickedFeature.properties.Grid_POP || clickedFeature.properties.POP || 0;
                 
-                // Get supply data for mobile popup too - Use current supply data
-                const gridSupplyData = supplyData ? supplyData[gridId] : null;
+                // Get supply data for mobile popup too - Use current supply data from ref
+                const gridSupplyData = currentSupplyData ? currentSupplyData[gridId] : null;
                 console.log('Mobile - Grid ID:', gridId, 'Supply data:', gridSupplyData);
                 
                 let mobileSupplyInfo = '';
@@ -441,13 +452,14 @@ const HDSMap = ({
                 const gridId = clickedFeature.properties.FID || 
                              clickedFeature.properties.OBJECTID_1 || 
                              clickedFeature.properties.Grid_Code || 
-                             clickedFeature.properties.Grid_CODE;
+                             clickedFeature.properties.Grid_CODE ||
+                             clickedFeature.properties.OBJECTID;
                 console.log('Desktop - Grid ID:', gridId);
                 console.log('Looking for supply data with key:', gridId);
-                console.log('Available supply keys:', supplyData ? Object.keys(supplyData) : 'None');
+                console.log('Available supply keys:', currentSupplyData ? Object.keys(currentSupplyData) : 'None');
                 
-                // Generate popup content with current supply data from props
-                const popupContent = generatePopupContent(clickedFeature, colorScheme, supplyData);
+                // Generate popup content with current supply data from ref
+                const popupContent = generatePopupContent(clickedFeature, colorScheme, currentSupplyData);
                 
                 const popup = L.popup({
                   maxWidth: 350,
