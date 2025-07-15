@@ -517,7 +517,7 @@ const HDSMap = ({
         legendRef.current = null;
       }
     };
-  }, [selectedProvince, isMobile, supplyData]); // ADDED supplyData to dependencies
+  }, [selectedProvince, isMobile]); // REMOVED supplyData - map should only re-initialize when province or mobile changes
 
   // Update filters when they change - UNCHANGED
   useEffect(() => {
