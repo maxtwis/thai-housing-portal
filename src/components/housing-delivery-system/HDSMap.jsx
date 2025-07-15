@@ -394,6 +394,11 @@ const HDSMap = ({
             layer.on('click', (e) => {
               const clickedFeature = e.target.feature;
               
+              // Debug logging
+              console.log('Grid clicked:', clickedFeature.properties);
+              console.log('Current supplyData:', supplyData);
+              console.log('SupplyData keys:', supplyData ? Object.keys(supplyData) : 'No supply data');
+              
               if (onGridSelect) {
                 // Pass the properties object, not the entire feature
                 onGridSelect(clickedFeature.properties);
@@ -408,6 +413,8 @@ const HDSMap = ({
                 
                 // Get supply data for mobile popup too - Use current supply data
                 const gridSupplyData = supplyData ? supplyData[gridId] : null;
+                console.log('Mobile - Grid ID:', gridId, 'Supply data:', gridSupplyData);
+                
                 let mobileSupplyInfo = '';
                 if (gridSupplyData && gridSupplyData.totalSupply > 0) {
                   mobileSupplyInfo = `<p class="text-xs text-blue-600 mt-1">Supply: ${gridSupplyData.totalSupply} หน่วย</p>`;
@@ -430,7 +437,16 @@ const HDSMap = ({
                 `)
                 .openOn(map);
               } else {
-                // Generate popup content with current supply data
+                // Debug the grid ID and supply data lookup
+                const gridId = clickedFeature.properties.FID || 
+                             clickedFeature.properties.OBJECTID_1 || 
+                             clickedFeature.properties.Grid_Code || 
+                             clickedFeature.properties.Grid_CODE;
+                console.log('Desktop - Grid ID:', gridId);
+                console.log('Looking for supply data with key:', gridId);
+                console.log('Available supply keys:', supplyData ? Object.keys(supplyData) : 'None');
+                
+                // Generate popup content with current supply data from props
                 const popupContent = generatePopupContent(clickedFeature, colorScheme, supplyData);
                 
                 const popup = L.popup({
