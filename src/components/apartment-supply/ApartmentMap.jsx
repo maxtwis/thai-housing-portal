@@ -374,10 +374,10 @@ const ApartmentMap = ({
   };
 
   // Enhanced popup content generator with dynamic proximity score
-  const generatePopupContent = (property) => {
-    const amenityScore = calculateFacilityScore ? calculateFacilityScore(property) : 0;
-    const proximityScore = proximityScores[property.id];
-    const isCalculating = calculatingProximity === property.id;
+    const generatePopupContent = (property) => {
+      const amenityScore = calculateFacilityScore ? calculateFacilityScore(property) : 0;
+      const proximityScore = proximityScores[property.id];
+      const isCalculating = calculatingProximity === property.id;
     
     console.log(`Generating popup for ${property.apartment_name || property.name}:`, {
       proximityScore,
@@ -436,7 +436,7 @@ const ApartmentMap = ({
 
     return `
       <div style="
-        max-width: 340px; 
+        max-width: ${isMobile ? '280px' : '340px'}; 
         padding: 0; 
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         background: white;
@@ -447,7 +447,7 @@ const ApartmentMap = ({
         <!-- Header Section -->
         <div style="
           background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          padding: 16px;
+          padding: ${isMobile ? '12px' : '16px'};
           color: white;
           position: relative;
           overflow: hidden;
@@ -475,48 +475,48 @@ const ApartmentMap = ({
           <div style="position: relative; z-index: 1;">
             <h3 style="
               margin: 0 0 8px 0; 
-              font-size: 18px; 
+              font-size: ${isMobile ? '16px' : '18px'}; 
               font-weight: 700;
               text-shadow: 0 1px 2px rgba(0,0,0,0.1);
               padding-right: 30px;
-            ">${property.apartment_name || property.name || 'ไม่ระบุชื่อ'}</h3>
+            ">\${property.apartment_name || property.name || 'ไม่ระบุชื่อ'}</h3>
             <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
               <span style="font-size: 14px; opacity: 0.9;">📍</span>
-              <span style="font-size: 13px; opacity: 0.9;">${property.district || 'ไม่ระบุ'}, ${property.province || 'ไม่ระบุ'}</span>
+              <span style="font-size: ${isMobile ? '12px' : '13px'}; opacity: 0.9;">\${property.district || 'ไม่ระบุ'}, \${property.province || 'ไม่ระบุ'}</span>
             </div>
             <div style="
-              font-size: 16px; 
+              font-size: ${isMobile ? '14px' : '16px'}; 
               font-weight: 600; 
               color: #fff;
               text-shadow: 0 1px 2px rgba(0,0,0,0.1);
-            ">${formatPriceRange()}/เดือน</div>
+            ">\${formatPriceRange()}/เดือน</div>
             <div style="
-              font-size: 12px; 
+              font-size: ${isMobile ? '11px' : '12px'}; 
               opacity: 0.8;
-            ">${formatSizeRange()}</div>
+            ">\${formatSizeRange()}</div>
           </div>
         </div>
 
         <!-- Content Section -->
-        <div style="padding: 16px;">
+        <div style="padding: ${isMobile ? '12px' : '16px'};">
           <!-- Scores Section -->
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: ${isMobile ? '8px' : '12px'}; margin-bottom: ${isMobile ? '12px' : '16px'};">
             <!-- Facility Score -->
             <div style="
-              background: linear-gradient(90deg, rgba(${getScoreColor(amenityScore).slice(1)}, 0.1) 0%, rgba(${getScoreColor(amenityScore).slice(1)}, 0.05) 100%);
-              border: 1px solid rgba(${getScoreColor(amenityScore).slice(1)}, 0.2);
+              background: linear-gradient(90deg, rgba(\${getScoreColor(amenityScore).slice(1)}, 0.1) 0%, rgba(\${getScoreColor(amenityScore).slice(1)}, 0.05) 100%);
+              border: 1px solid rgba(\${getScoreColor(amenityScore).slice(1)}, 0.2);
               border-radius: 8px;
-              padding: 12px;
+              padding: ${isMobile ? '10px' : '12px'};
               text-align: center;
             ">
               <div style="
-                font-size: 20px; 
+                font-size: ${isMobile ? '18px' : '20px'}; 
                 font-weight: 800; 
-                color: ${getScoreColor(amenityScore)};
+                color: \${getScoreColor(amenityScore)};
                 margin-bottom: 4px;
-              ">${amenityScore}%</div>
+              ">\${amenityScore}%</div>
               <div style="
-                font-size: 10px; 
+                font-size: ${isMobile ? '9px' : '10px'}; 
                 color: #6b7280; 
                 font-weight: 500;
                 line-height: 1.2;
@@ -524,91 +524,91 @@ const ApartmentMap = ({
             </div>
 
             <!-- Proximity Score -->
-            ${proximityScore !== undefined ? `
+            \${proximityScore !== undefined ? \`
               <div style="
-                background: linear-gradient(90deg, rgba(${getScoreColor(proximityScore).slice(1)}, 0.1) 0%, rgba(${getScoreColor(proximityScore).slice(1)}, 0.05) 100%);
-                border: 1px solid rgba(${getScoreColor(proximityScore).slice(1)}, 0.2);
+                background: linear-gradient(90deg, rgba(\${getScoreColor(proximityScore).slice(1)}, 0.1) 0%, rgba(\${getScoreColor(proximityScore).slice(1)}, 0.05) 100%);
+                border: 1px solid rgba(\${getScoreColor(proximityScore).slice(1)}, 0.2);
                 border-radius: 8px;
-                padding: 12px;
+                padding: ${isMobile ? '10px' : '12px'};
                 text-align: center;
               ">
                 <div style="
-                  font-size: 20px; 
+                  font-size: ${isMobile ? '18px' : '20px'}; 
                   font-weight: 800; 
-                  color: ${getScoreColor(proximityScore)};
+                  color: \${getScoreColor(proximityScore)};
                   margin-bottom: 4px;
-                ">${proximityScore}%</div>
+                ">\${proximityScore}%</div>
                 <div style="
-                  font-size: 10px; 
+                  font-size: ${isMobile ? '9px' : '10px'}; 
                   color: #6b7280; 
                   font-weight: 500;
                   line-height: 1.2;
                 ">ความใกล้เคียงสถานที่</div>
               </div>
-            ` : `
+            \` : \`
               <div style="
-                background: ${isCalculating ? '#fef3c7' : '#f8fafc'};
-                border: 1px solid ${isCalculating ? '#f59e0b' : '#e2e8f0'};
+                background: \${isCalculating ? '#fef3c7' : '#f8fafc'};
+                border: 1px solid \${isCalculating ? '#f59e0b' : '#e2e8f0'};
                 border-radius: 8px;
-                padding: 12px;
+                padding: ${isMobile ? '10px' : '12px'};
                 text-align: center;
               ">
                 <div style="
-                  font-size: 16px; 
-                  color: ${isCalculating ? '#f59e0b' : '#94a3b8'};
+                  font-size: ${isMobile ? '14px' : '16px'}; 
+                  color: \${isCalculating ? '#f59e0b' : '#94a3b8'};
                   margin-bottom: 4px;
-                ">${isCalculating ? '⏳' : '📍'}</div>
+                ">\${isCalculating ? '⏳' : '📍'}</div>
                 <div style="
-                  font-size: 10px; 
-                  color: ${isCalculating ? '#92400e' : '#64748b'}; 
+                  font-size: ${isMobile ? '9px' : '10px'}; 
+                  color: \${isCalculating ? '#92400e' : '#64748b'}; 
                   font-weight: 500;
                   line-height: 1.2;
-                ">${isCalculating ? 'กำลังคำนวณ...' : 'รอการคำนวณ'}</div>
+                ">\${isCalculating ? 'กำลังคำนวณ...' : 'รอการคำนวณ'}</div>
               </div>
-            `}
+            \`}
           </div>
 
           <!-- Amenities Grid -->
-          ${amenities.length > 0 ? `
+          \${amenities.length > 0 ? \`
             <div style="
               display: grid; 
-              grid-template-columns: repeat(3, 1fr); 
-              gap: 8px;
-              margin-bottom: 16px;
+              grid-template-columns: repeat(${isMobile ? '2' : '3'}, 1fr); 
+              gap: ${isMobile ? '6px' : '8px'};
+              margin-bottom: ${isMobile ? '12px' : '16px'};
             ">
-              ${amenities.slice(0, 6).map(amenity => `
+              \${amenities.slice(0, ${isMobile ? '4' : '6'}).map(amenity => \`
                 <div style="
                   display: flex; 
                   flex-direction: column; 
                   align-items: center; 
                   text-align: center;
-                  padding: 8px;
+                  padding: ${isMobile ? '6px' : '8px'};
                   background: #f8fafc;
                   border-radius: 6px;
                   border: 1px solid #e2e8f0;
                 ">
-                  <div style="font-size: 16px; margin-bottom: 4px;">${amenity.icon}</div>
-                  <div style="font-size: 10px; color: #64748b; font-weight: 500;">${amenity.label}</div>
+                  <div style="font-size: ${isMobile ? '14px' : '16px'}; margin-bottom: 4px;">\${amenity.icon}</div>
+                  <div style="font-size: ${isMobile ? '9px' : '10px'}; color: #64748b; font-weight: 500;">\${amenity.label}</div>
                 </div>
-              `).join('')}
+              \`).join('')}
             </div>
-          ` : ''}
+          \` : ''}
 
           <!-- Nearby Places Buttons -->
           <div style="
             display: grid; 
-            grid-template-columns: repeat(2, 1fr); 
-            gap: 6px;
-            margin-bottom: 12px;
+            grid-template-columns: repeat(${isMobile ? '2' : '2'}, 1fr); 
+            gap: ${isMobile ? '4px' : '6px'};
+            margin-bottom: ${isMobile ? '10px' : '12px'};
           ">
             <button onclick="window.apartmentMapInstance?.showNearbyPlaces('restaurant')" 
                     style="
                       background: #ef4444; 
                       color: white; 
                       border: none;
-                      padding: 8px 6px; 
+                      padding: ${isMobile ? '6px 4px' : '8px 6px'}; 
                       border-radius: 6px; 
-                      font-size: 11px; 
+                      font-size: ${isMobile ? '10px' : '11px'}; 
                       font-weight: 600;
                       cursor: pointer;
                       transition: all 0.2s;
@@ -620,9 +620,9 @@ const ApartmentMap = ({
                       background: #10b981; 
                       color: white; 
                       border: none;
-                      padding: 8px 6px; 
+                      padding: ${isMobile ? '6px 4px' : '8px 6px'}; 
                       border-radius: 6px; 
-                      font-size: 11px; 
+                      font-size: ${isMobile ? '10px' : '11px'}; 
                       font-weight: 600;
                       cursor: pointer;
                       transition: all 0.2s;
@@ -634,9 +634,9 @@ const ApartmentMap = ({
                       background: #8b5cf6; 
                       color: white; 
                       border: none;
-                      padding: 8px 6px; 
+                      padding: ${isMobile ? '6px 4px' : '8px 6px'}; 
                       border-radius: 6px; 
-                      font-size: 11px; 
+                      font-size: ${isMobile ? '10px' : '11px'}; 
                       font-weight: 600;
                       cursor: pointer;
                       transition: all 0.2s;
@@ -648,9 +648,9 @@ const ApartmentMap = ({
                       background: #ec4899; 
                       color: white; 
                       border: none;
-                      padding: 8px 6px; 
+                      padding: ${isMobile ? '6px 4px' : '8px 6px'}; 
                       border-radius: 6px; 
-                      font-size: 11px; 
+                      font-size: ${isMobile ? '10px' : '11px'}; 
                       font-weight: 600;
                       cursor: pointer;
                       transition: all 0.2s;
@@ -660,31 +660,31 @@ const ApartmentMap = ({
           </div>
 
           <!-- Additional Info -->
-          ${property.contact_line_id ? `
+          \${property.contact_line_id ? \`
             <div style="
               background: #f8fafc; 
-              padding: 8px 10px; 
+              padding: ${isMobile ? '6px 8px' : '8px 10px'}; 
               border-radius: 6px; 
-              margin-bottom: 8px; 
+              margin-bottom: ${isMobile ? '6px' : '8px'}; 
               border-left: 3px solid #3b82f6;
-              font-size: 12px;
+              font-size: ${isMobile ? '11px' : '12px'};
             ">
               <span style="color: #64748b;">Line ID: </span>
-              <span style="color: #334155; font-weight: 500;">${property.contact_line_id}</span>
+              <span style="color: #334155; font-weight: 500;">\${property.contact_line_id}</span>
             </div>
-          ` : ''}
+          \` : ''}
           
-          ${property.rooms_available && property.rooms_available > 0 ? `
+          \${property.rooms_available && property.rooms_available > 0 ? \`
             <div style="
               background: #dcfce7; 
-              padding: 8px 10px; 
+              padding: ${isMobile ? '6px 8px' : '8px 10px'}; 
               border-radius: 6px; 
               border-left: 3px solid #22c55e;
-              font-size: 12px;
+              font-size: ${isMobile ? '11px' : '12px'};
             ">
-              <span style="color: #15803d; font-weight: 500;">✓ ห้องว่าง: ${property.rooms_available} ห้อง</span>
+              <span style="color: #15803d; font-weight: 500;">✓ ห้องว่าง: \${property.rooms_available} ห้อง</span>
             </div>
-          ` : ''}
+          \` : ''}
 
           <!-- Clear nearby button -->
           <button onclick="window.apartmentMapInstance?.clearNearbyPlaces()" 
@@ -692,36 +692,36 @@ const ApartmentMap = ({
                     background: #6b7280; 
                     color: white; 
                     border: none;
-                    padding: 6px 10px; 
+                    padding: ${isMobile ? '5px 8px' : '6px 10px'}; 
                     border-radius: 6px; 
-                    font-size: 11px; 
+                    font-size: ${isMobile ? '10px' : '11px'}; 
                     font-weight: 500;
                     cursor: pointer;
                     width: 100%;
-                    margin-top: 8px;
+                    margin-top: ${isMobile ? '6px' : '8px'};
                     transition: all 0.2s;
                   ">
               ✕ ล้างสถานที่ใกล้เคียง
             </button>
 
-          ${property.url ? `
-            <a href="${property.url}" target="_blank" rel="noopener noreferrer" 
-               style="
-                 display: block;
-                 background: #1f77b4; 
-                 color: white; 
-                 text-decoration: none;
-                 padding: 8px 12px; 
-                 border-radius: 8px; 
-                 font-size: 11px; 
-                 font-weight: 500;
-                 text-align: center;
-                 margin-top: 8px;
-                 transition: all 0.2s;
-               ">
-               🔗 ดูรายละเอียดเพิ่มเติม
+          \${property.url ? \`
+            <a href="\${property.url}" target="_blank" rel="noopener noreferrer" 
+              style="
+                display: block;
+                background: #1f77b4; 
+                color: white; 
+                text-decoration: none;
+                padding: ${isMobile ? '6px 10px' : '8px 12px'}; 
+                border-radius: 8px; 
+                font-size: ${isMobile ? '10px' : '11px'}; 
+                font-weight: 500;
+                text-align: center;
+                margin-top: ${isMobile ? '6px' : '8px'};
+                transition: all 0.2s;
+              ">
+              🔗 ดูรายละเอียดเพิ่มเติม
             </a>
-          ` : ''}
+          \` : ''}
         </div>
       </div>
     `;
@@ -1147,15 +1147,17 @@ const ApartmentMap = ({
         closeButton: true,
         autoClose: true,
         closeOnEscapeKey: true,
-        maxWidth: 340,
-        minWidth: 300,
+        // Dynamic sizing based on screen size
+        maxWidth: isMobile ? 280 : 340,
+        minWidth: isMobile ? 250 : 300,
         offset: [0, -8],
-        className: 'custom-apartment-popup non-blocking-popup',
-        autoPan: true, // Enable auto-pan for initial display
-        autoPanPadding: [50, 50],
-        keepInView: true, // Keep popup in view initially
-        maxHeight: 500
+        className: isMobile ? 'custom-apartment-popup mobile-popup non-blocking-popup' : 'custom-apartment-popup non-blocking-popup',
+        autoPan: true,
+        autoPanPadding: isMobile ? [20, 20] : [50, 50], // Reduced padding for mobile
+        keepInView: true,
+        maxHeight: isMobile ? 400 : 500 // Reduced height for mobile
       };
+
 
       marker.bindPopup(generatePopupContent(property), popupOptions);
 
@@ -1194,14 +1196,14 @@ const ApartmentMap = ({
           closeButton: true,
           autoClose: true,
           closeOnEscapeKey: true,
-          maxWidth: 340,
-          minWidth: 300,
+          maxWidth: isMobile ? 280 : 340,
+          minWidth: isMobile ? 250 : 300,
           offset: [0, -8],
-          className: 'custom-apartment-popup non-blocking-popup',
-          autoPan: true, // Enable auto-pan for initial display
-          autoPanPadding: [50, 50], // Padding to ensure full popup is visible
-          keepInView: true, // Keep popup in view initially
-          maxHeight: 500
+          className: isMobile ? 'custom-apartment-popup mobile-popup non-blocking-popup' : 'custom-apartment-popup non-blocking-popup',
+          autoPan: true,
+          autoPanPadding: isMobile ? [20, 20] : [50, 50],
+          keepInView: true,
+          maxHeight: isMobile ? 400 : 500
         };
         
         pinnedMarker.bindPopup(generatePopupContent(property), smartPopupOptions);
