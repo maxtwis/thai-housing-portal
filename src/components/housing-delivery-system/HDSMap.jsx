@@ -104,8 +104,8 @@ const HDSMap = ({
     7: 'ระบบที่อยู่อาศัยเอกชน'
   };
 
-  // ONLY CHANGE: Added supply data to popup content
-  const generatePopupContent = (feature, colorScheme) => {
+  // ONLY CHANGE: Added supply data to popup content - Modified to accept supplyData as parameter
+  const generatePopupContent = (feature, colorScheme, currentSupplyData = null) => {
     const props = feature.properties;
     
     // Handle different property structures between provinces  
@@ -128,8 +128,8 @@ const HDSMap = ({
     const totalHousing = hdsNumbers.reduce((sum, item) => sum + item.count, 0);
     const dominantSystem = hdsNumbers.reduce((max, item) => item.count > max.count ? item : max);
     
-    // ONLY NEW ADDITION: Get supply data for this grid
-    const gridSupplyData = supplyData ? supplyData[gridId] : null;
+    // ONLY NEW ADDITION: Get supply data for this grid - Use parameter instead of closure
+    const gridSupplyData = currentSupplyData ? currentSupplyData[gridId] : null;
     
     // ONLY NEW ADDITION: Format supply data section
     let supplySection = '';
@@ -177,7 +177,7 @@ const HDSMap = ({
           </div>
         </div>
       `;
-    } else if (supplyData) {
+    } else if (currentSupplyData) {
       // Show message that no supply data exists for this grid
       supplySection = `
         <div class="border-t border-gray-200 mt-3 pt-3">
@@ -406,7 +406,7 @@ const HDSMap = ({
                              clickedFeature.properties.Grid_CODE;
                 const gridPop = clickedFeature.properties.Grid_POP || 0;
                 
-                // Get supply data for mobile popup too
+                // Get supply data for mobile popup too - Use current supply data
                 const gridSupplyData = supplyData ? supplyData[gridId] : null;
                 let mobileSupplyInfo = '';
                 if (gridSupplyData && gridSupplyData.totalSupply > 0) {
@@ -430,7 +430,8 @@ const HDSMap = ({
                 `)
                 .openOn(map);
               } else {
-                const popupContent = generatePopupContent(clickedFeature, colorScheme);
+                // Generate popup content with current supply data
+                const popupContent = generatePopupContent(clickedFeature, colorScheme, supplyData);
                 
                 const popup = L.popup({
                   maxWidth: 350,
