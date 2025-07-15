@@ -7,68 +7,41 @@ const WORKING_RESOURCE_ID = '15132377-edb0-40b0-9aad-8fd9f6769b92'; // This one 
 const SUPPLY_RESOURCE_ID = '9cfc5468-36f6-40d3-b76e-febf79e9ca9f'; // Original that's failing
 
 /**
- * Hook to fetch supply data with province filtering
+ * Hook to fetch supply data with optimized loading
  */
 export const useSupplyData = (provinceCode = null) => {
   return useQuery({
     queryKey: ['supply-data', provinceCode],
     queryFn: async () => {
-      console.log('Trying to fetch supply data for province:', provinceCode);
+      console.log('Fetching supply data for province:', provinceCode);
       
-      // First, test if the original resource ID works with a small request
+      // Only show supply data for สงขลา province (ID 90)
+      if (provinceCode && provinceCode !== 90) {
+        console.log(`Province ${provinceCode} is not สงขลา (90), returning empty supply data`);
+        return {};
+      }
+      
       try {
-        console.log('Testing original resource ID:', SUPPLY_RESOURCE_ID);
-        const testResult = await getCkanData(SUPPLY_RESOURCE_ID, { limit: 1 });
-        console.log('Original resource test successful:', testResult);
-        
-        // If it works, proceed with the full request
+        // Optimized: smaller limit for faster loading, only get what we need
         const result = await getCkanData(SUPPLY_RESOURCE_ID, {
-          limit: 1000,
+          limit: 100, // Reduced from 1000 for faster loading
           sort: 'OBJECTID asc'
         });
         
-        // Filter by province if needed - สงขลา is province 90
-        let filteredRecords = result.records || [];
-        
-        // Only show supply data for สงขลา province (ID 90)
-        if (provinceCode && provinceCode !== 90) {
-          console.log(`Province ${provinceCode} is not สงขลา (90), returning empty supply data`);
-          return {};
-        }
-        
-        return processSupplyData(filteredRecords);
+        return processSupplyData(result.records || []);
         
       } catch (originalError) {
-        console.warn('Original resource failed:', originalError.message);
-        
-        // Fallback: Try to see what data structure the working resource has
-        try {
-          console.log('Testing working resource for data structure:', WORKING_RESOURCE_ID);
-          const workingResult = await getCkanData(WORKING_RESOURCE_ID, { limit: 5 });
-          console.log('Working resource sample data:', workingResult);
-          
-          // Check if this resource has supply-like data
-          if (workingResult.records && workingResult.records.length > 0) {
-            console.log('Available fields in working resource:', Object.keys(workingResult.records[0]));
-            
-            // If the working resource doesn't have supply data, return empty for now
-            console.warn('Using empty supply data - please verify correct resource ID');
-            return {};
-          }
-          
-        } catch (fallbackError) {
-          console.error('Fallback resource also failed:', fallbackError.message);
-        }
-        
-        // Return empty data to prevent app crash
-        console.warn('Returning empty supply data due to API issues');
+        console.warn('Supply resource failed:', originalError.message);
+        // Return empty data instead of trying fallbacks for speed
         return {};
       }
     },
     enabled: true,
-    staleTime: 10 * 60 * 1000,
-    cacheTime: 15 * 60 * 1000,
-    retry: false, // Don't retry failed requests
+    staleTime: 30 * 60 * 1000, // Cache for 30 minutes for better performance
+    cacheTime: 60 * 60 * 1000, // Keep in cache for 1 hour
+    retry: false, // Don't retry to avoid delays
+    refetchOnWindowFocus: false, // Don't refetch when window gains focus
+    refetchOnMount: false, // Don't refetch on component remount
     onError: (error) => {
       console.error('Supply data query failed:', error);
     }

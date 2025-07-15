@@ -138,7 +138,7 @@ const HDSMap = ({
     // ONLY NEW ADDITION: Get supply data for this grid - Use parameter instead of closure
     const gridSupplyData = currentSupplyData ? currentSupplyData[gridId] : null;
     
-    // ONLY NEW ADDITION: Format supply data section
+    // ONLY NEW ADDITION: Format supply data section - No loading screen, immediate response
     let supplySection = '';
     if (gridSupplyData && gridSupplyData.totalSupply > 0) {
       const { totalSupply, averageSalePrice, averageRentPrice, housingTypes } = gridSupplyData;
@@ -184,8 +184,8 @@ const HDSMap = ({
           </div>
         </div>
       `;
-    } else if (currentSupplyData) {
-      // Show message that no supply data exists for this grid
+    } else if (currentSupplyData && Object.keys(currentSupplyData).length > 0) {
+      // Only show "no data" message if we have supply data loaded but not for this grid
       supplySection = `
         <div class="border-t border-gray-200 mt-3 pt-3">
           <h4 class="font-semibold text-gray-800 mb-2 text-sm">ข้อมูลอุปทาน (Supply Data)</h4>
@@ -193,6 +193,7 @@ const HDSMap = ({
         </div>
       `;
     }
+    // If no supply data loaded yet, just don't show the section at all (no loading screen)
     
     const currentProvince = provinceConfigs[selectedProvince];
     
