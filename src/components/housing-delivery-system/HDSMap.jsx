@@ -395,7 +395,8 @@ const HDSMap = ({
               const clickedFeature = e.target.feature;
               
               if (onGridSelect) {
-                onGridSelect(clickedFeature);
+                // Pass the properties object, not the entire feature
+                onGridSelect(clickedFeature.properties);
               }
 
               if (isMobile) {
