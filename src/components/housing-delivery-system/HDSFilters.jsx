@@ -50,9 +50,9 @@ const HDSFilters = ({ filters, onFiltersChange, colorScheme, onColorSchemeChange
             </div>
           </button>
           <button
-            onClick={() => onColorSchemeChange('density')}
+            onClick={() => onColorSchemeChange('gridClass')}
             className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-              colorScheme === 'density'
+              colorScheme === 'gridClass'
                 ? 'bg-green-600 text-white shadow-md'
                 : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
             }`}
