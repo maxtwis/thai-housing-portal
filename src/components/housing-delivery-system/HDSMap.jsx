@@ -256,7 +256,7 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
                 ${gridSupplyData.averageSalePrice > 0 ? `
                   <div class="flex justify-between">
                     <span class="text-gray-600">ราคาขายเฉลี่ย:</span>
-                    <span class="font-medium text-green-700">${(gridSupplyData.averageSalePrice / 1000000).toFixed(2)}M บาท</span>
+                    <span class="font-medium text-green-700">${(gridSupplyData.averageSalePrice / 1000000).toFixed(2)} ล้านบาท</span>
                   </div>
                 ` : ''}
                 ${gridSupplyData.averageRentPrice > 0 ? `
