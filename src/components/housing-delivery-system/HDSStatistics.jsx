@@ -224,7 +224,7 @@ const HDSStatistics = ({ stats, selectedGrid, onClearSelection, isMobile, provin
           
           {/* Problem Data Section - Below Supply Data */}
           {(selectedGrid.Stability_ || selectedGrid.Subsidies_ || selectedGrid.Supply_Pro) && (
-            <div className="mt-3 pt-3">
+            <div className="mt-2">
               <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
                 <div className="w-1 h-4 bg-red-500 rounded"></div>
                 ปัญหาที่พบ
