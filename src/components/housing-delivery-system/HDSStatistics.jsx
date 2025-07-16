@@ -1,264 +1,191 @@
 import React from 'react';
 
-const HDSStatistics = ({ stats, selectedGrid, onClearSelection, isMobile = false, provinceName = '' }) => {
-  
-  // Define housing system names mapping
-  const housingSystemNames = {
-    'HDS_C1': 'ระบบของชุมชนแออัดบนที่ดินรัฐ/เอกชน',
-    'HDS_C2': 'ระบบการถือครองที่ดินชั่วคราว', 
-    'HDS_C3': 'ระบบของกลุ่มประชากรแฝง',
-    'HDS_C4': 'ระบบที่อยู่อาศัยของลูกจ้าง',
-    'HDS_C5': 'ระบบที่อยู่อาศัยที่รัฐจัดสร้าง',
-    'HDS_C6': 'ระบบที่อยู่อาศัยที่รัฐสนับสนุน',
-    'HDS_C7': 'ระบบที่อยู่อาศัยเอกชน'
+const HDSStatistics = ({ stats, selectedGrid, onClearSelection, isMobile, provinceName }) => {
+  const formatNumber = (num) => {
+    return new Intl.NumberFormat('th-TH').format(num);
   };
 
-  // If a grid is selected, show statistics for that grid only
-  if (selectedGrid) {
-    const gridStats = {
-      gridId: selectedGrid.OBJECTID || selectedGrid.Grid_Code || selectedGrid.FID || 'ไม่ทราบ',
-      population: selectedGrid.Grid_POP || 0,
-      housing: selectedGrid.Grid_House || 0,
-      densityLevel: selectedGrid.Grid_Class || 'ไม่มีข้อมูล',
-      housingSystems: {
-        HDS_C1: selectedGrid.HDS_C1_num || 0,
-        HDS_C2: selectedGrid.HDS_C2_num || 0,
-        HDS_C3: selectedGrid.HDS_C3_num || 0,
-        HDS_C4: selectedGrid.HDS_C4_num || 0,
-        HDS_C5: selectedGrid.HDS_C5_num || 0,
-        HDS_C6: selectedGrid.HDS_C6_num || 0,
-        HDS_C7: selectedGrid.HDS_C7_num || 0
-      },
-      problems: {
-        supply: selectedGrid.Supply_Pro && selectedGrid.Supply_Pro.trim(),
-        subsidies: selectedGrid.Subsidies_ && selectedGrid.Subsidies_.trim(),
-        stability: selectedGrid.Stability_ && selectedGrid.Stability_.trim()
-      }
-    };
+  const housingSystemNames = {
+    HDS_C1: 'ชุมชนแออัด',
+    HDS_C2: 'ถือครองชั่วคราว',
+    HDS_C3: 'ประชากรแฝง',
+    HDS_C4: 'ที่อยู่อาศัยลูกจ้าง',
+    HDS_C5: 'ที่อยู่อาศัยรัฐ',
+    HDS_C6: 'รัฐสนับสนุน',
+    HDS_C7: 'ที่อยู่อาศัยเอกชน'
+  };
 
-    const totalHousingInGrid = Object.values(gridStats.housingSystems).reduce((sum, count) => sum + count, 0);
+  const densityLevelNames = {
+    1: 'ความหนาแน่นต่ำมาก',
+    2: 'ความหนาแน่นต่ำ',
+    3: 'ความหนาแน่นปานกลาง',
+    4: 'ความหนาแน่นสูง',
+    5: 'ความหนาแน่นสูงมาก'
+  };
 
-    return (
-      <div className="p-4">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold`}>
-            สถิติกริด ID: {gridStats.gridId}
-          </h2>
-          <button 
-            onClick={onClearSelection}
-            className="text-sm text-blue-600 hover:text-blue-800 underline"
-          >
-            ดูภาพรวมทั้งหมด
-          </button>
-        </div>
-      
-        <div className="space-y-4">
-          {/* Selected Grid Overview */}
-          <div>
-            <h3 className="text-sm font-medium text-gray-500">ข้อมูลกริดที่เลือก</h3>
-            <div className="mt-2 space-y-2">
-              <div>
-                <span className="text-sm text-gray-500">ประชากร:</span>
-                <span className="block text-lg font-medium">
-                  {Math.round(gridStats.population).toLocaleString()} คน
-                </span>
-              </div>
-              <div>
-                <span className="text-sm text-gray-500">ที่อยู่อาศัยรวม:</span>
-                <span className="block text-lg font-medium">
-                  {gridStats.housing.toLocaleString()} หน่วย
-                </span>
-              </div>
-              <div>
-                <span className="text-sm text-gray-500">ระดับความหนาแน่น:</span>
-                <span className="block text-lg font-medium">
-                  ระดับ {gridStats.densityLevel}
-                </span>
-              </div>
-            </div>
-          </div>
+  // Calculate total housing units from all systems
+  const totalHousingUnits = Object.values(stats.housingSystems || {}).reduce((sum, val) => sum + val, 0);
 
-          {/* Housing Systems in Selected Grid */}
-          {totalHousingInGrid > 0 && (
-            <div>
-              <h3 className="text-sm font-medium text-gray-500">ระบบที่อยู่อาศัยในกริดนี้</h3>
-              <div className="mt-2 space-y-2">
-                {Object.entries(gridStats.housingSystems)
-                  .filter(([, count]) => count > 0)
-                  .sort(([,a], [,b]) => b - a)
-                  .map(([system, count]) => {
-                    return (
-                      <div key={system} className="flex justify-between items-baseline">
-                        <span className="text-sm text-gray-500 pr-2 flex-1">
-                          {housingSystemNames[system] || system}:
-                        </span>
-                        <div className="text-right">
-                          <span className="text-base font-medium">
-                            {count.toLocaleString()}
-                          </span>
-                          <span className="text-sm text-gray-500 ml-1">
-                            ({((count / totalHousingInGrid) * 100).toFixed(1)}%)
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-              </div>
-            </div>
-          )}
-
-          {/* Problem Areas in Selected Grid */}
-          <div>
-            <h3 className="text-sm font-medium text-gray-500">ปัญหาในกริดนี้</h3>
-            <div className="mt-2 space-y-2">
-              {gridStats.problems.supply ? (
-                <div className="bg-red-50 p-2 rounded">
-                  <p className="text-sm font-medium text-red-600">ปัญหาด้าน Supply:</p>
-                  <p className="text-xs text-red-700">{gridStats.problems.supply}</p>
-                </div>
-              ) : (
-                <div className="text-sm text-gray-500">✓ ไม่มีปัญหาด้าน Supply</div>
-              )}
-              
-              {gridStats.problems.subsidies ? (
-                <div className="bg-orange-50 p-2 rounded">
-                  <p className="text-sm font-medium text-orange-600">ปัญหาด้าน Subsidies:</p>
-                  <p className="text-xs text-orange-700">{gridStats.problems.subsidies}</p>
-                </div>
-              ) : (
-                <div className="text-sm text-gray-500">✓ ไม่มีปัญหาด้าน Subsidies</div>
-              )}
-              
-              {gridStats.problems.stability ? (
-                <div className="bg-yellow-50 p-2 rounded">
-                  <p className="text-sm font-medium text-yellow-600">ปัญหาด้าน Stability:</p>
-                  <p className="text-xs text-yellow-700">{gridStats.problems.stability}</p>
-                </div>
-              ) : (
-                <div className="text-sm text-gray-500">✓ ไม่มีปัญหาด้าน Stability</div>
-              )}
-            </div>
-          </div>
+  return (
+    <div className={`${isMobile ? 'p-4' : 'p-5'}`}>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+          <h2 className="text-lg font-semibold text-gray-800">สถิติข้อมูล</h2>
+          <span className="text-sm text-gray-500">({provinceName})</span>
         </div>
       </div>
-    );
-  }
 
-  // Show overall province statistics
-  return (
-    <div className="p-4">
-      <h2 className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold mb-4`}>
-        สถิติภาพรวม{provinceName ? ` - ${provinceName}` : ''}
-      </h2>
-      
-      <div className="space-y-6">
-        {/* Overview Statistics */}
-        <div>
-          <h3 className="text-sm font-medium text-gray-500">ข้อมูลพื้นฐาน</h3>
-          <div className="mt-2 grid grid-cols-2 gap-4">
-            <div>
-              <span className="text-sm text-gray-500">กริดทั้งหมด</span>
-              <span className="block text-lg font-medium">
-                {stats.totalGrids?.toLocaleString() || 0}
-              </span>
+      {/* Selected Grid Info */}
+      {selectedGrid && (
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-blue-900 mb-1">กริดที่เลือก: {selectedGrid.GRID_ID}</p>
+              <div className="grid grid-cols-2 gap-2 text-xs text-blue-800">
+                <div>ประชากร: {formatNumber(selectedGrid.Grid_POP || 0)} คน</div>
+                <div>หลังคาเรือน: {formatNumber(selectedGrid.Grid_House || 0)}</div>
+                <div>ความหนาแน่น: Class {selectedGrid.Grid_Class || '-'}</div>
+                <div>ระบบหลัก: C{selectedGrid.MainHDS || '-'}</div>
+              </div>
             </div>
-            <div>
-              <span className="text-sm text-gray-500">ประชากรรวม</span>
-              <span className="block text-lg font-medium">
-                {Math.round(stats.totalPopulation || 0).toLocaleString()} คน
-              </span>
-            </div>
-            <div>
-              <span className="text-sm text-gray-500">ที่อยู่อาศัยรวม</span>
-              <span className="block text-lg font-medium">
-                {(stats.totalHousing || 0).toLocaleString()} หน่วย
-              </span>
-            </div>
-            <div>
-              <span className="text-sm text-gray-500">ความหนาแน่นเฉลี่ย</span>
-              <span className="block text-lg font-medium">
-                {Math.round(stats.averageDensity || 0).toLocaleString()} คน/กริด
-              </span>
-            </div>
+            <button
+              onClick={onClearSelection}
+              className="ml-2 p-1 text-blue-600 hover:bg-blue-100 rounded transition-colors"
+              title="Clear selection"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
         </div>
+      )}
 
-        {/* Housing Delivery Systems */}
-        <div>
-          <h3 className="text-sm font-medium text-gray-500">ระบบที่อยู่อาศัย</h3>
-          <div className="mt-2 space-y-2">
-            {Object.entries(stats.housingSystems || {})
-              .filter(([, count]) => count > 0) // Only show systems with housing units
-              .sort(([,a], [,b]) => b - a) // Sort by count in descending order
-              .map(([system, count]) => {
-                return (
-                  <div key={system} className="flex justify-between items-baseline">
-                    <span className="text-sm text-gray-500 pr-2 flex-1">
-                      {housingSystemNames[system] || system}:
-                    </span>
-                    <div className="text-right">
-                      <span className="text-base font-medium">
-                        {count.toLocaleString()}
-                      </span>
-                      <span className="text-sm text-gray-500 ml-1">
-                        ({((count / (stats.totalHousing || 1)) * 100).toFixed(1)}%)
-                      </span>
+      {/* Overview Stats */}
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        <div className="bg-gray-50 rounded-lg p-3">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs text-gray-600">จำนวนกริด</p>
+            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+            </svg>
+          </div>
+          <p className="text-2xl font-bold text-gray-900">{formatNumber(stats.totalGrids)}</p>
+        </div>
+        <div className="bg-gray-50 rounded-lg p-3">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs text-gray-600">ประชากรรวม</p>
+            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+          </div>
+          <p className="text-2xl font-bold text-gray-900">{formatNumber(stats.totalPopulation)}</p>
+        </div>
+        <div className="bg-gray-50 rounded-lg p-3">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs text-gray-600">หลังคาเรือน</p>
+            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            </svg>
+          </div>
+          <p className="text-2xl font-bold text-gray-900">{formatNumber(stats.totalHousing)}</p>
+        </div>
+        <div className="bg-gray-50 rounded-lg p-3">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs text-gray-600">ความหนาแน่นเฉลี่ย</p>
+            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+            </svg>
+          </div>
+          <p className="text-2xl font-bold text-gray-900">{formatNumber(stats.averageDensity)}</p>
+          <p className="text-xs text-gray-500">คน/กริด</p>
+        </div>
+      </div>
+
+      {/* Housing Systems Distribution */}
+      <div className="mb-4">
+        <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+          <div className="w-1 h-4 bg-blue-500 rounded"></div>
+          การกระจายระบบที่อยู่อาศัย
+        </h3>
+        <div className="space-y-2">
+          {Object.entries(stats.housingSystems || {})
+            .filter(([key, value]) => value > 0)
+            .sort(([, a], [, b]) => b - a)
+            .map(([key, value]) => {
+              const percentage = totalHousingUnits > 0 ? ((value / totalHousingUnits) * 100).toFixed(1) : 0;
+              return (
+                <div key={key} className="group">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm text-gray-700">{housingSystemNames[key] || key}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-gray-900">{formatNumber(value)}</span>
+                      <span className="text-xs text-gray-500">({percentage}%)</span>
                     </div>
                   </div>
-                );
-              })}
-          </div>
-        </div>
-
-        {/* Density Distribution */}
-        <div>
-          <h3 className="text-sm font-medium text-gray-500">การกระจายตามระดับความหนาแน่น</h3>
-          <div className="mt-2 space-y-3">
-            {Object.entries(stats.densityLevels || {})
-              .sort(([a], [b]) => parseInt(a) - parseInt(b))
-              .map(([level, count]) => {
-                const percentage = ((count / (stats.totalGrids || 1)) * 100).toFixed(1);
-                return (
-                  <div key={level} className="flex justify-between items-center">
-                    <span className="text-sm text-gray-500">ระดับ {level}:</span>
-                    <div className="flex items-center">
-                      <span className="text-sm font-medium mr-2">{count} กริด</span>
-                      <div className="w-20 h-2 bg-gray-200 rounded-full">
-                        <div 
-                          className="h-full bg-blue-500 rounded-full" 
-                          style={{ width: `${percentage}%` }}
-                        ></div>
-                      </div>
-                      <span className="text-xs text-gray-500 ml-2">{percentage}%</span>
-                    </div>
+                  <div className="relative w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div 
+                      className="absolute h-full bg-gradient-to-r from-blue-400 to-blue-600 rounded-full transition-all duration-500 ease-out" 
+                      style={{ width: `${percentage}%` }}
+                    />
                   </div>
-                );
-              })}
-          </div>
+                </div>
+              );
+            })}
         </div>
+      </div>
 
-        {/* Problem Areas */}
-        <div>
-          <h3 className="text-sm font-medium text-gray-500">พื้นที่ที่มีปัญหา</h3>
-          <div className="mt-2 space-y-2">
-            <div className="flex justify-between items-baseline">
-              <span className="text-sm text-gray-500">ปัญหาด้านอุปทาน (Supply):</span>
-              <span className="text-base font-medium text-red-600">
-                {(stats.problemAreas?.supply || 0).toFixed(1)}%
-              </span>
+      {/* Problem Areas */}
+      <div className="border-t border-gray-200 pt-4">
+        <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+          <div className="w-1 h-4 bg-red-500 rounded"></div>
+          พื้นที่ที่ต้องการความช่วยเหลือ
+        </h3>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
+                <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                </svg>
+              </div>
+              <span className="text-sm text-gray-700">ปัญหาด้านอุปทาน</span>
             </div>
-            <div className="flex justify-between items-baseline">
-              <span className="text-sm text-gray-500">ปัญหาด้านเงินอุดหนุน (Subsidies):</span>
-              <span className="text-base font-medium text-orange-600">
-                {(stats.problemAreas?.subsidies || 0).toFixed(1)}%
-              </span>
+            <span className="text-lg font-bold text-red-600">
+              {(stats.problemAreas?.supply || 0).toFixed(1)}%
+            </span>
+          </div>
+          
+          <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
+                <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <span className="text-sm text-gray-700">ปัญหาด้านเงินอุดหนุน</span>
             </div>
-            <div className="flex justify-between items-baseline">
-              <span className="text-sm text-gray-500">ปัญหาด้านความมั่นคง (Stability):</span>
-              <span className="text-base font-medium text-yellow-600">
-                {(stats.problemAreas?.stability || 0).toFixed(1)}%
-              </span>
+            <span className="text-lg font-bold text-orange-600">
+              {(stats.problemAreas?.subsidies || 0).toFixed(1)}%
+            </span>
+          </div>
+          
+          <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
+                <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <span className="text-sm text-gray-700">ปัญหาด้านความมั่นคง</span>
             </div>
+            <span className="text-lg font-bold text-yellow-600">
+              {(stats.problemAreas?.stability || 0).toFixed(1)}%
+            </span>
           </div>
         </div>
       </div>
