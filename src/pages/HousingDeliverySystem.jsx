@@ -182,7 +182,7 @@ const HousingDeliverySystem = () => {
     <div className="min-h-screen bg-gray-50">
       <div className="h-screen flex flex-col">
         {/* Header with Province Selector */}
-        <div className="bg-white shadow-sm border-b border-gray-200 px-4 py-3">
+        <div className="bg-white shadow-sm border-b border-gray-200 px-4 py-3 flex-shrink-0">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <h1 className="text-xl font-bold text-gray-900">
               ระบบการจัดการที่อยู่อาศัย (Housing Delivery System)
@@ -206,7 +206,7 @@ const HousingDeliverySystem = () => {
         </div>
 
         {/* Main Content - Redesigned Layout */}
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 flex overflow-hidden">
           {isMobile ? (
             // Mobile Layout - Keep existing stacked layout
             <div className="h-full overflow-y-auto p-4 space-y-4">

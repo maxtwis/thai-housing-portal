@@ -52,15 +52,6 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
     }
   };
 
-  // Dynamic height calculation based on viewport
-  const getMapHeight = () => {
-    if (isMobile) {
-      return "60vh";
-    } else {
-      return "calc(100vh - 200px)"; // Reduced from 150px to account for headers and padding
-    }
-  };
-
   // Housing system names mapping for tooltips
   const housingSystemNames = {
     1: 'ระบบของชุมชนแออัดบนที่ดินรัฐ/เอกชน',
@@ -72,17 +63,13 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
     7: 'ระบบที่อยู่อาศัยเอกชน'
   };
 
-  // Detailed popup content with full information
-  const generatePopupContent = (feature, colorScheme) => {
-    const props = feature.properties;
-    
-    // Handle different property structures between provinces  
-    const gridId = props.FID || props.OBJECTID_1 || props.Grid_Code || props.Grid_CODE;
-    const gridPop = props.Grid_POP || 0;
+  // Generate popup content
+  const generatePopupContent = (props) => {
+    const gridPOP = props.Grid_POP || 0;
     const gridHouse = props.Grid_House || 0;
-    const gridClass = props.Grid_Class || 'ไม่มีข้อมูล';
+    const gridClass = props.Grid_Class || '-';
     
-    // Calculate dominant housing system
+    // Calculate housing system data
     const hdsNumbers = [
       { code: 1, count: props.HDS_C1_num || 0 },
       { code: 2, count: props.HDS_C2_num || 0 },
@@ -94,26 +81,23 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
     ];
     
     const totalHousing = hdsNumbers.reduce((sum, item) => sum + item.count, 0);
-    const dominantSystem = hdsNumbers.reduce((max, item) => item.count > max.count ? item : max);
-    
-    const currentProvince = provinceConfigs[selectedProvince];
-    
+    const dominantSystem = hdsNumbers.reduce((max, current) => 
+      current.count > max.count ? current : max
+    );
+
     return `
-      <div class="p-3 min-w-[280px]">
-        <div class="bg-gray-50 -m-3 p-3 mb-3 border-b">
-          <h3 class="font-bold text-gray-800">พื้นที่กริด ID: ${gridId}</h3>
-          <p class="text-sm text-gray-600 mt-1">${currentProvince?.name || 'ไม่ทราบจังหวัด'} - ระบบที่อยู่อาศัย</p>
-        </div>
-        
-        <div class="space-y-2">
-          <div class="flex justify-between items-baseline text-sm">
-            <span class="text-gray-600">ประชากรรวม</span>
-            <span class="font-medium text-gray-800">${gridPop ? Math.round(gridPop).toLocaleString() : 'ไม่มีข้อมูล'} คน</span>
+      <div class="grid-popup" style="font-family: 'Noto Sans Thai', sans-serif; min-width: 250px;">
+        <div class="p-3" style="padding: 16px;">
+          <h3 class="font-bold text-base mb-3 text-gray-800 border-b pb-2">ข้อมูลกริด ${props.GRID_ID || ''}</h3>
+          
+          <div class="flex justify-between items-baseline mb-2 text-sm">
+            <span class="text-gray-600">ประชากร</span>
+            <span class="font-medium text-gray-800">${gridPOP > 0 ? Math.round(gridPOP).toLocaleString() : 'ไม่มีข้อมูล'} คน</span>
           </div>
           
-          <div class="flex justify-between items-baseline text-sm">
-            <span class="text-gray-600">ที่อยู่อาศัยรวม</span>
-            <span class="font-medium text-gray-800">${gridHouse ? Math.round(gridHouse).toLocaleString() : 'ไม่มีข้อมูล'} หน่วย</span>
+          <div class="flex justify-between items-baseline mb-2 text-sm">
+            <span class="text-gray-600">หลังคาเรือน</span>
+            <span class="font-medium text-gray-800">${gridHouse > 0 ? Math.round(gridHouse).toLocaleString() : 'ไม่มีข้อมูล'} หน่วย</span>
           </div>
           
           <div class="flex justify-between items-baseline text-sm">
@@ -301,61 +285,48 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
     // Initialize map
     const map = L.map(mapContainerRef.current, {
       center: currentProvince.center,
-      zoom: isMobile ? 9 : 10,
-      zoomControl: !isMobile,
-      attributionControl: false
+      zoom: isMobile ? 10 : 11,
+      minZoom: 8,
+      maxZoom: 16
     });
 
     mapRef.current = map;
-    
-    console.log(`Initializing map for ${currentProvince.name} at center:`, currentProvince.center);
-
-    // Add zoom control to bottom right for mobile
-    if (isMobile) {
-      L.control.zoom({ position: 'bottomright' }).addTo(map);
-    }
 
     // Add tile layer
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors',
-      maxZoom: 18
+      attribution: '© OpenStreetMap contributors'
     }).addTo(map);
 
     // Add legend
-    const legend = L.control({ 
-      position: isMobile ? 'topleft' : 'bottomright' 
-    });
-    
-    legend.onAdd = function () {
+    const legend = L.control({ position: isMobile ? 'bottomleft' : 'bottomright' });
+    legend.onAdd = function (map) {
       const div = L.DomUtil.create('div', 'info legend');
-      
-      if (isMobile) {
-        div.style.cssText = 'background: white; padding: 6px; border-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,0.2); font-size: 9px; max-height: 80px; overflow-y: auto; z-index: 1; max-width: 280px;';
-      } else {
-        div.style.cssText = 'background: white; padding: 10px; border-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,0.2); font-size: 12px; max-height: 400px; overflow-y: auto;';
-      }
-      
+      div.style.backgroundColor = 'rgba(255, 255, 255, 0.9)';
+      div.style.padding = isMobile ? '6px' : '10px';
+      div.style.borderRadius = '4px';
+      div.style.boxShadow = '0 0 15px rgba(0,0,0,0.2)';
+      div.style.fontSize = isMobile ? '10px' : '12px';
+      div.style.maxWidth = isMobile ? '150px' : '200px';
       return div;
     };
-    
     legend.addTo(map);
     legendRef.current = legend;
 
-    // Load GeoJSON data for selected province
+    // Load and display HDS data
+    console.log(`Loading HDS data for ${currentProvince.name} from ${currentProvince.file}`);
+    
     fetch(currentProvince.file)
-      .then(response => {
-        if (!response.ok) throw new Error(`Failed to load HDS GeoJSON data for ${currentProvince.name}`);
-        return response.json();
-      })
+      .then(response => response.json())
       .then(geojsonData => {
-        console.log(`${currentProvince.name} GeoJSON data loaded:`, geojsonData.features.length, 'features');
-        console.log('Original coordinates sample:', geojsonData.features[0]?.geometry?.coordinates[0]?.slice(0, 2));
+        console.log(`Raw GeoJSON for ${currentProvince.name}:`, geojsonData);
+        console.log('Features count:', geojsonData.features?.length);
+        console.log('CRS:', geojsonData.crs);
         
-        let processedGeoJSON = geojsonData;
+        let processedGeoJSON;
 
-        // The coordinates are already in WGS84 format [lng, lat]
-        // Just validate and log them
-        const sampleCoord = geojsonData.features[0]?.geometry?.coordinates[0]?.[0];
+        // Check first feature's coordinates to understand format
+        const firstFeature = geojsonData.features?.[0];
+        const sampleCoord = firstFeature?.geometry?.coordinates?.[0]?.[0]?.[0];
         if (sampleCoord) {
           const [lng, lat] = sampleCoord;
           console.log(`${currentProvince.name} coordinates are in WGS84 [lng, lat]:`, { lng, lat });
@@ -397,46 +368,39 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
                 onGridSelect(clickedFeature.properties);
               }
               
-              // For mobile, show a smaller popup that doesn't interfere with legend
-              if (isMobile) {
-                const gridId = clickedFeature.properties.FID || 
-                             clickedFeature.properties.OBJECTID_1 || 
-                             clickedFeature.properties.Grid_Code || 
-                             clickedFeature.properties.Grid_CODE;
-                const gridPop = clickedFeature.properties.Grid_POP || 0;
-                
-                const popup = L.popup({
-                  maxWidth: 280,
-                  className: 'hds-popup mobile-popup',
-                  autoPan: true,
-                  keepInView: true
-                })
-                .setLatLng(e.latlng)
-                .setContent(`
-                  <div class="p-2">
-                    <h4 class="font-bold text-sm">Grid ${gridId}</h4>
-                    <p class="text-xs text-gray-600">${Math.round(gridPop).toLocaleString()} คน</p>
-                    <button onclick="this.closest('.leaflet-popup').remove()" class="text-xs text-blue-600 mt-1">ปิด</button>
-                  </div>
-                `)
-                .openOn(map);
-              } else {
-                // Desktop - show full popup
-                const popupContent = generatePopupContent(clickedFeature, colorScheme);
-                
-                const popup = L.popup({
-                  maxWidth: 350,
-                  className: 'hds-popup',
-                  autoPan: true,
-                  keepInView: true
-                })
-                .setLatLng(e.latlng)
-                .setContent(popupContent)
-                .openOn(map);
-              }
+              // Update all layer styles to highlight selected
+              hdsLayerRef.current.eachLayer((otherLayer) => {
+                if (otherLayer === layer) {
+                  // Highlight selected grid
+                  otherLayer.setStyle({
+                    fillColor: getColor(otherLayer.feature),
+                    weight: 3,
+                    opacity: 1,
+                    color: '#2563eb', // Blue border for selected
+                    fillOpacity: 0.9
+                  });
+                } else {
+                  // Reset other grids to normal style
+                  otherLayer.setStyle({
+                    fillColor: getColor(otherLayer.feature),
+                    weight: 1,
+                    opacity: 0.3,
+                    color: '#666666',
+                    fillOpacity: 0.8
+                  });
+                }
+              });
             });
-
-            // Hover effects for better interaction
+            
+            // Add popup with detailed grid information
+            const popupContent = generatePopupContent(feature.properties);
+            layer.bindPopup(popupContent, {
+              maxWidth: 300,
+              minWidth: 250,
+              className: 'grid-popup-container'
+            });
+            
+            // Add hover effect - only when not on mobile
             if (!isMobile) {
               layer.on('mouseover', (e) => {
                 layer.setStyle({
@@ -564,7 +528,7 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
     });
   }, [filters]);
 
-  // Update colors and selected grid styling when color scheme or selected grid changes
+  // Update colors and selected grid changes
   useEffect(() => {
     if (!mapRef.current || !hdsLayerRef.current) return;
 
@@ -611,13 +575,10 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden relative" style={{ height: getMapHeight() }}>
+    <div className="h-full w-full relative">
       <div 
         ref={mapContainerRef}
-        className="w-full h-full"
-        style={{ 
-          minHeight: "400px"
-        }}
+        className="h-full w-full"
       />
       <div className="absolute bottom-0 right-0 bg-white bg-opacity-75 px-2 py-1 text-xs text-gray-600">
         © OpenStreetMap contributors
