@@ -57,7 +57,7 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
   if (isMobile) {
     return "60vh";
   } else {
-    return "calc(100vh - 120px)"; // Increased from 200px to 120px
+    return "calc(100vh - 100px)"; 
   }
 };
 
