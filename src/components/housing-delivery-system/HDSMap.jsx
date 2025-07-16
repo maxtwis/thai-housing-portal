@@ -566,21 +566,46 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
 
   // Update colors and selected grid styling when color scheme or selected grid changes
   useEffect(() => {
-    if (!mapRef.current || !hdsLayerRef.current) return;
+  if (!mapRef.current || !hdsLayerRef.current) return;
 
-    // Re-style all layers with subtle borders
-    hdsLayerRef.current.eachLayer((layer) => {
+  // Re-style all layers with subtle borders AND refresh event handlers
+  hdsLayerRef.current.eachLayer((layer) => {
+    // Remove old event handlers
+    layer.off('mouseover');
+    layer.off('mouseout');
+    
+    // Re-add event handlers with current colorScheme
+    layer.on('mouseover', (e) => {
       layer.setStyle({
-        fillColor: getColor(layer.feature),
-        weight: 1, // Thin border
-        opacity: 0.3, // Low opacity border
-        color: '#666666', // Gray border
-        fillOpacity: 0.8
+        weight: 2,
+        opacity: 0.8,
+        color: '#333333',
+        fillOpacity: 0.9
       });
     });
 
-    updateLegend();
-  }, [colorScheme, selectedGrid]); // Combined both effects into one
+    layer.on('mouseout', (e) => {
+      layer.setStyle({
+        fillColor: getColor(layer.feature), // Uses current colorScheme
+        weight: 1,
+        opacity: 0.3,
+        color: '#666666',
+        fillOpacity: 0.8
+      });
+    });
+    
+    // Re-style the layer
+    layer.setStyle({
+      fillColor: getColor(layer.feature),
+      weight: 1,
+      opacity: 0.3,
+      color: '#666666',
+      fillOpacity: 0.8
+    });
+  });
+
+  updateLegend();
+}, [colorScheme, selectedGrid]); // Combined both effects into onee
 
   // Update legend content
   const updateLegend = () => {
