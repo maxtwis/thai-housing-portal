@@ -337,8 +337,9 @@ const HousingDeliverySystem = () => {
                       stats={stats}
                       selectedGrid={selectedGrid}
                       onClearSelection={handleClearSelection}
-                      isMobile={false}
+                      isMobile={isMobile}
                       provinceName={currentProvince.name}
+                      supplyData={supplyData} // Add this line
                     />
                   </div>
 

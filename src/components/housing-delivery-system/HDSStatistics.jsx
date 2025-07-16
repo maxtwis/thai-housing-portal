@@ -1,6 +1,6 @@
 import React from 'react';
 
-const HDSStatistics = ({ stats, selectedGrid, onClearSelection, isMobile, provinceName }) => {
+const HDSStatistics = ({ stats, selectedGrid, onClearSelection, isMobile, provinceName, supplyData }) => {
   const formatNumber = (num) => {
     return new Intl.NumberFormat('th-TH').format(num);
   };
@@ -138,6 +138,96 @@ const HDSStatistics = ({ stats, selectedGrid, onClearSelection, isMobile, provin
             })}
         </div>
       </div>
+      {/* Supply Data Section - Only show if we have supply data and selected grid */}
+      {selectedGrid && supplyData && Object.keys(supplyData).length > 0 && (
+        <div className="border-t border-gray-200 pt-4">
+          <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+            <div className="w-1 h-4 bg-green-500 rounded"></div>
+            ข้อมูลอุปทานที่อยู่อาศัย
+          </h3>
+          
+          {(() => {
+            const gridId = selectedGrid.FID || selectedGrid.OBJECTID_1 || selectedGrid.Grid_Code || selectedGrid.Grid_CODE || selectedGrid.OBJECTID;
+            const gridSupplyData = supplyData[gridId];
+            
+            if (gridSupplyData) {
+              return (
+                <div className="space-y-3">
+                  {/* Total Supply */}
+                  <div className="bg-green-50 rounded-lg p-3 border border-green-200">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-700 flex items-center gap-2">
+                        <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                        </svg>
+                        หน่วยทั้งหมด
+                      </span>
+                      <span className="text-lg font-bold text-green-600">{gridSupplyData.totalSupply.toLocaleString()}</span>
+                    </div>
+                  </div>
+
+                  {/* Prices */}
+                  {(gridSupplyData.averageSalePrice > 0 || gridSupplyData.averageRentPrice > 0) && (
+                    <div className="grid grid-cols-1 gap-2">
+                      {gridSupplyData.averageSalePrice > 0 && (
+                        <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-700 flex items-center gap-2">
+                              <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              ราคาขายเฉลี่ย
+                            </span>
+                            <span className="text-sm font-bold text-blue-600">{(gridSupplyData.averageSalePrice / 1000000).toFixed(2)} ล้านบาท</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {gridSupplyData.averageRentPrice > 0 && (
+                        <div className="bg-purple-50 rounded-lg p-3 border border-purple-200">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-700 flex items-center gap-2">
+                              <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                              </svg>
+                              ราคาเช่าเฉลี่ย
+                            </span>
+                            <span className="text-sm font-bold text-purple-600">{gridSupplyData.averageRentPrice.toLocaleString()} บาท/เดือน</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Housing Types */}
+                  {Object.keys(gridSupplyData.housingTypes || {}).length > 0 && (
+                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                      <h5 className="text-xs font-medium text-gray-700 mb-2">ประเภทที่อยู่อาศัย:</h5>
+                      <div className="space-y-1">
+                        {Object.entries(gridSupplyData.housingTypes).map(([type, data]) => (
+                          <div key={type} className="flex items-center justify-between text-xs">
+                            <span className="text-gray-600">{type}:</span>
+                            <span className="font-medium text-gray-800">{data.supplyCount} หน่วย</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            } else {
+              return (
+                <div className="bg-yellow-50 rounded-lg p-4 text-center border border-yellow-200">
+                  <svg className="w-6 h-6 text-yellow-500 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <div className="text-sm text-yellow-700">ไม่มีข้อมูลอุปทานสำหรับกริดนี้</div>
+                </div>
+              );
+            }
+          })()}
+        </div>
+      )}
     </div>
   );
 };
