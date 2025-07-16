@@ -10,7 +10,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
-const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect, selectedGrid, selectedProvince = 40 }) => {
+const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect, selectedGrid, selectedProvince = 40, supplyData = {} }) => {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const hdsLayerRef = useRef(null);
@@ -77,10 +77,12 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
     const props = feature.properties;
     
     // Handle different property structures between provinces  
-    const gridId = props.FID || props.OBJECTID_1 || props.Grid_Code || props.Grid_CODE;
+    const gridId = props.FID || props.OBJECTID_1 || props.Grid_Code || props.Grid_CODE || props.OBJECTID;
     const gridPop = props.Grid_POP || 0;
     const gridHouse = props.Grid_House || 0;
     const gridClass = props.Grid_Class || 'ไม่มีข้อมูล';
+    const gridSupplyData = supplyData && gridId ? supplyData[gridId] : null;
+    console.log(`Grid ${gridId} supply data:`, gridSupplyData);
     
     // Calculate dominant housing system
     const hdsNumbers = [
@@ -144,7 +146,45 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
               ไม่มีข้อมูลระบบที่อยู่อาศัย
             </div>
           `}
-          
+          ${gridSupplyData ? `
+          <div class="bg-green-50 p-2 rounded border-t border-green-200 mt-3">
+            <h4 class="font-semibold text-green-800 text-sm mb-2">ข้อมูลอุปทานที่อยู่อาศัย</h4>
+            <div class="space-y-1 text-xs">
+              <div class="flex justify-between">
+                <span class="text-gray-600">จำนวนหน่วยทั้งหมด:</span>
+                <span class="font-medium text-green-700">${gridSupplyData.totalSupply.toLocaleString()} หน่วย</span>
+              </div>
+              ${gridSupplyData.averageSalePrice > 0 ? `
+                <div class="flex justify-between">
+                  <span class="text-gray-600">ราคาขายเฉลี่ย:</span>
+                  <span class="font-medium text-green-700">${(gridSupplyData.averageSalePrice / 1000000).toFixed(2)}M บาท</span>
+                </div>
+              ` : ''}
+              ${gridSupplyData.averageRentPrice > 0 ? `
+                <div class="flex justify-between">
+                  <span class="text-gray-600">ราคาเช่าเฉลี่ย:</span>
+                  <span class="font-medium text-green-700">${gridSupplyData.averageRentPrice.toLocaleString()} บาท/เดือน</span>
+                </div>
+              ` : ''}
+              ${Object.keys(gridSupplyData.housingTypes || {}).length > 0 ? `
+                <div class="mt-2">
+                  <span class="text-gray-600 font-medium">ประเภทที่อยู่อาศัย:</span>
+                  ${Object.entries(gridSupplyData.housingTypes).map(([type, data]) => `
+                    <div class="flex justify-between text-xs ml-2">
+                      <span class="text-gray-600">${type}:</span>
+                      <span class="font-medium">${data.supplyCount} หน่วย</span>
+                    </div>
+                  `).join('')}
+                </div>
+              ` : ''}
+            </div>
+          </div>
+        ` : selectedProvince === 90 ? `
+          <div class="bg-yellow-50 p-2 rounded text-center text-sm text-yellow-700">
+            ไม่มีข้อมูลอุปทานสำหรับกริดนี้
+          </div>
+        ` : ''}
+
           ${props.Subsidies_ ? `
             <div class="bg-yellow-50 p-2 rounded text-xs">
               <strong class="text-yellow-800">เงินอุดหนุน:</strong> ${props.Subsidies_}
@@ -162,6 +202,7 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
               <strong class="text-green-800">อุปทาน:</strong> ${props.Supply_Pro}
             </div>
           ` : ''}
+          
         </div>
       </div>
     `;
