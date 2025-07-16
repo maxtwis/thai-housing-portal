@@ -168,143 +168,221 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
   };
 
   // Generate popup content with current supplyData (not closure)
-  const generatePopupContentWithCurrentData = (feature, colorScheme, currentSupplyData) => {
-    const props = feature.properties;
-    
-    // Handle different property structures between provinces  
-    const gridId = props.FID || props.OBJECTID_1 || props.Grid_Code || props.Grid_CODE || props.OBJECTID;
-    const gridPop = props.Grid_POP || 0;
-    const gridHouse = props.Grid_House || 0;
-    const gridClass = props.Grid_Class || 'ไม่มีข้อมูล';
-    
-    // GET SUPPLY DATA FOR THIS GRID using current supplyData
-    const gridSupplyData = currentSupplyData && gridId ? currentSupplyData[gridId] : null;
-    console.log(`Grid ${gridId} supply data (current):`, gridSupplyData);
-    console.log('Available supply data keys:', Object.keys(currentSupplyData || {}));
-    
-    // Calculate dominant housing system
-    const hdsNumbers = [
-      { code: 1, count: props.HDS_C1_num || 0 },
-      { code: 2, count: props.HDS_C2_num || 0 },
-      { code: 3, count: props.HDS_C3_num || 0 },
-      { code: 4, count: props.HDS_C4_num || 0 },
-      { code: 5, count: props.HDS_C5_num || 0 },
-      { code: 6, count: props.HDS_C6_num || 0 },
-      { code: 7, count: props.HDS_C7_num || 0 }
-    ];
-    
-    const totalHousing = hdsNumbers.reduce((sum, item) => sum + item.count, 0);
-    const dominantSystem = hdsNumbers.reduce((max, item) => item.count > max.count ? item : max);
-    
-    const currentProvince = provinceConfigs[selectedProvince];
-    
-    return `
-      <div class="p-3 min-w-[280px]">
-        <div class="bg-gray-50 -m-3 p-3 mb-3 border-b">
-          <h3 class="font-bold text-gray-800">พื้นที่กริด ID: ${gridId}</h3>
-          <p class="text-sm text-gray-600 mt-1">${currentProvince?.name || 'ไม่ทราบจังหวัด'} - ระบบที่อยู่อาศัย</p>
+  // Update the generatePopupContentWithCurrentData function in HDSMap.jsx
+// Replace the existing function with this redesigned version:
+
+const generatePopupContentWithCurrentData = (feature, colorScheme, currentSupplyData) => {
+  const props = feature.properties;
+  
+  // Handle different property structures between provinces  
+  const gridId = props.FID || props.OBJECTID_1 || props.Grid_Code || props.Grid_CODE || props.OBJECTID;
+  const gridPop = props.Grid_POP || 0;
+  const gridHouse = props.Grid_House || 0;
+  const gridClass = props.Grid_Class || 'ไม่มีข้อมูล';
+  
+  // GET SUPPLY DATA FOR THIS GRID using current supplyData
+  const gridSupplyData = currentSupplyData && gridId ? currentSupplyData[gridId] : null;
+  console.log(`Grid ${gridId} supply data (current):`, gridSupplyData);
+  console.log('Available supply data keys:', Object.keys(currentSupplyData || {}));
+  
+  // Calculate dominant housing system
+  const hdsNumbers = [
+    { code: 1, count: props.HDS_C1_num || 0 },
+    { code: 2, count: props.HDS_C2_num || 0 },
+    { code: 3, count: props.HDS_C3_num || 0 },
+    { code: 4, count: props.HDS_C4_num || 0 },
+    { code: 5, count: props.HDS_C5_num || 0 },
+    { code: 6, count: props.HDS_C6_num || 0 },
+    { code: 7, count: props.HDS_C7_num || 0 }
+  ];
+  
+  const totalHousing = hdsNumbers.reduce((sum, item) => sum + item.count, 0);
+  const dominantSystem = hdsNumbers.reduce((max, item) => item.count > max.count ? item : max);
+  
+  const currentProvince = provinceConfigs[selectedProvince];
+  
+  return `
+    <div class="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden" style="min-width: 320px; max-width: 380px; font-family: 'Inter', 'Sarabun', sans-serif;">
+      <!-- Header Section -->
+      <div class="bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-3">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path>
+            </svg>
+            <h3 class="text-white font-semibold text-lg">กริด ID: ${gridId}</h3>
+          </div>
+          <span class="bg-white bg-opacity-20 text-white text-xs px-2 py-1 rounded-full">${currentProvince?.name || 'ไม่ทราบจังหวัด'}</span>
         </div>
-        
-        <div class="space-y-2">
-          <div class="flex justify-between items-baseline text-sm">
-            <span class="text-gray-600">ประชากรรวม</span>
-            <span class="font-medium text-gray-800">${gridPop ? Math.round(gridPop).toLocaleString() : 'ไม่มีข้อมูล'} คน</span>
+      </div>
+
+      <!-- Content Section -->
+      <div class="p-4 space-y-4">
+        <!-- Basic Statistics -->
+        <div class="grid grid-cols-2 gap-3">
+          <div class="bg-gray-50 rounded-lg p-3 text-center">
+            <div class="text-2xl font-bold text-gray-800">${gridPop ? Math.round(gridPop).toLocaleString() : '0'}</div>
+            <div class="text-sm text-gray-600 mt-1">ประชากรรวม (คน)</div>
           </div>
-          
-          <div class="flex justify-between items-baseline text-sm">
-            <span class="text-gray-600">ที่อยู่อาศัยรวม</span>
-            <span class="font-medium text-gray-800">${gridHouse ? Math.round(gridHouse).toLocaleString() : 'ไม่มีข้อมูล'} หน่วย</span>
+          <div class="bg-gray-50 rounded-lg p-3 text-center">
+            <div class="text-2xl font-bold text-gray-800">${gridHouse ? Math.round(gridHouse).toLocaleString() : '0'}</div>
+            <div class="text-sm text-gray-600 mt-1">ที่อยู่อาศัยรวม (หน่วย)</div>
           </div>
-          
-          <div class="flex justify-between items-baseline text-sm">
-            <span class="text-gray-600">ระดับความหนาแน่น</span>
-            <span class="font-medium text-gray-800">Class ${gridClass}</span>
-          </div>
-          
-          ${totalHousing > 0 ? `
-            <div class="bg-blue-50 p-2 rounded border-t border-blue-200 mt-3">
-              <h4 class="font-semibold text-blue-800 text-sm mb-2">ระบบที่อยู่อาศัยหลัก</h4>
-              <div class="text-sm">
-                <span class="font-medium text-blue-700">${housingSystemNames[dominantSystem.code]}</span>
-                <span class="text-blue-600 block">${dominantSystem.count.toLocaleString()} หน่วย (${((dominantSystem.count / totalHousing) * 100).toFixed(1)}%)</span>
+        </div>
+
+        <div class="bg-gray-50 rounded-lg p-3 text-center">
+          <div class="text-xl font-bold text-gray-800">Class ${gridClass}</div>
+          <div class="text-sm text-gray-600 mt-1">ระดับความหนาแน่น</div>
+        </div>
+
+        ${totalHousing > 0 ? `
+          <!-- Housing System Section -->
+          <div class="border-t border-gray-200 pt-4">
+            <h4 class="font-semibold text-blue-800 text-sm mb-3 flex items-center gap-2">
+              <div class="w-1 h-4 bg-blue-600 rounded"></div>
+              ระบบที่อยู่อาศัยหลัก
+            </h4>
+            <div class="bg-blue-50 rounded-lg p-3 border border-blue-200">
+              <div class="flex items-center justify-between mb-2">
+                <span class="font-medium text-blue-800 text-sm">${housingSystemNames[dominantSystem.code]}</span>
+                <span class="bg-blue-600 text-white text-xs px-2 py-1 rounded-full">${((dominantSystem.count / totalHousing) * 100).toFixed(1)}%</span>
               </div>
+              <div class="text-blue-700 text-sm">${dominantSystem.count.toLocaleString()} หน่วย</div>
             </div>
             
-            <div class="space-y-1 text-xs">
-              <h5 class="font-medium text-gray-700">รายละเอียดระบบที่อยู่อาศัย:</h5>
-              ${hdsNumbers.filter(item => item.count > 0).map(item => `
-                <div class="flex justify-between">
-                  <span class="text-gray-600">${housingSystemNames[item.code]}:</span>
-                  <span class="font-medium">${item.count.toLocaleString()}</span>
-                </div>
-              `).join('')}
-            </div>
-          ` : `
-            <div class="bg-gray-50 p-2 rounded text-center text-sm text-gray-500">
-              ไม่มีข้อมูลระบบที่อยู่อาศัย
-            </div>
-          `}
-          
-          ${gridSupplyData ? `
-            <div class="bg-green-50 p-2 rounded border-t border-green-200 mt-3">
-              <h4 class="font-semibold text-green-800 text-sm mb-2">ข้อมูลอุปทานที่อยู่อาศัย</h4>
-              <div class="space-y-1 text-xs">
-                <div class="flex justify-between">
-                  <span class="text-gray-600">จำนวนหน่วยทั้งหมด:</span>
-                  <span class="font-medium text-green-700">${gridSupplyData.totalSupply.toLocaleString()} หน่วย</span>
+            ${hdsNumbers.filter(item => item.count > 0).length > 1 ? `
+              <div class="mt-3 space-y-2">
+                <h5 class="text-xs font-medium text-gray-700 mb-2">รายละเอียดทั้งหมด:</h5>
+                ${hdsNumbers.filter(item => item.count > 0).map(item => `
+                  <div class="flex items-center justify-between text-xs">
+                    <span class="text-gray-600">${housingSystemNames[item.code]}:</span>
+                    <span class="font-medium text-gray-800">${item.count.toLocaleString()} หน่วย</span>
+                  </div>
+                `).join('')}
+              </div>
+            ` : ''}
+          </div>
+        ` : `
+          <div class="bg-gray-50 rounded-lg p-4 text-center border border-gray-200">
+            <svg class="w-8 h-8 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6-4h6m2 5.291A7.962 7.962 0 0112 15c-2.34 0-4.463-.64-6.314-1.76M6 15.09v2.82m0 0a2 2 0 002 2h8a2 2 0 002-2v-2.82m-12 0v-2.82A2 2 0 018 10h8a2 2 0 012 2v2.82"></path>
+            </svg>
+            <div class="text-sm text-gray-500">ไม่มีข้อมูลระบบที่อยู่อาศัย</div>
+          </div>
+        `}
+        
+        ${gridSupplyData ? `
+          <!-- Supply Data Section -->
+          <div class="border-t border-gray-200 pt-4">
+            <h4 class="font-semibold text-green-800 text-sm mb-3 flex items-center gap-2">
+              <div class="w-1 h-4 bg-green-600 rounded"></div>
+              ข้อมูลอุปทานที่อยู่อาศัย
+            </h4>
+            <div class="bg-green-50 rounded-lg p-3 border border-green-200">
+              <div class="grid grid-cols-1 gap-2 text-sm">
+                <div class="flex items-center justify-between">
+                  <span class="text-gray-700 flex items-center gap-2">
+                    <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                    </svg>
+                    หน่วยทั้งหมด:
+                  </span>
+                  <span class="font-semibold text-green-800">${gridSupplyData.totalSupply.toLocaleString()} หน่วย</span>
                 </div>
                 ${gridSupplyData.averageSalePrice > 0 ? `
-                  <div class="flex justify-between">
-                    <span class="text-gray-600">ราคาขายเฉลี่ย:</span>
-                    <span class="font-medium text-green-700">${(gridSupplyData.averageSalePrice / 1000000).toFixed(2)} ล้านบาท</span>
+                  <div class="flex items-center justify-between">
+                    <span class="text-gray-700 flex items-center gap-2">
+                      <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                      </svg>
+                      ราคาขายเฉลี่ย:
+                    </span>
+                    <span class="font-semibold text-green-800">${(gridSupplyData.averageSalePrice / 1000000).toFixed(2)} ล้านบาท</span>
                   </div>
                 ` : ''}
                 ${gridSupplyData.averageRentPrice > 0 ? `
-                  <div class="flex justify-between">
-                    <span class="text-gray-600">ราคาเช่าเฉลี่ย:</span>
-                    <span class="font-medium text-green-700">${gridSupplyData.averageRentPrice.toLocaleString()} บาท/เดือน</span>
-                  </div>
-                ` : ''}
-                ${Object.keys(gridSupplyData.housingTypes || {}).length > 0 ? `
-                  <div class="mt-2">
-                    <span class="text-gray-600 font-medium">ประเภทที่อยู่อาศัย:</span>
-                    ${Object.entries(gridSupplyData.housingTypes).map(([type, data]) => `
-                      <div class="flex justify-between text-xs ml-2">
-                        <span class="text-gray-600">${type}:</span>
-                        <span class="font-medium">${data.supplyCount} หน่วย</span>
-                      </div>
-                    `).join('')}
+                  <div class="flex items-center justify-between">
+                    <span class="text-gray-700 flex items-center gap-2">
+                      <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+                      </svg>
+                      ราคาเช่าเฉลี่ย:
+                    </span>
+                    <span class="font-semibold text-green-800">${gridSupplyData.averageRentPrice.toLocaleString()} บาท/เดือน</span>
                   </div>
                 ` : ''}
               </div>
+              
+              ${Object.keys(gridSupplyData.housingTypes || {}).length > 0 ? `
+                <div class="mt-3 pt-3 border-t border-green-200">
+                  <h5 class="text-xs font-medium text-green-800 mb-2">ประเภทที่อยู่อาศัย:</h5>
+                  <div class="space-y-1">
+                    ${Object.entries(gridSupplyData.housingTypes).map(([type, data]) => `
+                      <div class="flex items-center justify-between text-xs">
+                        <span class="text-gray-600">${type}:</span>
+                        <span class="font-medium text-green-700">${data.supplyCount} หน่วย</span>
+                      </div>
+                    `).join('')}
+                  </div>
+                </div>
+              ` : ''}
             </div>
-          ` : selectedProvince === 90 ? `
-            <div class="bg-yellow-50 p-2 rounded text-center text-sm text-yellow-700">
-              ไม่มีข้อมูลอุปทานสำหรับกริดนี้
+          </div>
+        ` : selectedProvince === 90 ? `
+          <div class="border-t border-gray-200 pt-4">
+            <div class="bg-yellow-50 rounded-lg p-4 text-center border border-yellow-200">
+              <svg class="w-8 h-8 text-yellow-500 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+              </svg>
+              <div class="text-sm text-yellow-700">ไม่มีข้อมูลอุปทานสำหรับกริดนี้</div>
             </div>
-          ` : ''}
-          
-          ${props.Subsidies_ ? `
-            <div class="bg-yellow-50 p-2 rounded text-xs">
-              <strong class="text-yellow-800">เงินอุดหนุน:</strong> ${props.Subsidies_}
-            </div>
-          ` : ''}
-          
-          ${props.Stability_ ? `
-            <div class="bg-red-50 p-2 rounded text-xs">
-              <strong class="text-red-800">ความมั่นคง:</strong> ${props.Stability_}
-            </div>
-          ` : ''}
-          
-          ${props.Supply_Pro ? `
-            <div class="bg-green-50 p-2 rounded text-xs">
-              <strong class="text-green-800">อุปทาน:</strong> ${props.Supply_Pro}
-            </div>
-          ` : ''}
-        </div>
+          </div>
+        ` : ''}
+
+        ${props.Subsidies_ || props.Stability_ || props.Supply_Pro ? `
+          <!-- Additional Information -->
+          <div class="border-t border-gray-200 pt-4 space-y-2">
+            ${props.Subsidies_ ? `
+              <div class="bg-yellow-50 rounded-lg p-3 border border-yellow-200">
+                <div class="flex items-center gap-2">
+                  <svg class="w-4 h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                  <span class="text-yellow-800 font-medium text-sm">เงินอุดหนุน:</span>
+                </div>
+                <p class="text-yellow-700 text-sm mt-1">${props.Subsidies_}</p>
+              </div>
+            ` : ''}
+            
+            ${props.Stability_ ? `
+              <div class="bg-red-50 rounded-lg p-3 border border-red-200">
+                <div class="flex items-center gap-2">
+                  <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                  </svg>
+                  <span class="text-red-800 font-medium text-sm">ความมั่นคง:</span>
+                </div>
+                <p class="text-red-700 text-sm mt-1">${props.Stability_}</p>
+              </div>
+            ` : ''}
+            
+            ${props.Supply_Pro ? `
+              <div class="bg-green-50 rounded-lg p-3 border border-green-200">
+                <div class="flex items-center gap-2">
+                  <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                  </svg>
+                  <span class="text-green-800 font-medium text-sm">อุปทาน:</span>
+                </div>
+                <p class="text-green-700 text-sm mt-1">${props.Supply_Pro}</p>
+              </div>
+            ` : ''}
+          </div>
+        ` : ''}
       </div>
-    `;
-  };
+    </div>
+  `;
+};
 
   // Color function for grids based on scheme
   const getColor = (feature) => {
