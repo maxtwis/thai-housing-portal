@@ -73,19 +73,14 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
   };
 
   // Detailed popup content with full information
-  const generatePopupContentWithCurrentData = (feature, colorScheme, currentSupplyData) => {
-  const props = feature.properties;
-  
-  // Handle different property structures between provinces  
-  const gridId = props.FID || props.OBJECTID_1 || props.Grid_Code || props.Grid_CODE || props.OBJECTID;
-  const gridPop = props.Grid_POP || 0;
-  const gridHouse = props.Grid_House || 0;
-  const gridClass = props.Grid_Class || 'ไม่มีข้อมูล';
-  
-  // GET SUPPLY DATA FOR THIS GRID using current supplyData
-  const gridSupplyData = currentSupplyData && gridId ? currentSupplyData[gridId] : null;
-  console.log(`Grid ${gridId} supply data (current):`, gridSupplyData);
-  console.log('Current supplyData keys:', Object.keys(currentSupplyData || {}));
+  const generatePopupContent = (feature, colorScheme) => {
+    const props = feature.properties;
+    
+    // Handle different property structures between provinces  
+    const gridId = props.FID || props.OBJECTID_1 || props.Grid_Code || props.Grid_CODE || props.OBJECTID;
+    const gridPop = props.Grid_POP || 0;
+    const gridHouse = props.Grid_House || 0;
+    const gridClass = props.Grid_Class || 'ไม่มีข้อมูล';
     
     // Calculate dominant housing system
     const hdsNumbers = [
@@ -149,45 +144,7 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
               ไม่มีข้อมูลระบบที่อยู่อาศัย
             </div>
           `}
-          ${gridSupplyData ? `
-          <div class="bg-green-50 p-2 rounded border-t border-green-200 mt-3">
-            <h4 class="font-semibold text-green-800 text-sm mb-2">ข้อมูลอุปทานที่อยู่อาศัย</h4>
-            <div class="space-y-1 text-xs">
-              <div class="flex justify-between">
-                <span class="text-gray-600">จำนวนหน่วยทั้งหมด:</span>
-                <span class="font-medium text-green-700">${gridSupplyData.totalSupply.toLocaleString()} หน่วย</span>
-              </div>
-              ${gridSupplyData.averageSalePrice > 0 ? `
-                <div class="flex justify-between">
-                  <span class="text-gray-600">ราคาขายเฉลี่ย:</span>
-                  <span class="font-medium text-green-700">${(gridSupplyData.averageSalePrice / 1000000).toFixed(2)}M บาท</span>
-                </div>
-              ` : ''}
-              ${gridSupplyData.averageRentPrice > 0 ? `
-                <div class="flex justify-between">
-                  <span class="text-gray-600">ราคาเช่าเฉลี่ย:</span>
-                  <span class="font-medium text-green-700">${gridSupplyData.averageRentPrice.toLocaleString()} บาท/เดือน</span>
-                </div>
-              ` : ''}
-              ${Object.keys(gridSupplyData.housingTypes || {}).length > 0 ? `
-                <div class="mt-2">
-                  <span class="text-gray-600 font-medium">ประเภทที่อยู่อาศัย:</span>
-                  ${Object.entries(gridSupplyData.housingTypes).map(([type, data]) => `
-                    <div class="flex justify-between text-xs ml-2">
-                      <span class="text-gray-600">${type}:</span>
-                      <span class="font-medium">${data.supplyCount} หน่วย</span>
-                    </div>
-                  `).join('')}
-                </div>
-              ` : ''}
-            </div>
-          </div>
-        ` : selectedProvince === 90 ? `
-          <div class="bg-yellow-50 p-2 rounded text-center text-sm text-yellow-700">
-            ไม่มีข้อมูลอุปทานสำหรับกริดนี้
-          </div>
-        ` : ''}
-
+          
           ${props.Subsidies_ ? `
             <div class="bg-yellow-50 p-2 rounded text-xs">
               <strong class="text-yellow-800">เงินอุดหนุน:</strong> ${props.Subsidies_}
@@ -205,7 +162,145 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
               <strong class="text-green-800">อุปทาน:</strong> ${props.Supply_Pro}
             </div>
           ` : ''}
+        </div>
+      </div>
+    `;
+  };
+
+  // Generate popup content with current supplyData (not closure)
+  const generatePopupContentWithCurrentData = (feature, colorScheme, currentSupplyData) => {
+    const props = feature.properties;
+    
+    // Handle different property structures between provinces  
+    const gridId = props.FID || props.OBJECTID_1 || props.Grid_Code || props.Grid_CODE || props.OBJECTID;
+    const gridPop = props.Grid_POP || 0;
+    const gridHouse = props.Grid_House || 0;
+    const gridClass = props.Grid_Class || 'ไม่มีข้อมูล';
+    
+    // GET SUPPLY DATA FOR THIS GRID using current supplyData
+    const gridSupplyData = currentSupplyData && gridId ? currentSupplyData[gridId] : null;
+    console.log(`Grid ${gridId} supply data (current):`, gridSupplyData);
+    console.log('Available supply data keys:', Object.keys(currentSupplyData || {}));
+    
+    // Calculate dominant housing system
+    const hdsNumbers = [
+      { code: 1, count: props.HDS_C1_num || 0 },
+      { code: 2, count: props.HDS_C2_num || 0 },
+      { code: 3, count: props.HDS_C3_num || 0 },
+      { code: 4, count: props.HDS_C4_num || 0 },
+      { code: 5, count: props.HDS_C5_num || 0 },
+      { code: 6, count: props.HDS_C6_num || 0 },
+      { code: 7, count: props.HDS_C7_num || 0 }
+    ];
+    
+    const totalHousing = hdsNumbers.reduce((sum, item) => sum + item.count, 0);
+    const dominantSystem = hdsNumbers.reduce((max, item) => item.count > max.count ? item : max);
+    
+    const currentProvince = provinceConfigs[selectedProvince];
+    
+    return `
+      <div class="p-3 min-w-[280px]">
+        <div class="bg-gray-50 -m-3 p-3 mb-3 border-b">
+          <h3 class="font-bold text-gray-800">พื้นที่กริด ID: ${gridId}</h3>
+          <p class="text-sm text-gray-600 mt-1">${currentProvince?.name || 'ไม่ทราบจังหวัด'} - ระบบที่อยู่อาศัย</p>
+        </div>
+        
+        <div class="space-y-2">
+          <div class="flex justify-between items-baseline text-sm">
+            <span class="text-gray-600">ประชากรรวม</span>
+            <span class="font-medium text-gray-800">${gridPop ? Math.round(gridPop).toLocaleString() : 'ไม่มีข้อมูล'} คน</span>
+          </div>
           
+          <div class="flex justify-between items-baseline text-sm">
+            <span class="text-gray-600">ที่อยู่อาศัยรวม</span>
+            <span class="font-medium text-gray-800">${gridHouse ? Math.round(gridHouse).toLocaleString() : 'ไม่มีข้อมูล'} หน่วย</span>
+          </div>
+          
+          <div class="flex justify-between items-baseline text-sm">
+            <span class="text-gray-600">ระดับความหนาแน่น</span>
+            <span class="font-medium text-gray-800">Class ${gridClass}</span>
+          </div>
+          
+          ${totalHousing > 0 ? `
+            <div class="bg-blue-50 p-2 rounded border-t border-blue-200 mt-3">
+              <h4 class="font-semibold text-blue-800 text-sm mb-2">ระบบที่อยู่อาศัยหลัก</h4>
+              <div class="text-sm">
+                <span class="font-medium text-blue-700">${housingSystemNames[dominantSystem.code]}</span>
+                <span class="text-blue-600 block">${dominantSystem.count.toLocaleString()} หน่วย (${((dominantSystem.count / totalHousing) * 100).toFixed(1)}%)</span>
+              </div>
+            </div>
+            
+            <div class="space-y-1 text-xs">
+              <h5 class="font-medium text-gray-700">รายละเอียดระบบที่อยู่อาศัย:</h5>
+              ${hdsNumbers.filter(item => item.count > 0).map(item => `
+                <div class="flex justify-between">
+                  <span class="text-gray-600">${housingSystemNames[item.code]}:</span>
+                  <span class="font-medium">${item.count.toLocaleString()}</span>
+                </div>
+              `).join('')}
+            </div>
+          ` : `
+            <div class="bg-gray-50 p-2 rounded text-center text-sm text-gray-500">
+              ไม่มีข้อมูลระบบที่อยู่อาศัย
+            </div>
+          `}
+          
+          ${gridSupplyData ? `
+            <div class="bg-green-50 p-2 rounded border-t border-green-200 mt-3">
+              <h4 class="font-semibold text-green-800 text-sm mb-2">ข้อมูลอุปทานที่อยู่อาศัย</h4>
+              <div class="space-y-1 text-xs">
+                <div class="flex justify-between">
+                  <span class="text-gray-600">จำนวนหน่วยทั้งหมด:</span>
+                  <span class="font-medium text-green-700">${gridSupplyData.totalSupply.toLocaleString()} หน่วย</span>
+                </div>
+                ${gridSupplyData.averageSalePrice > 0 ? `
+                  <div class="flex justify-between">
+                    <span class="text-gray-600">ราคาขายเฉลี่ย:</span>
+                    <span class="font-medium text-green-700">${(gridSupplyData.averageSalePrice / 1000000).toFixed(2)}M บาท</span>
+                  </div>
+                ` : ''}
+                ${gridSupplyData.averageRentPrice > 0 ? `
+                  <div class="flex justify-between">
+                    <span class="text-gray-600">ราคาเช่าเฉลี่ย:</span>
+                    <span class="font-medium text-green-700">${gridSupplyData.averageRentPrice.toLocaleString()} บาท/เดือน</span>
+                  </div>
+                ` : ''}
+                ${Object.keys(gridSupplyData.housingTypes || {}).length > 0 ? `
+                  <div class="mt-2">
+                    <span class="text-gray-600 font-medium">ประเภทที่อยู่อาศัย:</span>
+                    ${Object.entries(gridSupplyData.housingTypes).map(([type, data]) => `
+                      <div class="flex justify-between text-xs ml-2">
+                        <span class="text-gray-600">${type}:</span>
+                        <span class="font-medium">${data.supplyCount} หน่วย</span>
+                      </div>
+                    `).join('')}
+                  </div>
+                ` : ''}
+              </div>
+            </div>
+          ` : selectedProvince === 90 ? `
+            <div class="bg-yellow-50 p-2 rounded text-center text-sm text-yellow-700">
+              ไม่มีข้อมูลอุปทานสำหรับกริดนี้
+            </div>
+          ` : ''}
+          
+          ${props.Subsidies_ ? `
+            <div class="bg-yellow-50 p-2 rounded text-xs">
+              <strong class="text-yellow-800">เงินอุดหนุน:</strong> ${props.Subsidies_}
+            </div>
+          ` : ''}
+          
+          ${props.Stability_ ? `
+            <div class="bg-red-50 p-2 rounded text-xs">
+              <strong class="text-red-800">ความมั่นคง:</strong> ${props.Stability_}
+            </div>
+          ` : ''}
+          
+          ${props.Supply_Pro ? `
+            <div class="bg-green-50 p-2 rounded text-xs">
+              <strong class="text-green-800">อุปทาน:</strong> ${props.Supply_Pro}
+            </div>
+          ` : ''}
         </div>
       </div>
     `;
@@ -446,7 +541,8 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
                 const gridId = clickedFeature.properties.FID || 
                              clickedFeature.properties.OBJECTID_1 || 
                              clickedFeature.properties.Grid_Code || 
-                             clickedFeature.properties.Grid_CODE;
+                             clickedFeature.properties.Grid_CODE ||
+                             clickedFeature.properties.OBJECTID;
                 const gridPop = clickedFeature.properties.Grid_POP || 0;
                 
                 const popup = L.popup({
@@ -610,46 +706,110 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
 
   // Update colors and selected grid styling when color scheme or selected grid changes
   useEffect(() => {
-  if (!mapRef.current || !hdsLayerRef.current) return;
+    if (!mapRef.current || !hdsLayerRef.current) return;
 
-  // Re-style all layers with subtle borders AND refresh event handlers
-  hdsLayerRef.current.eachLayer((layer) => {
-    // Remove old event handlers
-    layer.off('mouseover');
-    layer.off('mouseout');
-    
-    // Re-add event handlers with current colorScheme
-    layer.on('mouseover', (e) => {
-      layer.setStyle({
-        weight: 2,
-        opacity: 0.8,
-        color: '#333333',
-        fillOpacity: 0.9
-      });
-    });
+    // Re-style all layers with subtle borders AND refresh event handlers
+    hdsLayerRef.current.eachLayer((layer) => {
+      // Remove old event handlers
+      layer.off('mouseover');
+      layer.off('mouseout');
+      
+      // Re-add event handlers with current colorScheme
+      if (!isMobile) {
+        layer.on('mouseover', (e) => {
+          layer.setStyle({
+            weight: 2,
+            opacity: 0.8,
+            color: '#333333',
+            fillOpacity: 0.9
+          });
+        });
 
-    layer.on('mouseout', (e) => {
+        layer.on('mouseout', (e) => {
+          layer.setStyle({
+            fillColor: getColor(layer.feature), // Uses current colorScheme
+            weight: 1,
+            opacity: 0.3,
+            color: '#666666',
+            fillOpacity: 0.8
+          });
+        });
+      }
+      
+      // Re-style the layer
       layer.setStyle({
-        fillColor: getColor(layer.feature), // Uses current colorScheme
+        fillColor: getColor(layer.feature),
         weight: 1,
         opacity: 0.3,
         color: '#666666',
         fillOpacity: 0.8
       });
     });
-    
-    // Re-style the layer
-    layer.setStyle({
-      fillColor: getColor(layer.feature),
-      weight: 1,
-      opacity: 0.3,
-      color: '#666666',
-      fillOpacity: 0.8
-    });
-  });
 
-  updateLegend();
-}, [colorScheme, selectedGrid]); // Combined both effects into onee
+    updateLegend();
+  }, [colorScheme, selectedGrid]); // Combined both effects into one
+
+  // Update event handlers when supplyData changes
+  useEffect(() => {
+    if (!mapRef.current || !hdsLayerRef.current) return;
+    
+    console.log('Updating event handlers with new supplyData:', Object.keys(supplyData || {}).length, 'grids');
+    
+    // Update event handlers for all layers to use current supplyData
+    hdsLayerRef.current.eachLayer((layer) => {
+      // Remove existing click handler
+      layer.off('click');
+      
+      // Add new click handler with current supplyData
+      layer.on('click', (e) => {
+        const clickedFeature = layer.feature;
+        
+        // Call the parent component's callback to update statistics
+        if (onGridSelect) {
+          onGridSelect(clickedFeature.properties);
+        }
+        
+        // For mobile, show a smaller popup that doesn't interfere with legend
+        if (isMobile) {
+          const gridId = clickedFeature.properties.FID || 
+                       clickedFeature.properties.OBJECTID_1 || 
+                       clickedFeature.properties.Grid_Code || 
+                       clickedFeature.properties.Grid_CODE ||
+                       clickedFeature.properties.OBJECTID;
+          const gridPop = clickedFeature.properties.Grid_POP || 0;
+          
+          const popup = L.popup({
+            maxWidth: 280,
+            className: 'hds-popup mobile-popup',
+            autoPan: true,
+            keepInView: true
+          })
+          .setLatLng(e.latlng)
+          .setContent(`
+            <div class="p-2">
+              <h4 class="font-bold text-sm">Grid ${gridId}</h4>
+              <p class="text-xs text-gray-600">${Math.round(gridPop).toLocaleString()} คน</p>
+              <button onclick="this.closest('.leaflet-popup').remove()" class="text-xs text-blue-600 mt-1">ปิด</button>
+            </div>
+          `)
+          .openOn(mapRef.current);
+        } else {
+          // Desktop - show full popup with CURRENT supplyData
+          const popupContent = generatePopupContentWithCurrentData(clickedFeature, colorScheme, supplyData);
+          
+          const popup = L.popup({
+            maxWidth: 350,
+            className: 'hds-popup',
+            autoPan: true,
+            keepInView: true
+          })
+          .setLatLng(e.latlng)
+          .setContent(popupContent)
+          .openOn(mapRef.current);
+        }
+      });
+    });
+  }, [supplyData]); // This will run whenever supplyData changes
 
   // Update legend content
   const updateLegend = () => {
