@@ -7,6 +7,20 @@ const HDSStatistics = ({ stats, selectedGrid, onClearSelection, isMobile, provin
     return new Intl.NumberFormat('th-TH').format(num);
   };
 
+  const getDensityLevelName = (gridClass) => {
+  const densityLevels = {
+    1: 'ความหนาแน่นต่ำมาก',
+    2: 'ความหนาแน่นต่ำ', 
+    3: 'ความหนาแน่นปานกลาง',
+    4: 'ความหนาแน่นสูง',
+    5: 'ความหนาแน่นสูงมาก',
+    6: 'ความหนาแน่นสูงพิเศษ',
+    7: 'ความหนาแน่นสูงสุด'
+  };
+  
+  return densityLevels[gridClass] || `Class ${gridClass}`;
+};
+
   const housingSystemNames = {
     HDS_C1: 'ชุมชนแออัด',
     HDS_C2: 'ถือครองชั่วคราว',
@@ -68,7 +82,7 @@ const HDSStatistics = ({ stats, selectedGrid, onClearSelection, isMobile, provin
           </div>
 
           <div className="bg-purple-50 rounded-lg p-3 text-center border border-purple-200 mb-4">
-            <div className="text-xl font-bold text-purple-600">Class {selectedGrid.Grid_Class || '-'}</div>
+            <div className="text-xl font-bold text-purple-600">{getDensityLevelName(selectedGrid.Grid_Class)}</div>
             <div className="text-sm text-gray-600 mt-1">ระดับความหนาแน่น</div>
           </div>
 

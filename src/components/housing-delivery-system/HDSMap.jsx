@@ -71,6 +71,7 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
     6: 'ระบบที่อยู่อาศัยที่รัฐสนับสนุน',
     7: 'ระบบที่อยู่อาศัยเอกชน'
   };
+  
 
   // Detailed popup content with full information
   const generatePopupContent = (feature, colorScheme) => {
@@ -167,6 +168,21 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
     `;
   };
 
+
+ const getDensityLevelName = (gridClass) => {
+  const densityLevels = {
+    1: 'ความหนาแน่นต่ำมาก',
+    2: 'ความหนาแน่นต่ำ', 
+    3: 'ความหนาแน่นปานกลาง',
+    4: 'ความหนาแน่นสูง',
+    5: 'ความหนาแน่นสูงมาก',
+    6: 'ความหนาแน่นสูงพิเศษ',
+    7: 'ความหนาแน่นสูงสุด'
+  };
+  
+  return densityLevels[gridClass] || `Class ${gridClass}`;
+};
+
 const generatePopupContentWithCurrentData = (feature, colorScheme, currentSupplyData) => {
   const props = feature.properties;
   
@@ -177,7 +193,7 @@ const generatePopupContentWithCurrentData = (feature, colorScheme, currentSupply
   const currentProvince = provinceConfigs[selectedProvince];
   
   return `
-    <div class="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden" style="min-width: 200px; max-width: 240px; font-family: 'Inter', 'Sarabun', sans-serif;">
+    <div class="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden" style="min-width: 220px; max-width: 260px; font-family: 'Inter', 'Sarabun', sans-serif;">
       <!-- Header Section -->
       <div class="bg-gradient-to-r from-blue-600 to-blue-700 px-3 py-2">
         <h3 class="text-white font-semibold text-base">กริด ${gridId}</h3>
@@ -192,7 +208,7 @@ const generatePopupContentWithCurrentData = (feature, colorScheme, currentSupply
         
         <div class="flex items-center justify-between text-sm">
           <span class="text-gray-600">ความหนาแน่น:</span>
-          <span class="font-medium text-gray-800">Class ${gridClass}</span>
+          <span class="font-medium text-gray-800">${getDensityLevelName(gridClass)}</span>
         </div>
         
         <div class="pt-2 border-t border-gray-200">
@@ -204,7 +220,6 @@ const generatePopupContentWithCurrentData = (feature, colorScheme, currentSupply
     </div>
   `;
 };
-
 
   // Color function for grids based on scheme
   const getColor = (feature) => {
