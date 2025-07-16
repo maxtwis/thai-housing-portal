@@ -56,12 +56,12 @@ const HDSStatistics = ({ stats, selectedGrid, onClearSelection, isMobile, provin
           {/* Selected Grid Overview Cards */}
           <div className="grid grid-cols-2 gap-3 mb-4">
             <div className="bg-blue-50 rounded-lg p-3 text-center border border-blue-200">
-              <div className="text-2xl font-bold text-blue-600">{formatNumber(selectedGrid.Grid_POP || 0)}</div>
+              <div className="text-2xl font-bold text-blue-600">{formatNumber(Math.round(selectedGrid.Grid_POP || 0))}</div>
               <div className="text-sm text-gray-600 mt-1">ประชากรรวม</div>
               <div className="text-xs text-gray-500">คน</div>
             </div>
             <div className="bg-green-50 rounded-lg p-3 text-center border border-green-200">
-              <div className="text-2xl font-bold text-green-600">{formatNumber(selectedGrid.Grid_House || 0)}</div>
+              <div className="text-2xl font-bold text-green-600">{formatNumber(Math.round(selectedGrid.Grid_House || 0))}</div>
               <div className="text-sm text-gray-600 mt-1">ที่อยู่อาศัยรวม</div>
               <div className="text-xs text-gray-500">หน่วย</div>
             </div>
