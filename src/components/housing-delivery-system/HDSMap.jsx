@@ -210,12 +210,6 @@ const generatePopupContentWithCurrentData = (feature, colorScheme, currentSupply
           <span class="text-gray-600">ความหนาแน่น:</span>
           <span class="font-medium text-gray-800">${getDensityLevelName(gridClass)}</span>
         </div>
-        
-        <div class="pt-2 border-t border-gray-200">
-          <div class="text-xs text-blue-600 text-center font-medium">
-            คลิกเพื่อดูรายละเอียดเพิ่มเติม
-          </div>
-        </div>
       </div>
     </div>
   `;
