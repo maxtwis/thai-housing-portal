@@ -175,9 +175,9 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
     2: 'ความหนาแน่นต่ำ', 
     3: 'ความหนาแน่นปานกลาง',
     4: 'ความหนาแน่นสูง',
-    5: 'ความหนาแน่นสูงมาก',
-    6: 'ความหนาแน่นสูงพิเศษ',
-    7: 'ความหนาแน่นสูงสุด'
+    5: 'ความหนาแน่นสูง',
+    6: 'ความหนาแน่นสูง',
+    7: 'ความหนาแน่นสูง'
   };
   
   return densityLevels[gridClass] || `Class ${gridClass}`;
