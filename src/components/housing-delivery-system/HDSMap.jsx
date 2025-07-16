@@ -54,12 +54,12 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
 
   // Dynamic height calculation based on viewport
   const getMapHeight = () => {
-    if (isMobile) {
-      return "60vh";
-    } else {
-      return "calc(100vh - 200px)"; // Reduced from 150px to account for headers and padding
-    }
-  };
+  if (isMobile) {
+    return "60vh";
+  } else {
+    return "calc(100vh - 120px)"; // Increased from 200px to 120px
+  }
+};
 
   // Housing system names mapping for tooltips
   const housingSystemNames = {
