@@ -167,76 +167,39 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
     `;
   };
 
-  // Generate popup content with current supplyData (not closure)
-  // Update the generatePopupContentWithCurrentData function in HDSMap.jsx
-// Replace the existing function with this redesigned version:
-
 const generatePopupContentWithCurrentData = (feature, colorScheme, currentSupplyData) => {
   const props = feature.properties;
   
   const gridId = props.FID || props.OBJECTID_1 || props.Grid_Code || props.Grid_CODE || props.OBJECTID;
   const gridPop = props.Grid_POP || 0;
-  const gridHouse = props.Grid_House || 0;
   const gridClass = props.Grid_Class || 'ไม่มีข้อมูล';
-  
-  // Calculate dominant housing system
-  const hdsNumbers = [
-    { code: 1, count: props.HDS_C1_num || 0 },
-    { code: 2, count: props.HDS_C2_num || 0 },
-    { code: 3, count: props.HDS_C3_num || 0 },
-    { code: 4, count: props.HDS_C4_num || 0 },
-    { code: 5, count: props.HDS_C5_num || 0 },
-    { code: 6, count: props.HDS_C6_num || 0 },
-    { code: 7, count: props.HDS_C7_num || 0 }
-  ];
-  
-  const totalHousing = hdsNumbers.reduce((sum, item) => sum + item.count, 0);
-  const dominantSystem = hdsNumbers.reduce((max, item) => item.count > max.count ? item : max);
   
   const currentProvince = provinceConfigs[selectedProvince];
   
   return `
-    <div class="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden" style="min-width: 280px; max-width: 320px; font-family: 'Inter', 'Sarabun', sans-serif;">
+    <div class="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden" style="min-width: 200px; max-width: 240px; font-family: 'Inter', 'Sarabun', sans-serif;">
       <!-- Header Section -->
-      <div class="bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-3">
-        <div class="flex items-center justify-between">
-          <h3 class="text-white font-semibold text-lg">กริด ID: ${gridId}</h3>
-          <span class="bg-white bg-opacity-20 text-white text-xs px-2 py-1 rounded-full">${currentProvince?.name || 'ไม่ทราบจังหวัด'}</span>
-        </div>
+      <div class="bg-gradient-to-r from-blue-600 to-blue-700 px-3 py-2">
+        <h3 class="text-white font-semibold text-base">กริด ${gridId}</h3>
       </div>
 
-      <!-- Content Section -->
-      <div class="p-4 space-y-3">
-        <!-- Basic Statistics -->
-        <div class="grid grid-cols-2 gap-3">
-          <div class="bg-gray-50 rounded-lg p-3 text-center">
-            <div class="text-xl font-bold text-gray-800">${gridPop ? Math.round(gridPop).toLocaleString() : '0'}</div>
-            <div class="text-xs text-gray-600 mt-1">ประชากรรวม (คน)</div>
-          </div>
-          <div class="bg-gray-50 rounded-lg p-3 text-center">
-            <div class="text-xl font-bold text-gray-800">${gridHouse ? Math.round(gridHouse).toLocaleString() : '0'}</div>
-            <div class="text-xs text-gray-600 mt-1">ที่อยู่อาศัยรวม (หน่วย)</div>
+      <!-- Quick Info -->
+      <div class="p-3 space-y-2">
+        <div class="flex items-center justify-between text-sm">
+          <span class="text-gray-600">ประชากร:</span>
+          <span class="font-medium text-gray-800">${Math.round(gridPop).toLocaleString()} คน</span>
+        </div>
+        
+        <div class="flex items-center justify-between text-sm">
+          <span class="text-gray-600">ความหนาแน่น:</span>
+          <span class="font-medium text-gray-800">Class ${gridClass}</span>
+        </div>
+        
+        <div class="pt-2 border-t border-gray-200">
+          <div class="text-xs text-blue-600 text-center font-medium">
+            คลิกเพื่อดูรายละเอียดเพิ่มเติม
           </div>
         </div>
-
-        <div class="bg-gray-50 rounded-lg p-3 text-center">
-          <div class="text-lg font-bold text-gray-800">Class ${gridClass}</div>
-          <div class="text-xs text-gray-600 mt-1">ระดับความหนาแน่น</div>
-        </div>
-
-        ${totalHousing > 0 ? `
-          <!-- Housing System Section -->
-          <div class="bg-blue-50 rounded-lg p-3 border border-blue-200">
-            <div class="text-center">
-              <div class="font-medium text-blue-800 text-sm">${housingSystemNames[dominantSystem.code]}</div>
-              <div class="text-blue-700 text-xs mt-1">${dominantSystem.count.toLocaleString()} หน่วย (${((dominantSystem.count / totalHousing) * 100).toFixed(1)}%)</div>
-            </div>
-          </div>
-        ` : `
-          <div class="bg-gray-50 rounded-lg p-3 text-center border border-gray-200">
-            <div class="text-sm text-gray-500">ไม่มีข้อมูลระบบที่อยู่อาศัย</div>
-          </div>
-        `}
       </div>
     </div>
   `;
