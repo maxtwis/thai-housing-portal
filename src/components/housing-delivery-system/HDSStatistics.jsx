@@ -173,7 +173,9 @@ const HDSStatistics = ({ stats, selectedGrid, onClearSelection, isMobile, provin
                       <div>
                         <h4 className="text-xs font-medium text-gray-700 mb-2">ประเภทที่อยู่อาศัย:</h4>
                         <div className="space-y-2">
-                          {Object.entries(gridSupplyData.housingTypes).map(([type, data]) => {
+                          {Object.entries(gridSupplyData.housingTypes)
+                            .sort(([,a], [,b]) => b.supplyCount - a.supplyCount) // Sort from largest to smallest
+                            .map(([type, data]) => {
                             const percentage = gridSupplyData.totalSupply > 0 ? ((data.supplyCount / gridSupplyData.totalSupply) * 100).toFixed(1) : 0;
                             return (
                               <div key={type} className="group">
