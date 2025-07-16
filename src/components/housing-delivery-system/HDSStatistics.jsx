@@ -94,7 +94,9 @@ const HDSStatistics = ({ stats, selectedGrid, onClearSelection, isMobile, provin
                   ระบบที่อยู่อาศัย
                 </h3>
                 <div className="space-y-2">
-                  {activeSystems.map(({ code, count }) => {
+                  {activeSystems
+                    .sort((a, b) => b.count - a.count) // Sort from largest to smallest
+                    .map(({ code, count }) => {
                     const percentage = selectedTotalHousing > 0 ? ((count / selectedTotalHousing) * 100).toFixed(1) : 0;
                     return (
                       <div key={code} className="group">
