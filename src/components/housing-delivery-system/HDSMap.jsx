@@ -171,13 +171,13 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
 
  const getDensityLevelName = (gridClass) => {
   const densityLevels = {
-    1: 'ความหนาแน่นต่ำมาก',
-    2: 'ความหนาแน่นต่ำ', 
-    3: 'ความหนาแน่นปานกลาง',
-    4: 'ความหนาแน่นสูง',
-    5: 'ความหนาแน่นสูง',
-    6: 'ความหนาแน่นสูง',
-    7: 'ความหนาแน่นสูง'
+    1: 'หนาแน่นต่ำ',
+    2: 'หนาแน่นต่ำ', 
+    3: 'หนาแน่นปานกลาง',
+    4: 'หนาแน่นสูง',
+    5: 'หนาแน่นสูง',
+    6: 'หนาแน่นสูง',
+    7: 'หนาแน่นสูง'
   };
   
   return densityLevels[gridClass] || `Class ${gridClass}`;
