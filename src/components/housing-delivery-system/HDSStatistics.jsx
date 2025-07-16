@@ -31,14 +31,6 @@ const HDSStatistics = ({ stats, selectedGrid, onClearSelection, isMobile, provin
     HDS_C7: 'ที่อยู่อาศัยเอกชน'
   };
 
-  const densityLevelNames = {
-    1: 'ความหนาแน่นต่ำมาก',
-    2: 'ความหนาแน่นต่ำ',
-    3: 'ความหนาแน่นปานกลาง',
-    4: 'ความหนาแน่นสูง',
-    5: 'ความหนาแน่นสูงมาก'
-  };
-
   // Calculate total housing units from all systems
   const totalHousingUnits = Object.values(stats.housingSystems || {}).reduce((sum, val) => sum + val, 0);
 
@@ -229,6 +221,60 @@ const HDSStatistics = ({ stats, selectedGrid, onClearSelection, isMobile, provin
               );
             }
           })()}
+          
+          {/* Problem Data Section - Below Supply Data */}
+          {(selectedGrid.Stability_ || selectedGrid.Subsidies_ || selectedGrid.Supply_Pro) && (
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                <div className="w-1 h-4 bg-red-500 rounded"></div>
+                ปัญหาที่พบ
+              </h3>
+              
+              <div className="space-y-2">
+                {selectedGrid.Stability_ && (
+                  <div className="bg-red-50 rounded-lg p-3 border border-red-200">
+                    <div className="flex items-start gap-2">
+                      <svg className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                      <div className="flex-1">
+                        <div className="font-medium text-red-800 text-sm mb-1">ปัญหาด้าน Stability</div>
+                        <div className="text-red-700 text-xs">{selectedGrid.Stability_}</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {selectedGrid.Subsidies_ && (
+                  <div className="bg-orange-50 rounded-lg p-3 border border-orange-200">
+                    <div className="flex items-start gap-2">
+                      <svg className="w-4 h-4 text-orange-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <div className="flex-1">
+                        <div className="font-medium text-orange-800 text-sm mb-1">ปัญหาด้าน Subsidies</div>
+                        <div className="text-orange-700 text-xs">{selectedGrid.Subsidies_}</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {selectedGrid.Supply_Pro && (
+                  <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-200">
+                    <div className="flex items-start gap-2">
+                      <svg className="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                      </svg>
+                      <div className="flex-1">
+                        <div className="font-medium text-yellow-800 text-sm mb-1">ปัญหาด้าน Supply</div>
+                        <div className="text-yellow-700 text-xs">{selectedGrid.Supply_Pro}</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
