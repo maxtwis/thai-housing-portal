@@ -73,16 +73,19 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
   };
 
   // Detailed popup content with full information
-  const generatePopupContent = (feature, colorScheme) => {
-    const props = feature.properties;
-    
-    // Handle different property structures between provinces  
-    const gridId = props.FID || props.OBJECTID_1 || props.Grid_Code || props.Grid_CODE || props.OBJECTID;
-    const gridPop = props.Grid_POP || 0;
-    const gridHouse = props.Grid_House || 0;
-    const gridClass = props.Grid_Class || 'ไม่มีข้อมูล';
-    const gridSupplyData = supplyData && gridId ? supplyData[gridId] : null;
-    console.log(`Grid ${gridId} supply data:`, gridSupplyData);
+  const generatePopupContentWithCurrentData = (feature, colorScheme, currentSupplyData) => {
+  const props = feature.properties;
+  
+  // Handle different property structures between provinces  
+  const gridId = props.FID || props.OBJECTID_1 || props.Grid_Code || props.Grid_CODE || props.OBJECTID;
+  const gridPop = props.Grid_POP || 0;
+  const gridHouse = props.Grid_House || 0;
+  const gridClass = props.Grid_Class || 'ไม่มีข้อมูล';
+  
+  // GET SUPPLY DATA FOR THIS GRID using current supplyData
+  const gridSupplyData = currentSupplyData && gridId ? currentSupplyData[gridId] : null;
+  console.log(`Grid ${gridId} supply data (current):`, gridSupplyData);
+  console.log('Current supplyData keys:', Object.keys(currentSupplyData || {}));
     
     // Calculate dominant housing system
     const hdsNumbers = [
@@ -462,8 +465,8 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
                 `)
                 .openOn(map);
               } else {
-                // Desktop - show full popup
-                const popupContent = generatePopupContent(clickedFeature, colorScheme);
+                // Desktop - show full popup with CURRENT supplyData
+                const popupContent = generatePopupContentWithCurrentData(clickedFeature, colorScheme, supplyData);
                 
                 const popup = L.popup({
                   maxWidth: 350,
