@@ -3,6 +3,7 @@ import { getCkanData } from '../utils/ckanClient';
 import ApartmentMap from '../components/apartment-supply/ApartmentMap';
 import ApartmentFilters from '../components/apartment-supply/ApartmentFilters';
 import ApartmentStatistics from '../components/apartment-supply/ApartmentStatistics';
+import ProximityPlaceButtons from '../components/apartment-supply/ProximityPlaceButtons';
 
 // Function to check if coordinates are within Thailand's boundaries
 const isCoordinateInThailand = (latitude, longitude) => {
@@ -40,19 +41,24 @@ const ApartmentSupply = () => {
     { id: 90, name: 'สงขลา', code: 90 }
   ];
 
-  // Filter state - updated with proximity score
+  // Enhanced filter state with proximity score and amenity score
   const [filters, setFilters] = useState({
     priceRange: 'all',
     propertyType: 'all',
     roomType: 'all',
     sizeRange: 'all',
-    amenities: 'all',
-    proximityScore: 'all',
+    amenityScore: 'all',        // Moved from map tooltip to filter
+    proximityScore: 'all',      // Moved from map tooltip to filter
     requiredAmenities: []
   });
 
   // Color scheme state - updated with proximity score option
   const [colorScheme, setColorScheme] = useState('priceRange');
+
+  // Proximity-related states
+  const [proximityScores, setProximityScores] = useState({});
+  const [selectedProximityPlace, setSelectedProximityPlace] = useState(null);
+  const [showingNearbyPlaces, setShowingNearbyPlaces] = useState(false);
 
   // Statistics state
   const [stats, setStats] = useState({
@@ -68,9 +74,6 @@ const ApartmentSupply = () => {
     priceRanges: {},
     popularAmenities: {}
   });
-
-  // Proximity scores state (for advanced calculations)
-  const [proximityScores, setProximityScores] = useState({});
 
   // Get current province info
   const getCurrentProvince = () => {
@@ -114,7 +117,7 @@ const ApartmentSupply = () => {
     return totalAmenities > 0 ? Math.round((availableAmenities / totalAmenities) * 100) : 0;
   };
 
-  // Filter properties with proximity scores
+  // Enhanced filter function with amenity and proximity scores
   const getFilteredData = (proximityScores = {}) => {
     if (!apartmentData || !Array.isArray(apartmentData)) return [];
 
@@ -156,10 +159,10 @@ const ApartmentSupply = () => {
         }
       }
 
-      // Amenity score filter
-      if (filters.amenities !== 'all') {
+      // Amenity score filter (moved from map tooltip)
+      if (filters.amenityScore !== 'all') {
         const amenityScore = calculateAmenityScore(property);
-        const [minScore, maxScore] = filters.amenities.split('-').map(Number);
+        const [minScore, maxScore] = filters.amenityScore.split('-').map(Number);
         if (maxScore) {
           if (amenityScore < minScore || amenityScore > maxScore) return false;
         } else {
@@ -167,7 +170,7 @@ const ApartmentSupply = () => {
         }
       }
 
-      // Proximity score filter
+      // Proximity score filter (moved from map tooltip)
       if (filters.proximityScore !== 'all') {
         const proximityScore = proximityScores[property.id];
         if (proximityScore !== undefined) {
@@ -205,7 +208,7 @@ const ApartmentSupply = () => {
     });
   };
 
-  // Calculate statistics with proximity scores
+  // Calculate statistics with proximity and amenity scores
   const calculateStatistics = (data, proximityScores = {}) => {
     if (!data || !data.length) {
       setStats({
@@ -242,35 +245,53 @@ const ApartmentSupply = () => {
     const averageSize = totalProperties > 0 ? Math.round(totalSize / totalProperties) : 0;
     const averageAmenityScore = totalProperties > 0 ? Math.round(totalAmenityScore / totalProperties) : 0;
 
-    // Group by categories
-    const propertyTypes = {};
-    const roomTypes = {};
-    const priceRanges = {
-      '0-5000': 0,
-      '5000-10000': 0,
-      '10000-20000': 0,
-      '20000-30000': 0,
-      '30000+': 0
-    };
-    const popularAmenities = {};
+    // Property type distribution
+    const propertyTypes = data.reduce((acc, prop) => {
+      const type = prop.property_type || 'ไม่ระบุ';
+      acc[type] = (acc[type] || 0) + 1;
+      return acc;
+    }, {});
 
-    data.forEach(prop => {
-      // Property types
-      const propType = prop.property_type || 'ไม่ระบุ';
-      propertyTypes[propType] = (propertyTypes[propType] || 0) + 1;
+    // Room type distribution
+    const roomTypes = data.reduce((acc, prop) => {
+      const type = prop.room_type || 'ไม่ระบุ';
+      acc[type] = (acc[type] || 0) + 1;
+      return acc;
+    }, {});
 
-      // Room types
-      const roomType = prop.room_type || 'ไม่ระบุ';
-      roomTypes[roomType] = (roomTypes[roomType] || 0) + 1;
+    // Price range distribution
+    const priceRanges = data.reduce((acc, prop) => {
+      const price = prop.monthly_min_price || 0;
+      let range;
+      if (price < 5000) range = 'น้อยกว่า 5,000';
+      else if (price < 10000) range = '5,000-10,000';
+      else if (price < 20000) range = '10,000-20,000';
+      else if (price < 30000) range = '20,000-30,000';
+      else range = 'มากกว่า 30,000';
+      
+      acc[range] = (acc[range] || 0) + 1;
+      return acc;
+    }, {});
 
-      // Price ranges
-      const price = parseFloat(prop.monthly_min_price) || 0;
-      if (price < 5000) priceRanges['0-5000']++;
-      else if (price < 10000) priceRanges['5000-10000']++;
-      else if (price < 20000) priceRanges['10000-20000']++;
-      else if (price < 30000) priceRanges['20000-30000']++;
-      else priceRanges['30000+']++;
-    });
+    // Popular amenities
+    const amenityFields = [
+      { key: 'has_air', label: 'เครื่องปรับอากาศ' },
+      { key: 'has_furniture', label: 'เฟอร์นิเจอร์' },
+      { key: 'has_internet', label: 'อินเทอร์เน็ต' },
+      { key: 'has_parking', label: 'ที่จอดรถ' },
+      { key: 'has_lift', label: 'ลิฟต์' },
+      { key: 'has_pool', label: 'สระว่ายน้ำ' },
+      { key: 'has_fitness', label: 'ฟิตเนส' },
+      { key: 'has_security', label: 'รักษาความปลอดภัย' }
+    ];
+
+    const popularAmenities = amenityFields.reduce((acc, amenity) => {
+      const count = data.filter(prop => 
+        prop[amenity.key] === 'TRUE' || prop[amenity.key] === true
+      ).length;
+      acc[amenity.label] = count;
+      return acc;
+    }, {});
 
     setStats({
       totalProperties,
@@ -289,124 +310,119 @@ const ApartmentSupply = () => {
 
   // Load apartment data
   useEffect(() => {
-    const loadApartmentData = async () => {
+    let isMounted = true;
+
+    const loadData = async () => {
       setLoading(true);
       setError(null);
       
       try {
-        console.log('Loading apartment supply data...');
-        const response = await getCkanData('b6dbb8e0-1194-4eeb-945d-e883b3275b35', {
-          limit: 50000,
-          sort: 'name asc'
-        });
-
-        if (!response || !response.records) {
-          throw new Error('No apartment data received from CKAN API');
-        }
-
-        console.log(`Loaded ${response.records.length} apartment records`);
+        console.log('Loading apartment data...');
+        const resourceId = 'bba7efcc-81d5-465d-a4bf-f05c2b30ba9c';
+        const data = await getCkanData(resourceId);
         
-        // Process and validate the data
-        const processedData = response.records
-          .map(record => ({
-            id: record.name + '_' + (record.latitude || '') + '_' + (record.longitude || ''),
-            name: record.name || 'Unknown Property',
-            property_type: record.property_type || 'ไม่ระบุ',
-            room_type: record.room_type || 'ไม่ระบุ',
-            province_code: parseInt(record.province_code) || null,
-            latitude: parseFloat(record.latitude) || null,
-            longitude: parseFloat(record.longitude) || null,
-            monthly_min_price: parseFloat(record.monthly_min_price) || 0,
-            monthly_max_price: parseFloat(record.monthly_max_price) || 0,
-            room_size_min: parseFloat(record.room_size_min) || 0,
-            room_size_max: parseFloat(record.room_size_max) || 0,
-            rooms_available: parseInt(record.rooms_available) || 0,
-            has_air: record.has_air === 'TRUE' || record.has_air === true,
-            has_furniture: record.has_furniture === 'TRUE' || record.has_furniture === true,
-            has_internet: record.has_internet === 'TRUE' || record.has_internet === true,
-            has_parking: record.has_parking === 'TRUE' || record.has_parking === true,
-            has_lift: record.has_lift === 'TRUE' || record.has_lift === true,
-            has_pool: record.has_pool === 'TRUE' || record.has_pool === true,
-            has_fitness: record.has_fitness === 'TRUE' || record.has_fitness === true,
-            has_security: record.has_security === 'TRUE' || record.has_security === true,
-            has_cctv: record.has_cctv === 'TRUE' || record.has_cctv === true,
-            allow_pet: record.allow_pet === 'TRUE' || record.allow_pet === true,
-            ...record
-          }))
-          .filter(property => {
-            // Filter out properties with invalid coordinates
-            if (!property.latitude || !property.longitude) return false;
-            if (!isCoordinateInThailand(property.latitude, property.longitude)) return false;
-            return true;
+        if (!isMounted) return;
+
+        if (data && Array.isArray(data.records)) {
+          let validData = data.records.filter(item => {
+            const lat = parseFloat(item.latitude);
+            const lng = parseFloat(item.longitude);
+            return !isNaN(lat) && !isNaN(lng) && isCoordinateInThailand(lat, lng);
           });
 
-        console.log(`Processed ${processedData.length} valid apartment records`);
-        setApartmentData(processedData);
-        
+          // Filter by selected province if one is selected
+          if (selectedProvince) {
+            validData = validData.filter(item => item.province_code === selectedProvince);
+          }
+
+          console.log(`Loaded ${validData.length} valid apartment records`);
+          setApartmentData(validData);
+        } else {
+          console.error('Invalid data structure:', data);
+          setError('ข้อมูลไม่ถูกต้อง');
+        }
       } catch (err) {
+        if (!isMounted) return;
         console.error('Error loading apartment data:', err);
-        setError(err.message || 'Failed to load apartment data');
+        setError('ไม่สามารถโหลดข้อมูลได้ กรุณาลองใหม่อีกครั้ง');
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
-    loadApartmentData();
-  }, []);
+    loadData();
 
-  // Update statistics when data or filters change
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedProvince]);
+
+  // Calculate statistics when data or proximity scores change
   useEffect(() => {
     const filteredData = getFilteredData(proximityScores);
     calculateStatistics(filteredData, proximityScores);
-  }, [apartmentData, filters, selectedProvince, proximityScores]);
+  }, [apartmentData, proximityScores, filters]);
+
+  // Handle filter changes
+  const handleFilterChange = (filterType, value) => {
+    setFilters(prev => ({
+      ...prev,
+      [filterType]: value
+    }));
+    
+    // Clear selection when filters change
+    setSelectedApartment(null);
+  };
 
   // Handle apartment selection
   const handleApartmentSelect = (apartment) => {
     setSelectedApartment(apartment);
   };
 
-  // Handle filter changes
-  const handleFilterChange = (newFilters) => {
-    setFilters(newFilters);
-    setSelectedApartment(null); // Clear selection when filters change
-  };
-
   // Handle province change
   const handleProvinceChange = (provinceId) => {
     setSelectedProvince(provinceId);
-    setSelectedApartment(null); // Clear selection when changing province
+    setSelectedApartment(null);
+    setProximityScores({}); // Clear proximity scores when province changes
   };
 
-  // Get unique values for dropdowns
+  // Handle proximity place button click
+  const handleProximityPlaceClick = (placeType) => {
+    setSelectedProximityPlace(placeType);
+    setShowingNearbyPlaces(true);
+    // Clear any selected apartment when viewing nearby places
+    setSelectedApartment(null);
+  };
+
+  // Clear nearby places view
+  const clearNearbyPlaces = () => {
+    setSelectedProximityPlace(null);
+    setShowingNearbyPlaces(false);
+  };
+
+  // Get unique property types
   const getUniquePropertyTypes = () => {
-    return [...new Set(apartmentData.map(item => item.property_type).filter(Boolean))];
+    const types = [...new Set(apartmentData.map(item => item.property_type))].filter(Boolean);
+    return types.sort();
   };
 
+  // Get unique room types
   const getUniqueRoomTypes = () => {
-    return [...new Set(apartmentData.map(item => item.room_type).filter(Boolean))];
+    const types = [...new Set(apartmentData.map(item => item.room_type))].filter(Boolean);
+    return types.sort();
   };
 
-  const currentProvince = getCurrentProvince();
+  // Get filtered data for rendering
   const filteredData = getFilteredData(proximityScores);
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="h-screen flex flex-col">
-          <div className="bg-white shadow-sm border-b border-gray-200 px-4 py-3">
-            <h1 className="text-xl font-bold text-gray-900">
-              ข้อมูล Housing Stock
-            </h1>
-          </div>
-          <div className="flex-1 flex items-center justify-center">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 shadow-lg">
-              <div className="flex items-center space-x-3">
-                <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-600 border-t-transparent"></div>
-                <p className="text-blue-800 text-lg font-medium">กำลังโหลดข้อมูล...</p>
-              </div>
-              <p className="text-blue-600 text-sm mt-2">กำลังโหลดข้อมูลอพาร์ตเมนต์และที่พักเช่า</p>
-            </div>
-          </div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">กำลังโหลดข้อมูล...</p>
         </div>
       </div>
     );
@@ -414,60 +430,138 @@ const ApartmentSupply = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="h-screen flex flex-col">
-          <div className="bg-white shadow-sm border-b border-gray-200 px-4 py-3">
-            <h1 className="text-xl font-bold text-gray-900">
-              ข้อมูล Housing Stock
-            </h1>
-          </div>
-          <div className="flex-1 flex items-center justify-center">
-            <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md shadow-lg">
-              <p className="text-red-800 text-lg mb-4">{error}</p>
-              <button 
-                onClick={() => window.location.reload()}
-                className="w-full px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
-              >
-                ลองใหม่
-              </button>
-            </div>
-          </div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center bg-white p-8 rounded-lg shadow-lg max-w-md mx-4">
+          <div className="text-red-500 text-6xl mb-4">⚠️</div>
+          <h2 className="text-xl font-semibold text-gray-800 mb-2">เกิดข้อผิดพลาด</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+          >
+            ลองใหม่
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="h-screen flex flex-col">
-        {/* Simplified Header - Province selector moved to filter card */}
-        <div className="bg-white shadow-sm border-b border-gray-200 px-4 py-3">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <h1 className="text-xl font-bold text-gray-900">
-              ข้อมูล Housing Stock
-            </h1>
-            <div className="text-sm text-gray-600">
-              พื้นที่: <span className="font-medium text-gray-800">{currentProvince.name}</span>
-              <span className="ml-3">ทั้งหมด: <span className="font-medium text-blue-600">{filteredData.length.toLocaleString()}</span> อพาร์ตเมนต์</span>
+    <div className="h-screen flex flex-col bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 shadow-sm z-10">
+        <div className="px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl font-bold text-gray-800">
+                อพาร์ตเมนต์ {getCurrentProvince().name}
+              </h1>
+              <p className="text-sm text-gray-600">
+                {filteredData.length.toLocaleString()} จาก {apartmentData.length.toLocaleString()} รายการ
+              </p>
             </div>
+            
+            {/* Mobile filter toggle */}
+            {isMobile && (
+              <button
+                onClick={toggleFilters}
+                className="md:hidden flex items-center gap-2 px-3 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z" />
+                </svg>
+                ตัวกรอง
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Main Content */}
-        <div className="flex-1 overflow-hidden">
-          {isMobile ? (
-            // Mobile Layout - Keep existing stacked layout
-            <div className="h-full overflow-y-auto p-4 space-y-4">
-              {/* Filter Toggle for Mobile */}
-              <button
-                onClick={toggleFilters}
-                className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg font-medium shadow-md hover:bg-blue-700 transition-colors"
-              >
-                {showFilters ? 'ซ่อนตัวกรอง' : 'แสดงตัวกรอง'}
-              </button>
+        {/* Proximity Place Buttons - Horizontal bar above map */}
+        <ProximityPlaceButtons
+          selectedPlace={selectedProximityPlace}
+          onPlaceClick={handleProximityPlaceClick}
+          onClearPlaces={clearNearbyPlaces}
+          showingNearbyPlaces={showingNearbyPlaces}
+        />
+      </div>
 
-              {/* Mobile Filters */}
-              {showFilters && (
+      {/* Main Content */}
+      {isMobile ? (
+        // Mobile Layout - Stacked with collapsible filters
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Mobile Filters - Collapsible */}
+          {showFilters && (
+            <div className="bg-gray-100 border-b border-gray-300 overflow-y-auto" style={{ maxHeight: '40vh' }}>
+              <div className="p-4">
+                <ApartmentFilters
+                  filters={filters}
+                  onFiltersChange={handleFilterChange}
+                  colorScheme={colorScheme}
+                  onColorSchemeChange={setColorScheme}
+                  selectedProvince={selectedProvince}
+                  onProvinceChange={handleProvinceChange}
+                  provinces={provinces}
+                  propertyTypes={getUniquePropertyTypes()}
+                  roomTypes={getUniqueRoomTypes()}
+                  isMobile={true}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Mobile Map */}
+          <div className="flex-1 relative">
+            <ApartmentMap 
+              apartmentData={filteredData}
+              selectedApartment={selectedApartment}
+              onApartmentSelect={handleApartmentSelect}
+              colorScheme={colorScheme}
+              proximityScores={proximityScores}
+              setProximityScores={setProximityScores}
+              calculateAmenityScore={calculateAmenityScore}
+              selectedProximityPlace={selectedProximityPlace}
+              showingNearbyPlaces={showingNearbyPlaces}
+              isMobile={true}
+            />
+          </div>
+
+          {/* Mobile Statistics - Floating bottom sheet */}
+          {selectedApartment && (
+            <div className="bg-white border-t border-gray-300 shadow-lg">
+              <ApartmentStatistics
+                selectedApartment={selectedApartment}
+                stats={stats}
+                proximityScores={proximityScores}
+                calculateAmenityScore={calculateAmenityScore}
+                isMobile={true}
+              />
+            </div>
+          )}
+        </div>
+      ) : (
+        // Desktop Layout - Side by side with improved spacing
+        <div className="flex-1 overflow-hidden">
+          <div className="flex h-full">
+            {/* Map Container */}
+            <div className="flex-1 relative">
+              <ApartmentMap 
+                apartmentData={filteredData}
+                selectedApartment={selectedApartment}
+                onApartmentSelect={handleApartmentSelect}
+                colorScheme={colorScheme}
+                proximityScores={proximityScores}
+                setProximityScores={setProximityScores}
+                calculateAmenityScore={calculateAmenityScore}
+                selectedProximityPlace={selectedProximityPlace}
+                showingNearbyPlaces={showingNearbyPlaces}
+                isMobile={false}
+              />
+            </div>
+
+            {/* Right sidebar with filters and statistics */}
+            <div className="w-96 bg-gray-100 border-l border-gray-300 overflow-y-auto">
+              <div className="p-4 space-y-4">
+                {/* Enhanced Filters Card - Now includes amenity and proximity score filters */}
                 <div className="bg-white rounded-lg shadow-lg">
                   <ApartmentFilters
                     filters={filters}
@@ -479,110 +573,27 @@ const ApartmentSupply = () => {
                     provinces={provinces}
                     propertyTypes={getUniquePropertyTypes()}
                     roomTypes={getUniqueRoomTypes()}
-                    isMobile={isMobile}
-                  />
-                </div>
-              )}
-
-              {/* Mobile Map */}
-              <div className="bg-white rounded-lg shadow-lg overflow-hidden" style={{ height: '60vh' }}>
-                <ApartmentMap 
-                  apartmentData={filteredData}
-                  selectedApartment={selectedApartment}
-                  onApartmentSelect={handleApartmentSelect}
-                  colorScheme={colorScheme}
-                  proximityScores={proximityScores}
-                  setProximityScores={setProximityScores}
-                  calculateAmenityScore={calculateAmenityScore}
-                  isMobile={isMobile}
-                />
-              </div>
-
-              {/* Mobile Statistics */}
-              <div className="bg-white rounded-lg shadow-lg">
-                <ApartmentStatistics
-                  stats={stats}
-                  selectedApartment={selectedApartment}
-                  onClearSelection={() => setSelectedApartment(null)}
-                  provinceName={currentProvince.name}
-                  filteredData={filteredData}
-                  isMobile={isMobile}
-                />
-              </div>
-            </div>
-          ) : (
-            // Desktop Layout - Side by side with improved spacing (MATCHING HDS LAYOUT)
-            <div className="h-full overflow-hidden">
-              <div className="flex h-full">
-                {/* Map Container */}
-                <div className="flex-1 relative">
-                  <ApartmentMap 
-                    apartmentData={filteredData}
-                    selectedApartment={selectedApartment}
-                    onApartmentSelect={handleApartmentSelect}
-                    colorScheme={colorScheme}
-                    proximityScores={proximityScores}
-                    setProximityScores={setProximityScores}
-                    calculateAmenityScore={calculateAmenityScore}
+                    proximityScores={proximityScores}  // Pass proximity scores for better filtering
                     isMobile={false}
                   />
                 </div>
 
-                {/* Right sidebar with filters and statistics */}
-                <div className="w-96 bg-gray-100 border-l border-gray-300 overflow-y-auto">
-                  <div className="p-4 space-y-4">
-                    {/* Filters Card - Now includes province selector */}
-                    <div className="bg-white rounded-lg shadow-lg">
-                      <ApartmentFilters
-                        filters={filters}
-                        onFiltersChange={handleFilterChange}
-                        colorScheme={colorScheme}
-                        onColorSchemeChange={setColorScheme}
-                        selectedProvince={selectedProvince}
-                        onProvinceChange={handleProvinceChange}
-                        provinces={provinces}
-                        propertyTypes={getUniquePropertyTypes()}
-                        roomTypes={getUniqueRoomTypes()}
-                        isMobile={false}
-                      />
-                    </div>
-
-                    {/* Statistics Card */}
-                    <div className="bg-white rounded-lg shadow-lg">
-                      <ApartmentStatistics
-                        stats={stats}
-                        selectedApartment={selectedApartment}
-                        onClearSelection={() => setSelectedApartment(null)}
-                        provinceName={currentProvince.name}
-                        filteredData={filteredData}
-                        isMobile={false}
-                      />
-                    </div>
-
-                    {/* Additional Info Card */}
-                    <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                      <div className="flex items-start space-x-3">
-                        <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                        </svg>
-                        <div className="text-sm text-blue-800">
-                          <p className="font-semibold mb-1">วิธีใช้งาน</p>
-                          <ul className="space-y-1 text-xs">
-                            <li>• เลือกพื้นที่จากเมนูด้านบน</li>
-                            <li>• คลิกที่อพาร์ตเมนต์บนแผนที่เพื่อดูรายละเอียด</li>
-                            <li>• ใช้ตัวกรองเพื่อแสดงเฉพาะข้อมูลที่ต้องการ</li>
-                            <li>• เปลี่ยนรูปแบบการแสดงสีได้จากเมนู</li>
-                          </ul>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                {/* Statistics Card - Enhanced with proximity and amenity data */}
+                <div className="bg-white rounded-lg shadow-lg">
+                  <ApartmentStatistics
+                    selectedApartment={selectedApartment}
+                    stats={stats}
+                    proximityScores={proximityScores}
+                    calculateAmenityScore={calculateAmenityScore}
+                    filteredData={filteredData}  // Pass filtered data for context
+                    isMobile={false}
+                  />
                 </div>
               </div>
             </div>
-          )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
