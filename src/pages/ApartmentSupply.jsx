@@ -320,13 +320,9 @@ const ApartmentSupply = () => {
       
       try {
         console.log('Loading apartment data...');
-        
-        // Try multiple resource IDs in case the original one is not working
+
         const possibleResourceIds = [
-          'b6dbb8e0-1194-4eeb-945d-e883b3275b35', // The ID you provided - try this first
-          'bba7efcc-81d5-465d-a4bf-f05c2b30ba9c', // Original apartment supply resource
-          '15132377-edb0-40b0-9aad-8fd9f6769b92', // Housing supply resource (fallback)
-          '9cfc5468-36f6-40d3-b76e-febf79e9ca9f'  // Another supply resource (fallback)
+          'b6dbb8e0-1194-4eeb-945d-e883b3275b35',
         ];
         
         let data = null;
