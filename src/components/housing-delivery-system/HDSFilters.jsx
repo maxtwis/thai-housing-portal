@@ -111,13 +111,13 @@ const HDSFilters = ({
             className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
           >
             <option value="all">แสดงทั้งหมด</option>
-            <option value="1">C1 - ชุมชนแออัด</option>
-            <option value="2">C2 - ถือครองชั่วคราว</option>
-            <option value="3">C3 - ประชากรแฝง</option>
-            <option value="4">C4 - ที่อยู่อาศัยลูกจ้าง</option>
-            <option value="5">C5 - ที่อยู่อาศัยรัฐ</option>
-            <option value="6">C6 - รัฐสนับสนุน</option>
-            <option value="7">C7 - ที่อยู่อาศัยเอกชน</option>
+            <option value="1">ระบบของชุมชนแออัดบนที่ดินรัฐ/เอกชน</option>
+            <option value="2">ระบบการถือครองที่ดินชั่วคราว</option>
+            <option value="3">ระบบของกลุ่มประชากรแฝง</option>
+            <option value="4">ระบบที่อยู่อาศัยของลูกจ้าง</option>
+            <option value="5">ระบบที่อยู่อาศัยที่รัฐจัดสร้าง</option>
+            <option value="6">ระบบที่อยู่อาศัยที่รัฐสนับสนุน</option>
+            <option value="7">ระบบที่อยู่อาศัยเอกชน</option>
           </select>
         </div>
 
