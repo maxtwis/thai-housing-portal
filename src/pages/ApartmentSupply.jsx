@@ -454,8 +454,7 @@ const ApartmentSupply = () => {
   const handleProximityPlaceClick = (placeType) => {
     setSelectedProximityPlace(placeType);
     setShowingNearbyPlaces(true);
-    // Clear any selected apartment when viewing nearby places
-    setSelectedApartment(null);
+    // Don't clear selected apartment - keep statistics panel visible
   };
 
   // Clear nearby places view
