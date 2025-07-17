@@ -23,13 +23,22 @@ const HDSStatistics = ({ stats, selectedGrid, onClearSelection, isMobile, provin
 
   // Updated housing system names with correct Thai descriptions
   const housingSystemNames = {
+    // Keys for selected grid data (HDS_C1, HDS_C2, etc.)
     HDS_C1: 'ระบบของชุมชนแออัดบนที่ดินรัฐ/เอกชน',
     HDS_C2: 'ระบบการถือครองที่ดินชั่วคราว',
     HDS_C3: 'ระบบของกลุ่มประชากรแฝง',
     HDS_C4: 'ระบบที่อยู่อาศัยของลูกจ้าง',
     HDS_C5: 'ระบบที่อยู่อาศัยที่รัฐจัดสร้าง',
     HDS_C6: 'ระบบที่อยู่อาศัยที่รัฐสนับสนุน',
-    HDS_C7: 'ระบบที่อยู่อาศัยเอกชน'
+    HDS_C7: 'ระบบที่อยู่อาศัยเอกชน',
+    // Keys for overall stats data (C1, C2, etc.)
+    C1: 'ระบบของชุมชนแออัดบนที่ดินรัฐ/เอกชน',
+    C2: 'ระบบการถือครองที่ดินชั่วคราว',
+    C3: 'ระบบของกลุ่มประชากรแฝง',
+    C4: 'ระบบที่อยู่อาศัยของลูกจ้าง',
+    C5: 'ระบบที่อยู่อาศัยที่รัฐจัดสร้าง',
+    C6: 'ระบบที่อยู่อาศัยที่รัฐสนับสนุน',
+    C7: 'ระบบที่อยู่อาศัยเอกชน'
   };
 
   // Calculate total housing units from all systems
@@ -329,7 +338,7 @@ const HDSStatistics = ({ stats, selectedGrid, onClearSelection, isMobile, provin
             <div className="space-y-2">
               {Object.entries(stats.housingSystems || {})
                 .filter(([key, value]) => value > 0)
-                .sort(([,a], [,b]) => b - a)
+                .sort(([,a], [,b]) => b - a) // Sort from largest to smallest by count
                 .map(([key, value]) => {
                   const percentage = totalHousingUnits > 0 ? ((value / totalHousingUnits) * 100).toFixed(1) : 0;
                   return (
