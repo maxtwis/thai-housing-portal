@@ -69,36 +69,27 @@ const ApartmentStatistics = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 mb-4">
-            <div className="bg-orange-50 rounded-lg p-3 text-center border border-orange-200">
-              <div className="text-xl font-bold text-orange-600">
-                {selectedApartment.room_type || 'ไม่ระบุ'}
-              </div>
-              <div className="text-sm text-gray-600 mt-1">ประเภทห้อง</div>
-            </div>
-            <div className="bg-indigo-50 rounded-lg p-3 text-center border border-indigo-200">
-              <div className="text-xl font-bold text-indigo-600">
-                {formatNumber(selectedApartment.rooms_available || 0)}
-              </div>
-              <div className="text-sm text-gray-600 mt-1">ห้องว่าง</div>
-            </div>
-          </div>
+          {/* Removed room_type and rooms_available cards as requested */}
 
-          {/* Amenities Section */}
+          {/* Amenities Section - Matching tooltip style */}
           {(() => {
             const amenities = [
               { key: 'has_air', label: 'เครื่องปรับอากาศ', icon: '❄️' },
-              { key: 'has_furniture', label: 'เฟอร์นิเจอร์', icon: '🪑' },
+              { key: 'has_furniture', label: 'เฟอร์นิเจอร์', icon: '🛋️' },
               { key: 'has_internet', label: 'อินเทอร์เน็ต', icon: '📶' },
               { key: 'has_parking', label: 'ที่จอดรถ', icon: '🚗' },
               { key: 'has_lift', label: 'ลิฟต์', icon: '🛗' },
-              { key: 'has_pool', label: 'สระว่ายน้ำ', icon: '🏊' },
+              { key: 'has_pool', label: 'สระว่ายน้ำ', icon: '🏊‍♂️' },
               { key: 'has_fitness', label: 'ฟิตเนส', icon: '💪' },
-              { key: 'has_security', label: 'รักษาความปลอดภัย', icon: '🛡️' }
+              { key: 'has_security', label: 'รักษาความปลอดภัย', icon: '🔒' },
+              { key: 'has_cctv', label: 'กล้องวงจรปิด', icon: '📹' },
+              { key: 'allow_pet', label: 'อนุญาตสัตว์เลี้ยง', icon: '🐕' }
             ];
 
             const availableAmenities = amenities.filter(amenity => 
-              selectedApartment[amenity.key] === true || selectedApartment[amenity.key] === 'TRUE'
+              selectedApartment[amenity.key] === true || 
+              selectedApartment[amenity.key] === 'TRUE' ||
+              selectedApartment[amenity.key] === 1
             );
 
             return availableAmenities.length > 0 ? (
@@ -107,16 +98,30 @@ const ApartmentStatistics = ({
                   <div className="w-1 h-4 bg-green-500 rounded"></div>
                   สิ่งอำนวยความสะดวก
                 </h3>
-                <div className="grid grid-cols-2 gap-2">
-                  {availableAmenities.map(amenity => (
+                {/* Grid layout matching tooltip style */}
+                <div className="grid grid-cols-3 gap-2">
+                  {availableAmenities.slice(0, 6).map(amenity => (
                     <div key={amenity.key} className="bg-gray-50 rounded-lg p-2 border border-gray-200">
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg">{amenity.icon}</span>
-                        <span className="text-xs text-gray-700">{amenity.label}</span>
+                      <div className="flex flex-col items-center text-center">
+                        <div className="text-lg mb-1">{amenity.icon}</div>
+                        <div className="text-xs text-gray-700 font-medium leading-tight">{amenity.label}</div>
                       </div>
                     </div>
                   ))}
                 </div>
+                {/* Show additional amenities if more than 6 */}
+                {availableAmenities.length > 6 && (
+                  <div className="mt-2 grid grid-cols-3 gap-2">
+                    {availableAmenities.slice(6).map(amenity => (
+                      <div key={amenity.key} className="bg-gray-50 rounded-lg p-2 border border-gray-200">
+                        <div className="flex flex-col items-center text-center">
+                          <div className="text-lg mb-1">{amenity.icon}</div>
+                          <div className="text-xs text-gray-700 font-medium leading-tight">{amenity.label}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ) : (
               <div className="bg-gray-50 rounded-lg p-4 text-center border border-gray-200 mb-4">
