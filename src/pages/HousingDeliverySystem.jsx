@@ -34,9 +34,9 @@ const HousingDeliverySystem = () => {
 
   // Available provinces
   const provinces = [
-    { id: 40, name: 'ขอนแก่น', file: '/data/HDS_KKN01.geojson' },
-    { id: 50, name: 'เชียงใหม่', file: '/data/HDS_CNX_02GJSON.geojson' },
-    { id: 90, name: 'สงขลา', file: '/data/HDS_HYT.geojson' }
+    { id: 40, name: 'เทศบาลนครขอนแก่น', file: '/data/HDS_KKN01.geojson' },
+    { id: 50, name: 'เทศบาลนครเชียงใหม่', file: '/data/HDS_CNX_02GJSON.geojson' },
+    { id: 90, name: 'เทศบาลนครหาดใหญ่', file: '/data/HDS_HYT.geojson' }
   ];
 
   // Fetch supply data from CKAN API with province filtering
@@ -198,7 +198,7 @@ const HousingDeliverySystem = () => {
               ระบบการจัดการที่อยู่อาศัย (Housing Delivery System)
             </h1>
             <div className="text-sm text-gray-600">
-              จังหวัด: <span className="font-medium text-gray-800">{currentProvince.name}</span>
+              พื้นที่: <span className="font-medium text-gray-800">{currentProvince.name}</span>
             </div>
           </div>
         </div>

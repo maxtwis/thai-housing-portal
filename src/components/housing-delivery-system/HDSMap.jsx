@@ -30,21 +30,21 @@ const HDSMap = ({ filters, colorScheme = 'housingSystem', isMobile, onGridSelect
   // Province configurations with their corresponding GeoJSON files
   const provinceConfigs = {
     40: {
-      name: 'ขอนแก่น',
+      name: 'เทศบาลนครขอนแก่น',
       file: '/data/HDS_KKN01.geojson',
       needsTransformation: false, // New coordinate system, already in WGS84
       center: [16.4419, 102.8359],
       bounds: [[15.5, 101.5], [17.5, 104.0]]
     },
     50: {
-      name: 'เชียงใหม่',
+      name: 'เทศบาลนครเชียงใหม่',
       file: '/data/HDS_CNX_02GJSON.geojson',
       needsTransformation: false, // Already in WGS84 format
       center: [18.7883, 98.9817],
       bounds: [[18.0, 98.0], [19.5, 100.0]]
     },
     90: {
-      name: 'สงขลา',
+      name: 'เทศบาลนครหาดใหญ่',
       file: '/data/HDS_HYT.geojson',
       needsTransformation: false, // Already in WGS84 format
       center: [7.01, 100.465], // More precise center based on your data
