@@ -318,8 +318,31 @@ const ApartmentSupply = () => {
       
       try {
         console.log('Loading apartment data...');
-        const resourceId = 'bba7efcc-81d5-465d-a4bf-f05c2b30ba9c';
-        const data = await getCkanData(resourceId);
+        
+        // Try multiple resource IDs in case the original one is not working
+        const possibleResourceIds = [
+          'b6dbb8e0-1194-4eeb-945d-e883b3275b35', // The ID you provided - try this first
+          'bba7efcc-81d5-465d-a4bf-f05c2b30ba9c', // Original apartment supply resource
+          '15132377-edb0-40b0-9aad-8fd9f6769b92', // Housing supply resource (fallback)
+          '9cfc5468-36f6-40d3-b76e-febf79e9ca9f'  // Another supply resource (fallback)
+        ];
+        
+        let data = null;
+        let lastError = null;
+        
+        // Try each resource ID until one works
+        for (const resourceId of possibleResourceIds) {
+          try {
+            console.log(`Trying resource ID: ${resourceId}`);
+            data = await getCkanData(resourceId, { limit: 1000 });
+            console.log(`Successfully loaded data from resource: ${resourceId}`);
+            break; // Exit loop if successful
+          } catch (err) {
+            console.warn(`Resource ${resourceId} failed:`, err.message);
+            lastError = err;
+            continue; // Try next resource ID
+          }
+        }
         
         if (!isMounted) return;
 
@@ -337,14 +360,18 @@ const ApartmentSupply = () => {
 
           console.log(`Loaded ${validData.length} valid apartment records`);
           setApartmentData(validData);
+        } else if (data && data.records) {
+          // Handle case where records exist but might be empty
+          console.log('No apartment records found in the data source');
+          setApartmentData([]);
         } else {
-          console.error('Invalid data structure:', data);
-          setError('ข้อมูลไม่ถูกต้อง');
+          console.error('No valid data source found. Tried all resource IDs.');
+          setError('ไม่พบข้อมูลอพาร์ตเมนต์ในระบบ กรุณาลองใหม่ภายหลัง');
         }
       } catch (err) {
         if (!isMounted) return;
         console.error('Error loading apartment data:', err);
-        setError('ไม่สามารถโหลดข้อมูลได้ กรุณาลองใหม่อีกครั้ง');
+        setError(`ไม่สามารถโหลดข้อมูลได้: ${err.message || 'กรุณาลองใหม่อีกครั้ง'}`);
       } finally {
         if (isMounted) {
           setLoading(false);
@@ -417,12 +444,16 @@ const ApartmentSupply = () => {
   // Get filtered data for rendering
   const filteredData = getFilteredData(proximityScores);
 
+  // Show empty state if no data is available but no error occurred
+  const showEmptyState = !loading && !error && (!apartmentData || apartmentData.length === 0);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
           <p className="text-gray-600">กำลังโหลดข้อมูล...</p>
+          <p className="text-sm text-gray-500 mt-2">กรุณารอสักครู่</p>
         </div>
       </div>
     );
@@ -435,12 +466,73 @@ const ApartmentSupply = () => {
           <div className="text-red-500 text-6xl mb-4">⚠️</div>
           <h2 className="text-xl font-semibold text-gray-800 mb-2">เกิดข้อผิดพลาด</h2>
           <p className="text-gray-600 mb-4">{error}</p>
-          <button 
-            onClick={() => window.location.reload()} 
-            className="px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
-          >
-            ลองใหม่
-          </button>
+          <div className="space-y-3">
+            <button 
+              onClick={() => window.location.reload()} 
+              className="w-full px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+            >
+              ลองใหม่
+            </button>
+            <button 
+              onClick={() => {
+                setError(null);
+                setApartmentData([]);
+                setLoading(false);
+              }} 
+              className="w-full px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+            >
+              ใช้งานแบบออฟไลน์
+            </button>
+          </div>
+          <p className="text-xs text-gray-500 mt-4">
+            หากปัญหายังคงมีอยู่ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Empty state when no data is available
+  if (showEmptyState) {
+    return (
+      <div className="h-screen flex flex-col bg-gray-50">
+        {/* Header */}
+        <div className="bg-white border-b border-gray-200 shadow-sm z-10">
+          <div className="px-4 py-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-xl font-bold text-gray-800">
+                  อพาร์ตเมนต์ {getCurrentProvince().name}
+                </h1>
+                <p className="text-sm text-gray-600">ไม่พบข้อมูล</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Empty State Content */}
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center bg-white p-8 rounded-lg shadow-lg max-w-md mx-4">
+            <div className="text-gray-400 text-6xl mb-4">🏢</div>
+            <h2 className="text-xl font-semibold text-gray-800 mb-2">ไม่พบข้อมูลอพาร์ตเมนต์</h2>
+            <p className="text-gray-600 mb-4">
+              ขณะนี้ไม่มีข้อมูลอพาร์ตเมนต์สำหรับจังหวัด{getCurrentProvince().name}
+            </p>
+            <div className="space-y-3">
+              <button 
+                onClick={() => setSelectedProvince(null)}
+                className="w-full px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+              >
+                ดูทุกจังหวัด
+              </button>
+              <button 
+                onClick={() => window.location.reload()} 
+                className="w-full px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                รีเฟรชข้อมูล
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     );
