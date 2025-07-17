@@ -536,7 +536,7 @@ const ApartmentSupply = () => {
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-xl font-bold text-gray-800">
-                  อพาร์ตเมนต์ {getCurrentProvince().name}
+                  Housing Stock
                 </h1>
                 <p className="text-sm text-gray-600">ไม่พบข้อมูล</p>
               </div>
@@ -580,7 +580,7 @@ const ApartmentSupply = () => {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-xl font-bold text-gray-800">
-                อพาร์ตเมนต์ {getCurrentProvince().name}
+                Housing Stock
               </h1>
               <p className="text-sm text-gray-600">
                 {filteredData.length.toLocaleString()} จาก {apartmentData.length.toLocaleString()} รายการ
