@@ -1,4 +1,3 @@
-import React, { useState, useEffect } from 'react';
 import { getCkanData } from '../utils/ckanClient';
 import ApartmentMap from '../components/apartment-supply/ApartmentMap';
 import ApartmentFilters from '../components/apartment-supply/ApartmentFilters';
@@ -641,8 +640,8 @@ const ApartmentSupply = () => {
             </div>
           )}
 
-          {/* Mobile Map - Always visible with proper height */}
-          <div className={`relative ${selectedApartment ? 'h-[50vh]' : 'flex-1'}`}>
+          {/* Mobile Map - Always visible with full height */}
+          <div className="flex-1 relative">
             <ApartmentMap 
               apartmentData={filteredData}
               selectedApartment={selectedApartment}
@@ -655,18 +654,6 @@ const ApartmentSupply = () => {
               showingNearbyPlaces={showingNearbyPlaces}
               isMobile={true}
             />
-            
-            {/* Mobile close button for selected apartment */}
-            {selectedApartment && (
-              <button
-                onClick={() => setSelectedApartment(null)}
-                className="absolute top-4 right-4 bg-white rounded-full p-2 shadow-lg border border-gray-300 z-10"
-              >
-                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            )}
           </div>
 
           {/* Mobile Statistics - Scrollable bottom sheet when apartment is selected */}
@@ -683,7 +670,8 @@ const ApartmentSupply = () => {
                   </svg>
                 </button>
               </div>
-              <div className="overflow-y-auto">
+              {/* Scrollable content area */}
+              <div className="flex-1 overflow-y-auto bg-gray-50">
                 <ApartmentStatistics
                   selectedApartment={selectedApartment}
                   stats={stats}
@@ -692,6 +680,26 @@ const ApartmentSupply = () => {
                   filteredData={filteredData}
                   isMobile={true}
                 />
+              </div>
+
+              {/* Bottom action bar */}
+              <div className="bg-white border-t border-gray-200 px-4 py-3 flex gap-3">
+                <button
+                  onClick={() => setSelectedApartment(null)}
+                  className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium"
+                >
+                  ปิด
+                </button>
+                <button
+                  onClick={() => {
+                    // Show map view with selected apartment
+                    setSelectedApartment(null);
+                    // You could add logic here to zoom to the apartment on map
+                  }}
+                  className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg font-medium"
+                >
+                  ดูบนแผนที่
+                </button>
               </div>
             </div>
           )}
