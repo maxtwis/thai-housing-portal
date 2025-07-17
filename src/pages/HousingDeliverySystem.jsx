@@ -108,17 +108,16 @@ const HousingDeliverySystem = () => {
         features.forEach(feature => {
           const props = feature.properties;
           const population = props.Grid_POP || 0;
-          const housing = props.Grid_HU || 0;
+          // FIXED: Use Grid_House instead of Grid_HU
+          const housing = props.Grid_House || 0;
           
           totalPop += population;
           totalHousing += housing;
           
-          // Count housing systems
+          // Count housing systems - using individual HDS_C*_num fields
           for (let i = 1; i <= 7; i++) {
             const systemCount = props[`HDS_C${i}_num`] || 0;
-            if (systemCount > 0) {
-              housingSystems[`C${i}`] += systemCount;
-            }
+            housingSystems[`C${i}`] += systemCount;
           }
           
           // Count density levels
@@ -127,20 +126,29 @@ const HousingDeliverySystem = () => {
             densityLevels[gridClass]++;
           }
           
-          // Count problem areas (assuming these fields exist)
-          if (props.supply_problem) problemSupply++;
-          if (props.subsidies_problem) problemSubsidies++;
-          if (props.stability_problem) problemStability++;
+          // Count problem areas (check for existence and value)
+          if (props.supply_problem || props.Supply_Pro) problemSupply++;
+          if (props.subsidies_problem || props.Subsidies_) problemSubsidies++;
+          if (props.stability_problem || props.Stability_) problemStability++;
         });
 
         const totalGrids = features.length;
         const averageDensity = totalGrids > 0 ? 
           Math.round((totalPop / totalGrids) / 10) * 10 : 0;
 
+        // Debug logging
+        console.log('Housing calculation debug:', {
+          totalFeatures: features.length,
+          totalHousing,
+          totalPop,
+          housingSystems,
+          sampleFeature: features[0]?.properties
+        });
+
         setStats({
           totalGrids,
-          totalPopulation: totalPop,
-          totalHousing,
+          totalPopulation: Math.round(totalPop),
+          totalHousing: Math.round(totalHousing),
           averageDensity,
           housingSystems,
           densityLevels,
