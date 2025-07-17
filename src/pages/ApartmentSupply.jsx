@@ -27,7 +27,7 @@ const ApartmentSupply = () => {
   const [error, setError] = useState(null);
   const [selectedApartment, setSelectedApartment] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
-  const [showFilters, setShowFilters] = useState(true);
+  const [showFilters, setShowFilters] = useState(false); // Changed to false by default
   
   // Province selection state - now defaults to all provinces
   const [selectedProvince, setSelectedProvince] = useState(null); // null = all provinces
@@ -84,10 +84,7 @@ const ApartmentSupply = () => {
   useEffect(() => {
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768);
-      // Always show filters on desktop
-      if (window.innerWidth >= 768) {
-        setShowFilters(true);
-      }
+      // Don't auto-show filters on desktop anymore
     };
     
     checkMobile();
@@ -717,7 +714,7 @@ const ApartmentSupply = () => {
           )}
         </div>
       ) : (
-        // Desktop Layout - Side by side with improved spacing
+        // Desktop Layout - Side by side with floating filter button
         <div className="flex-1 overflow-hidden">
           <div className="flex h-full">
             {/* Map Container */}
@@ -734,41 +731,73 @@ const ApartmentSupply = () => {
                 showingNearbyPlaces={showingNearbyPlaces}
                 isMobile={false}
               />
+
+              {/* Desktop floating filter toggle - same style as mobile */}
+              <button
+                onClick={toggleFilters}
+                className="absolute bottom-6 right-6 bg-orange-500 text-white rounded-full p-4 shadow-lg hover:bg-orange-600 transition-colors z-10"
+                title="ตัวกรอง"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z" />
+                </svg>
+              </button>
             </div>
 
-            {/* Right sidebar with filters and statistics */}
-            <div className="w-96 bg-gray-100 border-l border-gray-300 overflow-y-auto">
-              <div className="p-4 space-y-4">
-                {/* Enhanced Filters Card - Now includes amenity and proximity score filters */}
-                <div className="bg-white rounded-lg shadow-lg">
-                  <ApartmentFilters
-                    filters={filters}
-                    onFiltersChange={handleFilterChange}
-                    colorScheme={colorScheme}
-                    onColorSchemeChange={setColorScheme}
-                    selectedProvince={selectedProvince}
-                    onProvinceChange={handleProvinceChange}
-                    provinces={provinces}
-                    propertyTypes={getUniquePropertyTypes()}
-                    roomTypes={getUniqueRoomTypes()}
-                    proximityScores={proximityScores}  // Pass proximity scores for better filtering
-                    isMobile={false}
-                  />
+            {/* Right sidebar with filters and statistics - only show when filters enabled */}
+            {showFilters && (
+              <div 
+                className="w-96 bg-gray-100 border-l border-gray-300 overflow-y-auto"
+                style={{
+                  animation: 'slideInRight 0.3s ease-out',
+                  '@keyframes slideInRight': {
+                    'from': { transform: 'translateX(100%)', opacity: 0 },
+                    'to': { transform: 'translateX(0)', opacity: 1 }
+                  }
+                }}
+              >
+                <div className="p-4 space-y-4">
+                  {/* Enhanced Filters Card - Now includes amenity and proximity score filters */}
+                  <div className="bg-white rounded-lg shadow-lg">
+                    <ApartmentFilters
+                      filters={filters}
+                      onFiltersChange={handleFilterChange}
+                      colorScheme={colorScheme}
+                      onColorSchemeChange={setColorScheme}
+                      selectedProvince={selectedProvince}
+                      onProvinceChange={handleProvinceChange}
+                      provinces={provinces}
+                      propertyTypes={getUniquePropertyTypes()}
+                      roomTypes={getUniqueRoomTypes()}
+                      proximityScores={proximityScores}
+                      isMobile={false}
+                    />
+                  </div>
+
+                  {/* Statistics Card - Enhanced with proximity and amenity data */}
+                  <div className="bg-white rounded-lg shadow-lg">
+                    <ApartmentStatistics
+                      selectedApartment={selectedApartment}
+                      stats={stats}
+                      proximityScores={proximityScores}
+                      calculateAmenityScore={calculateAmenityScore}
+                      filteredData={filteredData}
+                      isMobile={false}
+                    />
+                  </div>
                 </div>
 
-                {/* Statistics Card - Enhanced with proximity and amenity data */}
-                <div className="bg-white rounded-lg shadow-lg">
-                  <ApartmentStatistics
-                    selectedApartment={selectedApartment}
-                    stats={stats}
-                    proximityScores={proximityScores}
-                    calculateAmenityScore={calculateAmenityScore}
-                    filteredData={filteredData}  // Pass filtered data for context
-                    isMobile={false}
-                  />
+                {/* Close filters button */}
+                <div className="sticky bottom-0 bg-gray-100 border-t border-gray-300 p-4">
+                  <button
+                    onClick={() => setShowFilters(false)}
+                    className="w-full px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium"
+                  >
+                    ปิดตัวกรอง
+                  </button>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       )}
