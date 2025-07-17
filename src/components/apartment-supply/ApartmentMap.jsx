@@ -28,18 +28,18 @@ const calculateCategoryScore = (count, category) => {
 // Fetch nearby count for a specific category (with error handling)
 const fetchNearbyCount = async (category, lat, lng, radius = 1000) => {
   const buildOverpassQuery = (category, lat, lng, radius) => {
-    const timeout = 10; // Reduced timeout to fail faster
+    const timeout = 15; // Increased timeout for better results
     switch(category) {
       case 'restaurant':
-        return `[out:json][timeout:${timeout}];(node["amenity"~"^(restaurant|cafe|fast_food)$"](around:${radius},${lat},${lng});way["amenity"~"^(restaurant|cafe|fast_food)$"](around:${radius},${lat},${lng}););out count;`;
+        return `[out:json][timeout:${timeout}];(node["amenity"~"^(restaurant|cafe|fast_food|food_court)$"](around:${radius},${lat},${lng});way["amenity"~"^(restaurant|cafe|fast_food|food_court)$"](around:${radius},${lat},${lng});relation["amenity"~"^(restaurant|cafe|fast_food|food_court)$"](around:${radius},${lat},${lng}););out geom;`;
       case 'convenience':
-        return `[out:json][timeout:${timeout}];(node["shop"~"^(convenience|supermarket)$"](around:${radius},${lat},${lng});way["shop"~"^(convenience|supermarket)$"](around:${radius},${lat},${lng}););out count;`;
+        return `[out:json][timeout:${timeout}];(node["shop"~"^(convenience|supermarket|mall|department_store)$"](around:${radius},${lat},${lng});way["shop"~"^(convenience|supermarket|mall|department_store)$"](around:${radius},${lat},${lng});relation["shop"~"^(convenience|supermarket|mall|department_store)$"](around:${radius},${lat},${lng}););out geom;`;
       case 'school':
-        return `[out:json][timeout:${timeout}];(node["amenity"~"^(school|university|kindergarten)$"](around:${radius},${lat},${lng});way["amenity"~"^(school|university|kindergarten)$"](around:${radius},${lat},${lng}););out count;`;
+        return `[out:json][timeout:${timeout}];(node["amenity"~"^(school|university|college|kindergarten)$"](around:${radius},${lat},${lng});way["amenity"~"^(school|university|college|kindergarten)$"](around:${radius},${lat},${lng});relation["amenity"~"^(school|university|college|kindergarten)$"](around:${radius},${lat},${lng}););out geom;`;
       case 'health':
-        return `[out:json][timeout:${timeout}];(node["amenity"~"^(hospital|clinic|doctors|dentist|pharmacy)$"](around:${radius},${lat},${lng});node["healthcare"](around:${radius},${lat},${lng});node["shop"="chemist"](around:${radius},${lat},${lng});way["amenity"~"^(hospital|clinic|doctors|dentist|pharmacy)$"](around:${radius},${lat},${lng});way["healthcare"](around:${radius},${lat},${lng}););out count;`;
+        return `[out:json][timeout:${timeout}];(node["amenity"~"^(hospital|clinic|doctors|dentist|pharmacy)$"](around:${radius},${lat},${lng});node["healthcare"](around:${radius},${lat},${lng});node["shop"="chemist"](around:${radius},${lat},${lng});way["amenity"~"^(hospital|clinic|doctors|dentist|pharmacy)$"](around:${radius},${lat},${lng});way["healthcare"](around:${radius},${lat},${lng});relation["amenity"~"^(hospital|clinic|doctors|dentist|pharmacy)$"](around:${radius},${lat},${lng}););out geom;`;
       case 'transport':
-        return `[out:json][timeout:${timeout}];(node["public_transport"](around:${radius},${lat},${lng});node["highway"="bus_stop"](around:${radius},${lat},${lng});node["amenity"="bus_station"](around:${radius},${lat},${lng});node["railway"="station"](around:${radius},${lat},${lng});way["public_transport"](around:${radius},${lat},${lng});way["amenity"="bus_station"](around:${radius},${lat},${lng}););out count;`;
+        return `[out:json][timeout:${timeout}];(node["public_transport"](around:${radius},${lat},${lng});node["highway"="bus_stop"](around:${radius},${lat},${lng});node["amenity"="bus_station"](around:${radius},${lat},${lng});node["railway"~"^(station|halt|tram_stop)$"](around:${radius},${lat},${lng});way["public_transport"](around:${radius},${lat},${lng});way["amenity"="bus_station"](around:${radius},${lat},${lng});way["railway"~"^(station|halt)$"](around:${radius},${lat},${lng});relation["public_transport"](around:${radius},${lat},${lng}););out geom;`;
       default:
         return buildOverpassQuery('restaurant', lat, lng, radius);
     }
@@ -104,7 +104,9 @@ const fetchNearbyCount = async (category, lat, lng, radius = 1000) => {
     }
 
     const data = await response.json();
-    return data.elements ? data.elements.length : 0;
+    const count = data.elements ? data.elements.length : 0;
+    console.log(`Overpass API returned ${count} elements for ${category}`);
+    return count;
   } catch (error) {
     console.error(`Error fetching ${category}:`, error);
     return 0;
@@ -329,7 +331,26 @@ const ApartmentMap = ({
     try {
       console.log(`Loading nearby ${placeType} around ${centerLat}, ${centerLng}`);
       
-      const query = buildOverpassQuery(placeType, centerLat, centerLng, 2000);
+      // Build query for showing places on map (different from counting)
+      const buildShowQuery = (category, lat, lng, radius) => {
+        const timeout = 20;
+        switch(category) {
+          case 'restaurant':
+            return `[out:json][timeout:${timeout}];(node["amenity"~"^(restaurant|cafe|fast_food|food_court)$"](around:${radius},${lat},${lng});way["amenity"~"^(restaurant|cafe|fast_food|food_court)$"](around:${radius},${lat},${lng}););out geom;`;
+          case 'convenience':
+            return `[out:json][timeout:${timeout}];(node["shop"~"^(convenience|supermarket|mall|department_store)$"](around:${radius},${lat},${lng});way["shop"~"^(convenience|supermarket|mall|department_store)$"](around:${radius},${lat},${lng}););out geom;`;
+          case 'school':
+            return `[out:json][timeout:${timeout}];(node["amenity"~"^(school|university|college|kindergarten)$"](around:${radius},${lat},${lng});way["amenity"~"^(school|university|college|kindergarten)$"](around:${radius},${lat},${lng}););out geom;`;
+          case 'health':
+            return `[out:json][timeout:${timeout}];(node["amenity"~"^(hospital|clinic|doctors|dentist|pharmacy)$"](around:${radius},${lat},${lng});node["healthcare"](around:${radius},${lat},${lng});node["shop"="chemist"](around:${radius},${lat},${lng});way["amenity"~"^(hospital|clinic|doctors|dentist|pharmacy)$"](around:${radius},${lat},${lng});way["healthcare"](around:${radius},${lat},${lng}););out geom;`;
+          case 'transport':
+            return `[out:json][timeout:${timeout}];(node["public_transport"](around:${radius},${lat},${lng});node["highway"="bus_stop"](around:${radius},${lat},${lng});node["amenity"="bus_station"](around:${radius},${lat},${lng});node["railway"~"^(station|halt|tram_stop)$"](around:${radius},${lat},${lng});way["public_transport"](around:${radius},${lat},${lng});way["amenity"="bus_station"](around:${radius},${lat},${lng});way["railway"~"^(station|halt)$"](around:${radius},${lat},${lng}););out geom;`;
+          default:
+            return buildShowQuery('restaurant', lat, lng, radius);
+        }
+      };
+
+      const query = buildShowQuery(placeType, centerLat, centerLng, 2000);
       const response = await fetch('https://overpass-api.de/api/interpreter', {
         method: 'POST',
         headers: {
@@ -361,9 +382,15 @@ const ApartmentMap = ({
         data.elements.forEach(element => {
           let lat, lng, name = 'ไม่ระบุชื่อ';
 
-          if (element.lat && element.lon) {
+          // Handle different element types
+          if (element.type === 'node' && element.lat && element.lon) {
             lat = element.lat;
             lng = element.lon;
+          } else if (element.type === 'way' && element.geometry && element.geometry.length > 0) {
+            // Calculate center of way
+            const coords = element.geometry;
+            lat = coords.reduce((sum, coord) => sum + coord.lat, 0) / coords.length;
+            lng = coords.reduce((sum, coord) => sum + coord.lon, 0) / coords.length;
           } else if (element.center) {
             lat = element.center.lat;
             lng = element.center.lon;
@@ -374,11 +401,15 @@ const ApartmentMap = ({
 
           if (lat && lng) {
             if (element.tags) {
-              name = element.tags.name || element.tags['name:th'] || element.tags['name:en'] || 'ไม่ระบุชื่อ';
+              name = element.tags.name || 
+                     element.tags['name:th'] || 
+                     element.tags['name:en'] || 
+                     element.tags.brand || 
+                     'ไม่ระบุชื่อ';
             }
 
             const marker = L.circleMarker([lat, lng], {
-              radius: 6,
+              radius: 8,
               fillColor: config.color,
               color: '#ffffff',
               weight: 2,
@@ -386,11 +417,16 @@ const ApartmentMap = ({
               fillOpacity: 0.8
             });
 
-            // Simple popup without the complex tooltip functionality
+            // Enhanced popup with more info
+            const amenityType = element.tags?.amenity || element.tags?.shop || element.tags?.public_transport || element.tags?.railway || element.tags?.highway || placeType;
+            const address = element.tags?.['addr:street'] || element.tags?.['addr:housenumber'] || '';
+            
             marker.bindPopup(`
               <div class="text-center">
                 <div class="text-lg mb-1">${config.icon}</div>
-                <div class="font-medium text-sm">${name}</div>
+                <div class="font-medium text-sm mb-1">${name}</div>
+                <div class="text-xs text-gray-600 mb-1">${amenityType}</div>
+                ${address ? `<div class="text-xs text-gray-500">${address}</div>` : ''}
               </div>
             `, {
               closeButton: true,
@@ -405,7 +441,9 @@ const ApartmentMap = ({
         layerGroup.addTo(mapRef.current);
         nearbyLayersRef.current[placeType] = layerGroup;
         
-        console.log(`Loaded ${data.elements.length} ${placeType} places`);
+        console.log(`Loaded ${data.elements.length} ${placeType} places on map`);
+      } else {
+        console.log(`No ${placeType} places found in the area`);
       }
     } catch (error) {
       console.error(`Error loading nearby ${placeType}:`, error);
