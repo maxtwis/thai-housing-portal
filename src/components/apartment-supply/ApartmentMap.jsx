@@ -222,14 +222,16 @@ const ApartmentMap = ({
 
   // Calculate proximity score for a property (using original weighted logic)
   const calculateProximityForProperty = async (property) => {
-    if (proximityScores[property.id]) {
+    // Check if already calculated or currently calculating
+    if (proximityScores[property.id] || calculatingProximity === property.id) {
+      console.log(`Proximity score already exists or calculating for ${property.apartment_name || property.name || property.id}: ${proximityScores[property.id] || 'calculating...'}`);
       return;
     }
 
     setCalculatingProximity(property.id);
     
     try {
-      console.log(`Calculating proximity score for: ${property.apartment_name || property.name || property.id}`);
+      console.log(`Calculating proximity score for: ${property.apartment_name || property.name || property.id} at coordinates [${property.latitude}, ${property.longitude}]`);
       
       // Use weighted categories like the original
       const categories = {
@@ -246,7 +248,7 @@ const ApartmentMap = ({
 
       for (const [category, config] of Object.entries(categories)) {
         try {
-          console.log(`Fetching ${config.name} data...`);
+          console.log(`Fetching ${config.name} data for ${property.apartment_name || property.name || property.id}...`);
           const nearbyCount = await fetchNearbyCount(category, property.latitude, property.longitude, 1000);
           const categoryScore = calculateCategoryScore(nearbyCount, category);
           
@@ -259,7 +261,7 @@ const ApartmentMap = ({
             weight: config.weight 
           });
           
-          console.log(`${config.name}: ${nearbyCount} places found, score: ${categoryScore}% (weight: ${config.weight})`);
+          console.log(`${config.name}: ${nearbyCount} places found, score: ${categoryScore}% (weight: ${config.weight}) for ${property.apartment_name || property.name || property.id}`);
           
           // Update with partial weighted score after 2 categories
           if (completedCategories.length === 2) {
@@ -268,7 +270,7 @@ const ApartmentMap = ({
               ...prev,
               [property.id]: partialScore
             }));
-            console.log(`Partial weighted score after ${completedCategories.length} categories: ${partialScore}%`);
+            console.log(`Partial weighted score after ${completedCategories.length} categories: ${partialScore}% for ${property.apartment_name || property.name || property.id}`);
           }
           
           // Adaptive delay based on density
@@ -276,7 +278,7 @@ const ApartmentMap = ({
           await new Promise(resolve => setTimeout(resolve, delay));
           
         } catch (error) {
-          console.error(`Error fetching ${category} data:`, error);
+          console.error(`Error fetching ${category} data for ${property.apartment_name || property.name || property.id}:`, error);
           // Continue with other categories
           await new Promise(resolve => setTimeout(resolve, 200));
         }
@@ -284,10 +286,17 @@ const ApartmentMap = ({
 
       const finalScore = totalWeight > 0 ? Math.round(weightedScore / totalWeight) : 0;
       
-      setProximityScores(prev => ({
-        ...prev,
-        [property.id]: finalScore
-      }));
+      // Update final score
+      setProximityScores(prev => {
+        const newScores = {
+          ...prev,
+          [property.id]: finalScore
+        };
+        console.log(`Updated proximity scores:`, Object.keys(newScores).map(id => 
+          `${id.substring(0, 20)}...: ${newScores[id]}%`
+        ));
+        return newScores;
+      });
       
       console.log(`Final weighted proximity score: ${finalScore}% for ${property.apartment_name || property.name || property.id}`);
       console.log('Category breakdown:', completedCategories.map(c => 
@@ -295,7 +304,7 @@ const ApartmentMap = ({
       ).join(', '));
       
     } catch (error) {
-      console.error('Error calculating proximity score:', error);
+      console.error(`Error calculating proximity score for ${property.apartment_name || property.name || property.id}:`, error);
       setProximityScores(prev => ({
         ...prev,
         [property.id]: 0

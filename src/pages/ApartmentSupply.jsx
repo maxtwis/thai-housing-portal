@@ -351,6 +351,40 @@ const ApartmentSupply = () => {
             const lat = parseFloat(item.latitude);
             const lng = parseFloat(item.longitude);
             return !isNaN(lat) && !isNaN(lng) && isCoordinateInThailand(lat, lng);
+          }).map((item, index) => {
+            // Create truly unique ID using multiple fields + index
+            const uniqueId = `${item.name || 'unknown'}_${item.latitude}_${item.longitude}_${item.province_code || 'unknown'}_${index}`;
+            return {
+              ...item,
+              id: uniqueId,
+              // Ensure we have the fields needed for the app
+              apartment_name: item.name || item.apartment_name || `Property ${index + 1}`,
+              monthly_min_price: parseFloat(item.monthly_min_price) || 0,
+              monthly_max_price: parseFloat(item.monthly_max_price) || 0,
+              room_size_min: parseFloat(item.room_size_min) || 0,
+              room_size_max: parseFloat(item.room_size_max) || 0,
+              latitude: parseFloat(item.latitude),
+              longitude: parseFloat(item.longitude),
+              province_code: parseInt(item.province_code) || selectedProvince,
+              property_type: item.property_type || 'APARTMENT',
+              room_type: item.room_type || 'STUDIO',
+              rooms_available: parseInt(item.rooms_available) || 0,
+              // Convert amenity strings to booleans
+              has_air: item.has_air === 'TRUE' || item.has_air === true,
+              has_furniture: item.has_furniture === 'TRUE' || item.has_furniture === true,
+              has_internet: item.has_internet === 'TRUE' || item.has_internet === true,
+              has_parking: item.has_parking === 'TRUE' || item.has_parking === true,
+              has_lift: item.has_lift === 'TRUE' || item.has_lift === true,
+              has_pool: item.has_pool === 'TRUE' || item.has_pool === true,
+              has_fitness: item.has_fitness === 'TRUE' || item.has_fitness === true,
+              has_security: item.has_security === 'TRUE' || item.has_security === true,
+              has_cctv: item.has_cctv === 'TRUE' || item.has_cctv === true,
+              allow_pet: item.allow_pet === 'TRUE' || item.allow_pet === true,
+              // Contact info
+              contact_phone: item.contact_phone || '',
+              contact_email: item.contact_email || '',
+              address: item.address || `${item.subdistrict || ''} ${item.district || ''} ${item.province || ''}`.trim()
+            };
           });
 
           // Filter by selected province if one is selected
@@ -359,6 +393,7 @@ const ApartmentSupply = () => {
           }
 
           console.log(`Loaded ${validData.length} valid apartment records`);
+          console.log('Sample apartment IDs:', validData.slice(0, 5).map(item => item.id));
           setApartmentData(validData);
         } else if (data && data.records) {
           // Handle case where records exist but might be empty
