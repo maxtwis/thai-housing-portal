@@ -149,11 +149,13 @@ const calculateCategoryScore = (count, category) => {
 
 const ApartmentMap = ({ 
   apartmentData, 
-  colorScheme = 'priceRange', 
-  isMobile, 
-  onApartmentSelect, 
   selectedApartment,
-  calculateFacilityScore
+  onApartmentSelect,
+  colorScheme = 'priceRange', 
+  proximityScores = {},
+  setProximityScores,
+  calculateAmenityScore,
+  isMobile
 }) => {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
@@ -167,7 +169,6 @@ const ApartmentMap = ({
   
   const [loadingNearby, setLoadingNearby] = useState(false);
   const [nearbyNotification, setNearbyNotification] = useState(null);
-  const [proximityScores, setProximityScores] = useState({});
   const [calculatingProximity, setCalculatingProximity] = useState(null); // Track which property is being calculated
 
   // Calculate proximity score on-demand when apartment is clicked
@@ -332,7 +333,7 @@ const ApartmentMap = ({
         return '#ef4444';                        // Red - expensive
       
       case 'amenityScore':
-        const amenityScore = calculateFacilityScore ? calculateFacilityScore(property) : 0;
+        const amenityScore = calculateAmenityScore ? calculateAmenityScore(property) : 0;
         if (amenityScore >= 80) return '#10b981'; // High
         if (amenityScore >= 60) return '#f59e0b'; // Medium
         if (amenityScore >= 40) return '#ef4444'; // Low
@@ -375,7 +376,7 @@ const ApartmentMap = ({
 
   // Enhanced popup content generator with dynamic proximity score
   const generatePopupContent = (property) => {
-    const amenityScore = calculateFacilityScore ? calculateFacilityScore(property) : 0;
+    const amenityScore = calculateAmenityScore ? calculateAmenityScore(property) : 0;
     const proximityScore = proximityScores[property.id];
     const isCalculating = calculatingProximity === property.id;
     
@@ -1006,9 +1007,6 @@ const ApartmentMap = ({
         nearbyLayersRef.current[category] = layerGroup;
         layerGroup.addTo(mapRef.current);
         
-        // DON'T close the popup - this was causing the proximity score to disappear!
-        // The popup should stay open with the proximity score visible
-        
         showNearbyNotification(category, data.elements.length);
       } else {
         showNearbyNotification(category, 0);
@@ -1151,22 +1149,20 @@ const ApartmentMap = ({
         minWidth: 300,
         offset: [0, -8],
         className: 'custom-apartment-popup non-blocking-popup',
-        autoPan: true, // Enable auto-pan for initial display
+        autoPan: true,
         autoPanPadding: [50, 50],
-        keepInView: true, // Keep popup in view initially
+        keepInView: true,
         maxHeight: 500
       };
 
       marker.bindPopup(generatePopupContent(property), popupOptions);
 
-      // Add popup open event to switch to non-blocking mode after display
       marker.on('popupopen', function(e) {
         setTimeout(() => {
           const popup = e.popup;
           if (popup && popup.options) {
             popup.options.autoPan = false;
             popup.options.keepInView = false;
-            console.log('Clustered popup switched to non-blocking mode');
           }
         }, 1000);
       });
@@ -1178,7 +1174,6 @@ const ApartmentMap = ({
           onApartmentSelect(property);
         }
         
-        // Store reference to current popup marker
         currentPopupMarker.current = marker;
         
         if (pinnedMarkerRef.current) {
@@ -1189,7 +1184,6 @@ const ApartmentMap = ({
         const pinnedMarker = L.circleMarker([property.latitude, property.longitude], pinnedMarkerOptions);
         pinnedMarker.propertyData = property;
         
-        // Create popup with smart auto-pan for initial view
         const smartPopupOptions = {
           closeButton: true,
           autoClose: true,
@@ -1198,9 +1192,9 @@ const ApartmentMap = ({
           minWidth: 300,
           offset: [0, -8],
           className: 'custom-apartment-popup non-blocking-popup',
-          autoPan: true, // Enable auto-pan for initial display
-          autoPanPadding: [50, 50], // Padding to ensure full popup is visible
-          keepInView: true, // Keep popup in view initially
+          autoPan: true,
+          autoPanPadding: [50, 50],
+          keepInView: true,
           maxHeight: 500
         };
         
@@ -1211,20 +1205,15 @@ const ApartmentMap = ({
         pinnedMarkerRef.current = pinnedMarker;
         currentPopupMarker.current = pinnedMarker;
         
-        // After popup is shown and positioned, switch to non-blocking mode
         setTimeout(() => {
-          // Update popup options to be non-blocking after initial display
           if (pinnedMarkerRef.current && pinnedMarkerRef.current.isPopupOpen()) {
             const popup = pinnedMarkerRef.current.getPopup();
             popup.options.autoPan = false;
             popup.options.keepInView = false;
-            console.log('Popup switched to non-blocking mode - you can now move freely!');
           }
-        }, 1000); // Wait 1 second for user to see the full popup
+        }, 1000);
         
-        // Start calculating proximity score AFTER popup is shown
         if (!proximityScores[property.id] && calculatingProximity !== property.id) {
-          console.log('Starting proximity calculation...');
           calculateProximityForProperty(property);
         }
         
@@ -1298,7 +1287,6 @@ const ApartmentMap = ({
       const property = currentPopupMarker.current.propertyData;
       const newPopupContent = generatePopupContent(property);
       currentPopupMarker.current.setPopupContent(newPopupContent);
-      console.log('Popup updated due to proximity score change');
     }
   }, [proximityScores, calculatingProximity]);
 
@@ -1307,17 +1295,17 @@ const ApartmentMap = ({
     hasZoomedToMarker.current = false;
   }, [apartmentData, colorScheme]);
 
-  // Dynamic height calculation
+  // Dynamic height calculation for new layout
   const getMapHeight = () => {
     if (isMobile) {
       return "60vh";
     } else {
-      return "calc(100vh - 150px)";
+      return "100vh"; // Full height for desktop layout
     }
   };
 
   return (
-    <div className="relative">
+    <div className="relative w-full h-full">
       {/* CSS for non-blocking popup */}
       <style jsx>{`
         .non-blocking-popup .leaflet-popup-content-wrapper {
@@ -1377,7 +1365,7 @@ const ApartmentMap = ({
       <div 
         ref={mapContainerRef} 
         style={{ height: getMapHeight() }}
-        className="w-full rounded-lg overflow-hidden shadow-lg border"
+        className="w-full h-full"
       />
     </div>
   );
