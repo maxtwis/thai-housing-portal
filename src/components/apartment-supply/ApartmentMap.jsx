@@ -5,9 +5,6 @@ import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import 'leaflet.markercluster';
 
-// Import proximity scoring utilities
-import { fetchNearbyCount, buildOverpassQuery } from '../../utils/proximityScoring';
-
 // Calculate category score based on nearby count (original logic)
 const calculateCategoryScore = (count, category) => {
   // Original thresholds from the working version
