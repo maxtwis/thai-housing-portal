@@ -171,32 +171,16 @@ const ApartmentMap = ({
         maxZoom: 19,
       }).addTo(map);
 
-      // Initialize marker cluster with better options to prevent _setPos errors
-      markerClusterRef.current = L.markerClusterGroup({
-        maxClusterRadius: isMobile ? 40 : 50,
-        spiderfyOnMaxZoom: true,
-        showCoverageOnHover: false,
-        zoomToBoundsOnClick: true,
-        removeOutsideVisibleBounds: true,
-        animate: !isMobile,
-        animateAddingMarkers: !isMobile,
-        disableClusteringAtZoom: 15,
-        // Add these options to prevent positioning errors
-        chunkedLoading: true,
-        chunkProgress: function(processed, total, elapsed) {
-          if (processed === total) {
-            console.log('Marker clustering completed');
-          }
-        }
-      });
+      // Create a simple layer group instead of clustering for now to avoid _setPos errors
+      markerClusterRef.current = L.layerGroup();
 
-      // Wait for map to be ready before adding cluster
+      // Wait for map to be ready before adding layer group
       map.whenReady(() => {
         try {
           map.addLayer(markerClusterRef.current);
-          console.log('Marker cluster layer added successfully');
-        } catch (clusterError) {
-          console.error('Error adding marker cluster:', clusterError);
+          console.log('Marker layer group added successfully');
+        } catch (layerError) {
+          console.error('Error adding marker layer:', layerError);
         }
       });
 
@@ -560,16 +544,20 @@ const ApartmentMap = ({
           }
         });
 
-        // Add to arrays and cluster
+        // Add to arrays and layer group
         markersRef.current.push(marker);
         
-        // Add to cluster with error handling
+        // Add to layer group instead of cluster to avoid _setPos errors
         try {
           markerClusterRef.current.addLayer(marker);
-        } catch (clusterError) {
-          console.error('Error adding marker to cluster:', clusterError);
-          // Fallback: add directly to map if clustering fails
-          marker.addTo(mapRef.current);
+        } catch (addLayerError) {
+          console.error('Error adding marker to layer group:', addLayerError);
+          // Fallback: add directly to map if layer group fails
+          try {
+            marker.addTo(mapRef.current);
+          } catch (directAddError) {
+            console.error('Error adding marker directly to map:', directAddError);
+          }
         }
         
       } catch (markerError) {
