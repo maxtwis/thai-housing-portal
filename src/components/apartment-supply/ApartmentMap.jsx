@@ -6,7 +6,113 @@ import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import 'leaflet.markercluster';
 
 // Import proximity scoring utilities
-import { fetchNearbyCount, buildOverpassQuery, calculateProximityScore } from '../../utils/proximityScoring';
+import { fetchNearbyCount, buildOverpassQuery } from '../../utils/proximityScoring';
+
+// Calculate category score based on nearby count (original logic)
+const calculateCategoryScore = (count, category) => {
+  // Original thresholds from the working version
+  const thresholds = {
+    restaurant: { excellent: 15, good: 8, fair: 3 },
+    convenience: { excellent: 8, good: 4, fair: 2 },
+    school: { excellent: 5, good: 3, fair: 1 },
+    health: { excellent: 8, good: 4, fair: 2 },
+    transport: { excellent: 10, good: 5, fair: 2 }
+  };
+
+  const threshold = thresholds[category] || thresholds.restaurant;
+
+  if (count >= threshold.excellent) return 100;
+  if (count >= threshold.good) return 80;
+  if (count >= threshold.fair) return 60;
+  if (count > 0) return 40;
+  return 0;
+};
+
+// Fetch nearby count for a specific category (with error handling)
+const fetchNearbyCount = async (category, lat, lng, radius = 1000) => {
+  const buildOverpassQuery = (category, lat, lng, radius) => {
+    const timeout = 10; // Reduced timeout to fail faster
+    switch(category) {
+      case 'restaurant':
+        return `[out:json][timeout:${timeout}];(node["amenity"~"^(restaurant|cafe|fast_food)$"](around:${radius},${lat},${lng});way["amenity"~"^(restaurant|cafe|fast_food)$"](around:${radius},${lat},${lng}););out count;`;
+      case 'convenience':
+        return `[out:json][timeout:${timeout}];(node["shop"~"^(convenience|supermarket)$"](around:${radius},${lat},${lng});way["shop"~"^(convenience|supermarket)$"](around:${radius},${lat},${lng}););out count;`;
+      case 'school':
+        return `[out:json][timeout:${timeout}];(node["amenity"~"^(school|university|kindergarten)$"](around:${radius},${lat},${lng});way["amenity"~"^(school|university|kindergarten)$"](around:${radius},${lat},${lng}););out count;`;
+      case 'health':
+        return `[out:json][timeout:${timeout}];(node["amenity"~"^(hospital|clinic|doctors|dentist|pharmacy)$"](around:${radius},${lat},${lng});node["healthcare"](around:${radius},${lat},${lng});node["shop"="chemist"](around:${radius},${lat},${lng});way["amenity"~"^(hospital|clinic|doctors|dentist|pharmacy)$"](around:${radius},${lat},${lng});way["healthcare"](around:${radius},${lat},${lng}););out count;`;
+      case 'transport':
+        return `[out:json][timeout:${timeout}];(node["public_transport"](around:${radius},${lat},${lng});node["highway"="bus_stop"](around:${radius},${lat},${lng});node["amenity"="bus_station"](around:${radius},${lat},${lng});node["railway"="station"](around:${radius},${lat},${lng});way["public_transport"](around:${radius},${lat},${lng});way["amenity"="bus_station"](around:${radius},${lat},${lng}););out count;`;
+      default:
+        return buildOverpassQuery('restaurant', lat, lng, radius);
+    }
+  };
+
+  const query = buildOverpassQuery(category, lat, lng, radius);
+  
+  try {
+    const response = await fetch('https://overpass-api.de/api/interpreter', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: query,
+    });
+
+    if (!response.ok) {
+      if (response.status === 429) {
+        // Rate limited - wait and retry once
+        console.log(`Rate limited for ${category}, waiting 3s...`);
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        const retryResponse = await fetch('https://overpass-api.de/api/interpreter', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: query,
+        });
+        
+        if (!retryResponse.ok) {
+          throw new Error(`Overpass API error: ${retryResponse.status}`);
+        }
+        
+        const retryData = await retryResponse.json();
+        return retryData.elements ? retryData.elements.length : 0;
+      }
+      
+      if (response.status === 504) {
+        // Gateway timeout - try with smaller radius
+        console.log(`Timeout for ${category}, trying smaller radius...`);
+        const smallerRadius = Math.floor(radius * 0.7);
+        const fallbackQuery = buildOverpassQuery(category, lat, lng, smallerRadius);
+        
+        const fallbackResponse = await fetch('https://overpass-api.de/api/interpreter', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: fallbackQuery,
+        });
+        
+        if (fallbackResponse.ok) {
+          const fallbackData = await fallbackResponse.json();
+          const count = fallbackData.elements ? fallbackData.elements.length : 0;
+          console.log(`Fallback success for ${category}: ${count} places in ${smallerRadius}m radius`);
+          // Scale up the count to approximate the original radius
+          return Math.round(count * 1.4);
+        }
+      }
+      
+      throw new Error(`Overpass API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.elements ? data.elements.length : 0;
+  } catch (error) {
+    console.error(`Error fetching ${category}:`, error);
+    return 0;
+  }
+};
 
 // Fix default markers
 delete L.Icon.Default.prototype._getIconUrl;
@@ -131,7 +237,7 @@ const ApartmentMap = ({
     };
   }, []);
 
-  // Calculate proximity score for a property
+  // Calculate proximity score for a property (using original weighted logic)
   const calculateProximityForProperty = async (property) => {
     if (proximityScores[property.id]) {
       return;
@@ -140,15 +246,71 @@ const ApartmentMap = ({
     setCalculatingProximity(property.id);
     
     try {
-      console.log(`Calculating proximity score for: ${property.apartment_name || property.id}`);
-      const score = await calculateProximityScore(property);
+      console.log(`Calculating proximity score for: ${property.apartment_name || property.name || property.id}`);
+      
+      // Use weighted categories like the original
+      const categories = {
+        transport: { weight: 0.25, name: 'ขนส่งสาธารณะ' },
+        convenience: { weight: 0.20, name: 'ร้านสะดวกซื้อ' },
+        restaurant: { weight: 0.20, name: 'ร้านอาหาร' },
+        health: { weight: 0.20, name: 'สถานพยาบาล' },
+        school: { weight: 0.15, name: 'สถานศึกษา' }
+      };
+
+      let weightedScore = 0;
+      let totalWeight = 0;
+      let completedCategories = [];
+
+      for (const [category, config] of Object.entries(categories)) {
+        try {
+          console.log(`Fetching ${config.name} data...`);
+          const nearbyCount = await fetchNearbyCount(category, property.latitude, property.longitude, 1000);
+          const categoryScore = calculateCategoryScore(nearbyCount, category);
+          
+          weightedScore += categoryScore * config.weight;
+          totalWeight += config.weight;
+          completedCategories.push({ 
+            category, 
+            score: categoryScore, 
+            count: nearbyCount,
+            weight: config.weight 
+          });
+          
+          console.log(`${config.name}: ${nearbyCount} places found, score: ${categoryScore}% (weight: ${config.weight})`);
+          
+          // Update with partial weighted score after 2 categories
+          if (completedCategories.length === 2) {
+            const partialScore = totalWeight > 0 ? Math.round(weightedScore / totalWeight) : 0;
+            setProximityScores(prev => ({
+              ...prev,
+              [property.id]: partialScore
+            }));
+            console.log(`Partial weighted score after ${completedCategories.length} categories: ${partialScore}%`);
+          }
+          
+          // Adaptive delay based on density
+          const delay = nearbyCount > 50 ? 150 : 250;
+          await new Promise(resolve => setTimeout(resolve, delay));
+          
+        } catch (error) {
+          console.error(`Error fetching ${category} data:`, error);
+          // Continue with other categories
+          await new Promise(resolve => setTimeout(resolve, 200));
+        }
+      }
+
+      const finalScore = totalWeight > 0 ? Math.round(weightedScore / totalWeight) : 0;
       
       setProximityScores(prev => ({
         ...prev,
-        [property.id]: score
+        [property.id]: finalScore
       }));
       
-      console.log(`Proximity score calculated: ${score}% for ${property.apartment_name || property.id}`);
+      console.log(`Final weighted proximity score: ${finalScore}% for ${property.apartment_name || property.name || property.id}`);
+      console.log('Category breakdown:', completedCategories.map(c => 
+        `${c.category}: ${c.score}% (count: ${c.count}, weight: ${c.weight})`
+      ).join(', '));
+      
     } catch (error) {
       console.error('Error calculating proximity score:', error);
       setProximityScores(prev => ({
