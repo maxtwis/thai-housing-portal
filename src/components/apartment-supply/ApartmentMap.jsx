@@ -44,58 +44,88 @@ const ApartmentMap = ({
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
 
-    const map = L.map(mapContainerRef.current, {
-      center: [13.7563, 100.5018], // Bangkok center
-      zoom: 10,
-      zoomControl: !isMobile,
-      attributionControl: false,
-    });
+    try {
+      const map = L.map(mapContainerRef.current, {
+        center: [13.7563, 100.5018], // Bangkok center
+        zoom: 10,
+        zoomControl: !isMobile,
+        attributionControl: false,
+        preferCanvas: true, // Better performance
+      });
 
-    // Add zoom control for mobile in bottom right
-    if (isMobile) {
-      L.control.zoom({
-        position: 'bottomright'
-      }).addTo(map);
-    }
-
-    // Add tile layer
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors',
-      maxZoom: 19,
-    }).addTo(map);
-
-    // Initialize marker cluster
-    markerClusterRef.current = L.markerClusterGroup({
-      maxClusterRadius: isMobile ? 40 : 50,
-      spiderfyOnMaxZoom: true,
-      showCoverageOnHover: false,
-      zoomToBoundsOnClick: true,
-      removeOutsideVisibleBounds: true,
-      animate: !isMobile,
-      animateAddingMarkers: !isMobile,
-      disableClusteringAtZoom: 15
-    });
-
-    map.addLayer(markerClusterRef.current);
-    mapRef.current = map;
-
-    // Add click handler to close pinned marker when clicking on map background
-    map.on('click', (e) => {
-      const isMapBackground = e.originalEvent.target.classList.contains('leaflet-container');
-      
-      if (isMapBackground) {
-        // Clear selected apartment and pinned marker
-        if (pinnedMarkerRef.current) {
-          mapRef.current.removeLayer(pinnedMarkerRef.current);
-          pinnedMarkerRef.current = null;
-        }
-        onApartmentSelect(null);
+      // Add zoom control for mobile in bottom right
+      if (isMobile) {
+        L.control.zoom({
+          position: 'bottomright'
+        }).addTo(map);
       }
-    });
+
+      // Add tile layer
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19,
+      }).addTo(map);
+
+      // Initialize marker cluster with better options to prevent _setPos errors
+      markerClusterRef.current = L.markerClusterGroup({
+        maxClusterRadius: isMobile ? 40 : 50,
+        spiderfyOnMaxZoom: true,
+        showCoverageOnHover: false,
+        zoomToBoundsOnClick: true,
+        removeOutsideVisibleBounds: true,
+        animate: !isMobile,
+        animateAddingMarkers: !isMobile,
+        disableClusteringAtZoom: 15,
+        // Add these options to prevent positioning errors
+        chunkedLoading: true,
+        chunkProgress: function(processed, total, elapsed) {
+          if (processed === total) {
+            console.log('Marker clustering completed');
+          }
+        }
+      });
+
+      // Wait for map to be ready before adding cluster
+      map.whenReady(() => {
+        try {
+          map.addLayer(markerClusterRef.current);
+          console.log('Marker cluster layer added successfully');
+        } catch (clusterError) {
+          console.error('Error adding marker cluster:', clusterError);
+        }
+      });
+
+      mapRef.current = map;
+
+      // Add click handler to close pinned marker when clicking on map background
+      map.on('click', (e) => {
+        const isMapBackground = e.originalEvent.target.classList.contains('leaflet-container');
+        
+        if (isMapBackground) {
+          // Clear selected apartment and pinned marker
+          if (pinnedMarkerRef.current) {
+            try {
+              mapRef.current.removeLayer(pinnedMarkerRef.current);
+            } catch (removeError) {
+              console.warn('Error removing pinned marker on map click:', removeError);
+            }
+            pinnedMarkerRef.current = null;
+          }
+          onApartmentSelect(null);
+        }
+      });
+
+    } catch (mapError) {
+      console.error('Error initializing map:', mapError);
+    }
 
     return () => {
       if (mapRef.current) {
-        mapRef.current.remove();
+        try {
+          mapRef.current.remove();
+        } catch (removeError) {
+          console.warn('Error removing map:', removeError);
+        }
         mapRef.current = null;
       }
     };
@@ -255,72 +285,115 @@ const ApartmentMap = ({
 
     if (!apartmentData || apartmentData.length === 0) return;
 
-    // Add markers for apartments
+    // Add markers for apartments with better error handling
     apartmentData.forEach(property => {
-      if (!property.latitude || !property.longitude) return;
-
-      const isSelected = selectedApartment && selectedApartment.id === property.id;
-      
-      const marker = L.circleMarker([property.latitude, property.longitude], 
-        createSimpleMarker(property, isSelected, false)
-      );
-
-      // Click handler - simplified without tooltip
-      marker.on('click', (e) => {
-        L.DomEvent.stopPropagation(e);
+      try {
+        // Validate coordinates
+        const lat = parseFloat(property.latitude);
+        const lng = parseFloat(property.longitude);
         
-        // Remove existing pinned marker
-        if (pinnedMarkerRef.current) {
-          mapRef.current.removeLayer(pinnedMarkerRef.current);
+        if (isNaN(lat) || isNaN(lng)) {
+          console.warn('Invalid coordinates for property:', property.id);
+          return;
         }
 
-        // Create new pinned marker
-        const pinnedMarker = L.circleMarker([property.latitude, property.longitude], 
-          createSimpleMarker(property, true, false)
-        );
+        const isSelected = selectedApartment && selectedApartment.id === property.id;
         
-        pinnedMarker.addTo(mapRef.current);
-        pinnedMarkerRef.current = pinnedMarker;
+        // Create marker with error handling
+        const marker = L.circleMarker([lat, lng], createSimpleMarker(property, isSelected, false));
+
+        // Add property reference for debugging
+        marker.propertyData = property;
+
+        // Click handler - simplified without tooltip
+        marker.on('click', (e) => {
+          try {
+            L.DomEvent.stopPropagation(e);
+            
+            // Remove existing pinned marker
+            if (pinnedMarkerRef.current) {
+              mapRef.current.removeLayer(pinnedMarkerRef.current);
+            }
+
+            // Create new pinned marker
+            const pinnedMarker = L.circleMarker([lat, lng], createSimpleMarker(property, true, false));
+            
+            pinnedMarker.addTo(mapRef.current);
+            pinnedMarkerRef.current = pinnedMarker;
+            
+            // Select apartment (this will update the statistics panel)
+            onApartmentSelect(property);
+            
+            // Calculate proximity score if not already calculated
+            if (!proximityScores[property.id] && calculatingProximity !== property.id) {
+              calculateProximityForProperty(property);
+            }
+            
+            // Zoom to marker if not already zoomed
+            if (!hasZoomedToMarker.current) {
+              mapRef.current.setView([lat, lng], 15, {
+                animate: true,
+                duration: 1
+              });
+              hasZoomedToMarker.current = true;
+            }
+          } catch (clickError) {
+            console.error('Error handling marker click:', clickError);
+          }
+        });
+
+        // Hover effects with error handling
+        marker.on('mouseover', () => {
+          try {
+            marker.isHovered = true;
+            const hoveredOptions = createSimpleMarker(property, isSelected, true);
+            marker.setStyle(hoveredOptions);
+          } catch (hoverError) {
+            console.error('Error on marker hover:', hoverError);
+          }
+        });
+
+        marker.on('mouseout', () => {
+          try {
+            marker.isHovered = false;
+            const normalOptions = createSimpleMarker(property, isSelected, false);
+            marker.setStyle(normalOptions);
+          } catch (hoverError) {
+            console.error('Error on marker mouseout:', hoverError);
+          }
+        });
+
+        // Add to arrays and cluster
+        markersRef.current.push(marker);
         
-        // Select apartment (this will update the statistics panel)
-        onApartmentSelect(property);
-        
-        // Calculate proximity score if not already calculated
-        if (!proximityScores[property.id] && calculatingProximity !== property.id) {
-          calculateProximityForProperty(property);
+        // Add to cluster with error handling
+        try {
+          markerClusterRef.current.addLayer(marker);
+        } catch (clusterError) {
+          console.error('Error adding marker to cluster:', clusterError);
+          // Fallback: add directly to map if clustering fails
+          marker.addTo(mapRef.current);
         }
         
-        // Zoom to marker if not already zoomed
-        if (!hasZoomedToMarker.current) {
-          mapRef.current.setView([property.latitude, property.longitude], 15, {
-            animate: true,
-            duration: 1
-          });
-          hasZoomedToMarker.current = true;
-        }
-      });
-
-      // Hover effects
-      marker.on('mouseover', () => {
-        marker.isHovered = true;
-        const hoveredOptions = createSimpleMarker(property, isSelected, true);
-        marker.setStyle(hoveredOptions);
-      });
-
-      marker.on('mouseout', () => {
-        marker.isHovered = false;
-        const normalOptions = createSimpleMarker(property, isSelected, false);
-        marker.setStyle(normalOptions);
-      });
-
-      markersRef.current.push(marker);
-      markerClusterRef.current.addLayer(marker);
+      } catch (markerError) {
+        console.error('Error creating marker for property:', property.id, markerError);
+      }
     });
 
-    // Initial map bounds
+    // Initial map bounds with error handling
     if (isInitialLoad.current && apartmentData.length > 0 && !selectedApartment) {
-      const bounds = L.latLngBounds(apartmentData.map(item => [item.latitude, item.longitude]));
-      mapRef.current.fitBounds(bounds, { padding: [20, 20] });
+      try {
+        const validCoords = apartmentData
+          .filter(item => !isNaN(parseFloat(item.latitude)) && !isNaN(parseFloat(item.longitude)))
+          .map(item => [parseFloat(item.latitude), parseFloat(item.longitude)]);
+        
+        if (validCoords.length > 0) {
+          const bounds = L.latLngBounds(validCoords);
+          mapRef.current.fitBounds(bounds, { padding: [20, 20] });
+        }
+      } catch (boundsError) {
+        console.error('Error setting initial bounds:', boundsError);
+      }
       isInitialLoad.current = false;
     }
 
@@ -332,18 +405,31 @@ const ApartmentMap = ({
 
     // Remove existing pinned marker
     if (pinnedMarkerRef.current) {
-      mapRef.current.removeLayer(pinnedMarkerRef.current);
+      try {
+        mapRef.current.removeLayer(pinnedMarkerRef.current);
+      } catch (removeError) {
+        console.warn('Error removing pinned marker:', removeError);
+      }
       pinnedMarkerRef.current = null;
     }
 
     // Add new pinned marker if apartment is selected
     if (selectedApartment) {
-      const pinnedMarker = L.circleMarker([selectedApartment.latitude, selectedApartment.longitude], 
-        createSimpleMarker(selectedApartment, true, false)
-      );
-      
-      pinnedMarker.addTo(mapRef.current);
-      pinnedMarkerRef.current = pinnedMarker;
+      try {
+        const lat = parseFloat(selectedApartment.latitude);
+        const lng = parseFloat(selectedApartment.longitude);
+        
+        if (!isNaN(lat) && !isNaN(lng)) {
+          const pinnedMarker = L.circleMarker([lat, lng], createSimpleMarker(selectedApartment, true, false));
+          
+          pinnedMarker.addTo(mapRef.current);
+          pinnedMarkerRef.current = pinnedMarker;
+        } else {
+          console.warn('Invalid coordinates for selected apartment:', selectedApartment.id);
+        }
+      } catch (pinnedError) {
+        console.error('Error creating pinned marker:', pinnedError);
+      }
     }
   }, [selectedApartment]);
 
