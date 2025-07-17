@@ -4,7 +4,6 @@ import ApartmentMap from '../components/apartment-supply/ApartmentMap';
 import ApartmentFilters from '../components/apartment-supply/ApartmentFilters';
 import ApartmentStatistics from '../components/apartment-supply/ApartmentStatistics';
 import ProximityPlaceButtons from '../components/apartment-supply/ProximityPlaceButtons';
-import ProximityPlaceButtons from '../components/apartment-supply/ProximityPlaceButtons';
 
 // Function to check if coordinates are within Thailand's boundaries
 const isCoordinateInThailand = (latitude, longitude) => {
