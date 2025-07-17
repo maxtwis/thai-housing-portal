@@ -1,6 +1,15 @@
 import React from 'react';
 
-const HDSFilters = ({ filters, onFiltersChange, colorScheme, onColorSchemeChange, isMobile }) => {
+const HDSFilters = ({ 
+  filters, 
+  onFiltersChange, 
+  colorScheme, 
+  onColorSchemeChange, 
+  isMobile,
+  selectedProvince,
+  onProvinceChange,
+  provinces
+}) => {
   const handleFilterChange = (filterType, value) => {
     onFiltersChange({
       ...filters,
@@ -8,7 +17,7 @@ const HDSFilters = ({ filters, onFiltersChange, colorScheme, onColorSchemeChange
     });
   };
 
-  // Count active filters
+  // Count active filters (excluding province since it's always selected)
   const activeFilterCount = Object.values(filters).filter(v => v !== 'all').length;
 
   return (
@@ -26,6 +35,29 @@ const HDSFilters = ({ filters, onFiltersChange, colorScheme, onColorSchemeChange
             </span>
           )}
         </div>
+      </div>
+
+      {/* Province Selector - NEW ADDITION */}
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          <div className="flex items-center gap-2">
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+            </svg>
+            จังหวัด
+          </div>
+        </label>
+        <select
+          value={selectedProvince}
+          onChange={(e) => onProvinceChange(parseInt(e.target.value))}
+          className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+        >
+          {provinces.map(province => (
+            <option key={province.id} value={province.id}>
+              {province.name}
+            </option>
+          ))}
+        </select>
       </div>
 
       {/* Color Scheme Selector */}
@@ -142,67 +174,10 @@ const HDSFilters = ({ filters, onFiltersChange, colorScheme, onColorSchemeChange
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
-              รีเซ็ตตัวกรอง
+              รีเซ็ต
             </div>
           </button>
         </div>
-
-        {/* Active Filters Display */}
-        {activeFilterCount > 0 && (
-          <div className="pt-3 border-t border-gray-200">
-            <p className="text-xs font-medium text-gray-600 mb-2">ตัวกรองที่ใช้งาน:</p>
-            <div className="space-y-2">
-              {filters.housingSystem !== 'all' && (
-                <div className="flex items-center justify-between bg-blue-50 px-3 py-2 rounded-lg group hover:bg-blue-100 transition-colors">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                    <span className="text-sm text-blue-800">ระบบที่อยู่อาศัย: C{filters.housingSystem}</span>
-                  </div>
-                  <button 
-                    onClick={() => handleFilterChange('housingSystem', 'all')}
-                    className="text-blue-600 hover:text-blue-800 opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-              )}
-              {filters.densityLevel !== 'all' && (
-                <div className="flex items-center justify-between bg-green-50 px-3 py-2 rounded-lg group hover:bg-green-100 transition-colors">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span className="text-sm text-green-800">ระดับความหนาแน่น: Class {filters.densityLevel}</span>
-                  </div>
-                  <button 
-                    onClick={() => handleFilterChange('densityLevel', 'all')}
-                    className="text-green-600 hover:text-green-800 opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-              )}
-              {filters.populationRange !== 'all' && (
-                <div className="flex items-center justify-between bg-orange-50 px-3 py-2 rounded-lg group hover:bg-orange-100 transition-colors">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                    <span className="text-sm text-orange-800">ประชากร: {filters.populationRange.replace('-', ' - ')} คน</span>
-                  </div>
-                  <button 
-                    onClick={() => handleFilterChange('populationRange', 'all')}
-                    className="text-orange-600 hover:text-orange-800 opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

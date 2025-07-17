@@ -32,7 +32,7 @@ const HousingDeliverySystem = () => {
     }
   });
 
-  // Available provinces - UPDATED TO INCLUDE SONGKHLA
+  // Available provinces
   const provinces = [
     { id: 40, name: 'ขอนแก่น', file: '/data/HDS_KKN01.geojson' },
     { id: 50, name: 'เชียงใหม่', file: '/data/HDS_CNX_02GJSON.geojson' },
@@ -96,45 +96,41 @@ const HousingDeliverySystem = () => {
         let totalPop = 0;
         let totalHousing = 0;
         const housingSystems = {
-          HDS_C1: 0, // ระบบชุมชนบุกรุก
-          HDS_C2: 0, // ระบบถือครองชั่วคราว
-          HDS_C3: 0, // ระบบกลุ่มประชากรแฝง
-          HDS_C4: 0, // ระบบที่อยู่อาศัยลูกจ้าง
-          HDS_C5: 0, // ระบบที่อยู่อาศัยรัฐ
-          HDS_C6: 0, // ระบบที่อยู่อาศัยรัฐสนับสนุน
-          HDS_C7: 0  // ระบบที่อยู่อาศัยเอกชน
+          C1: 0, C2: 0, C3: 0, C4: 0, C5: 0, C6: 0, C7: 0
         };
-        const densityLevels = {};
-        let problemStability = 0;
-        let problemSubsidies = 0;
+        const densityLevels = {
+          1: 0, 2: 0, 3: 0, 4: 0, 5: 0
+        };
         let problemSupply = 0;
+        let problemSubsidies = 0;
+        let problemStability = 0;
 
         features.forEach(feature => {
           const props = feature.properties;
+          const population = props.Grid_POP || 0;
+          const housing = props.Grid_HU || 0;
           
-          // Add to totals
-          totalPop += props.Grid_POP || 0;
-          totalHousing += props.Grid_House || 0;
+          totalPop += population;
+          totalHousing += housing;
           
           // Count housing systems
-          housingSystems.HDS_C1 += props.HDS_C1_num || 0;
-          housingSystems.HDS_C2 += props.HDS_C2_num || 0;
-          housingSystems.HDS_C3 += props.HDS_C3_num || 0;
-          housingSystems.HDS_C4 += props.HDS_C4_num || 0;
-          housingSystems.HDS_C5 += props.HDS_C5_num || 0;
-          housingSystems.HDS_C6 += props.HDS_C6_num || 0;
-          housingSystems.HDS_C7 += props.HDS_C7_num || 0;
-          
-          // Count density levels
-          const densityClass = props.Grid_Class;
-          if (densityClass) {
-            densityLevels[densityClass] = (densityLevels[densityClass] || 0) + 1;
+          for (let i = 1; i <= 7; i++) {
+            const systemCount = props[`HDS_C${i}_num`] || 0;
+            if (systemCount > 0) {
+              housingSystems[`C${i}`] += systemCount;
+            }
           }
           
-          // Count problem areas
-          if (props.Stability_) problemStability++;
-          if (props.Subsidies_) problemSubsidies++;
-          if (props.Supply_Pro) problemSupply++;
+          // Count density levels
+          const gridClass = props.Grid_Class;
+          if (gridClass >= 1 && gridClass <= 5) {
+            densityLevels[gridClass]++;
+          }
+          
+          // Count problem areas (assuming these fields exist)
+          if (props.supply_problem) problemSupply++;
+          if (props.subsidies_problem) problemSubsidies++;
+          if (props.stability_problem) problemStability++;
         });
 
         const totalGrids = features.length;
@@ -176,36 +172,30 @@ const HousingDeliverySystem = () => {
     setSelectedGrid(null);
   };
 
+  // Handle province change
+  const handleProvinceChange = (provinceId) => {
+    setSelectedProvince(provinceId);
+    setSelectedGrid(null); // Clear any selected grid when changing province
+  };
+
   const currentProvince = getCurrentProvince();
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="h-screen flex flex-col">
-        {/* Header with Province Selector */}
+        {/* Simplified Header - Province selector moved to filter card */}
         <div className="bg-white shadow-sm border-b border-gray-200 px-4 py-3">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <h1 className="text-xl font-bold text-gray-900">
               ระบบการจัดการที่อยู่อาศัย (Housing Delivery System)
             </h1>
-            <div className="flex flex-wrap gap-2">
-              {provinces.map(province => (
-                <button
-                  key={province.id}
-                  onClick={() => setSelectedProvince(province.id)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    selectedProvince === province.id
-                      ? 'bg-blue-600 text-white shadow-md'
-                      : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
-                  }`}
-                >
-                  {province.name}
-                </button>
-              ))}
+            <div className="text-sm text-gray-600">
+              จังหวัด: <span className="font-medium text-gray-800">{currentProvince.name}</span>
             </div>
           </div>
         </div>
 
-        {/* Main Content - Redesigned Layout */}
+        {/* Main Content */}
         <div className="flex-1 overflow-hidden">
           {isMobile ? (
             // Mobile Layout - Keep existing stacked layout
@@ -215,51 +205,45 @@ const HousingDeliverySystem = () => {
                 onClick={toggleFilters}
                 className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg font-medium shadow-md hover:bg-blue-700 transition-colors"
               >
-                {showFilters ? 'Hide Filters' : 'Show Filters'}
+                {showFilters ? 'ซ่อนตัวกรอง' : 'แสดงตัวกรอง'}
               </button>
 
-              {/* Filters */}
+              {/* Mobile Filters */}
               {showFilters && (
-                <div className="bg-white rounded-lg shadow-md">
+                <div className="bg-white rounded-lg shadow-lg">
                   <HDSFilters
                     filters={filters}
                     onFiltersChange={setFilters}
                     colorScheme={colorScheme}
                     onColorSchemeChange={setColorScheme}
-                    isMobile={true}
+                    isMobile={isMobile}
+                    selectedProvince={selectedProvince}
+                    onProvinceChange={handleProvinceChange}
+                    provinces={provinces}
                   />
                 </div>
               )}
 
-              {/* Statistics */}
-              <div className="bg-white rounded-lg shadow-md">
-                <HDSStatistics
-                  stats={stats}
-                  selectedGrid={selectedGrid}
-                  onClearSelection={handleClearSelection}
-                  isMobile={true}
-                  provinceName={currentProvince.name}
-                />
-              </div>
-
-              {/* Map */}
-              <div className="bg-white rounded-lg shadow-md overflow-hidden relative" style={{ height: "60vh" }}>
+              {/* Mobile Map */}
+              <div className="bg-white rounded-lg shadow-lg overflow-hidden" style={{ height: '60vh' }}>
                 {loading && (
-                  <div className="absolute inset-0 bg-white bg-opacity-80 flex items-center justify-center z-10">
-                    <div className="text-center">
-                      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
-                      <p className="mt-3 text-gray-600">Loading HDS data for {currentProvince.name}...</p>
+                  <div className="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center z-10">
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 shadow-lg">
+                      <div className="flex items-center space-x-3">
+                        <div className="animate-spin rounded-full h-6 w-6 border-2 border-blue-600 border-t-transparent"></div>
+                        <p className="text-blue-800 font-medium">กำลังโหลดข้อมูล...</p>
+                      </div>
                     </div>
                   </div>
                 )}
-                
+
                 {error && (
                   <div className="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center z-10">
-                    <div className="bg-red-50 border border-red-200 rounded-lg p-4 max-w-md">
-                      <p className="text-red-800">{error}</p>
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-6 shadow-lg">
+                      <p className="text-red-800 text-center mb-4">{error}</p>
                       <button 
                         onClick={() => window.location.reload()}
-                        className="mt-4 w-full px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+                        className="w-full px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
                       >
                         Retry
                       </button>
@@ -277,85 +261,106 @@ const HousingDeliverySystem = () => {
                   supplyData={supplyData}
                 />
               </div>
-            </div>
-          ) : (
-            // Desktop Layout - New side-by-side design
-            <div className="flex h-full">
-              {/* Full-page Map on the left */}
-              <div className="flex-1 relative">
-                {loading && (
-                  <div className="absolute inset-0 bg-white bg-opacity-80 flex items-center justify-center z-10">
-                    <div className="text-center">
-                      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
-                      <p className="mt-3 text-gray-600 text-lg">Loading HDS data for {currentProvince.name}...</p>
-                    </div>
-                  </div>
-                )}
-                
-                {error && (
-                  <div className="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center z-10">
-                    <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md shadow-lg">
-                      <p className="text-red-800 text-lg mb-4">{error}</p>
-                      <button 
-                        onClick={() => window.location.reload()}
-                        className="w-full px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
-                      >
-                        Retry
-                      </button>
-                    </div>
-                  </div>
-                )}
 
-                <HDSMap 
-                  filters={filters}
-                  colorScheme={colorScheme}
-                  isMobile={false}
-                  onGridSelect={handleGridSelect}
+              {/* Mobile Statistics */}
+              <div className="bg-white rounded-lg shadow-lg">
+                <HDSStatistics
+                  stats={stats}
                   selectedGrid={selectedGrid}
-                  selectedProvince={selectedProvince}
+                  onClearSelection={handleClearSelection}
+                  isMobile={isMobile}
+                  provinceName={currentProvince.name}
                   supplyData={supplyData}
                 />
               </div>
+            </div>
+          ) : (
+            // Desktop Layout - Side by side with improved spacing
+            <div className="h-full overflow-hidden">
+              <div className="flex h-full">
+                {/* Map Container */}
+                <div className="flex-1 relative">
+                  {loading && (
+                    <div className="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center z-10">
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 max-w-md shadow-lg">
+                        <div className="flex items-center space-x-3 mb-2">
+                          <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-600 border-t-transparent"></div>
+                          <p className="text-blue-800 text-lg font-medium">กำลังโหลดข้อมูล...</p>
+                        </div>
+                        <p className="text-blue-600 text-sm">กำลังโหลดข้อมูลจังหวัด {currentProvince.name}</p>
+                      </div>
+                    </div>
+                  )}
 
-              {/* Right sidebar with filters and statistics */}
-              <div className="w-96 bg-gray-100 border-l border-gray-300 overflow-y-auto">
-                <div className="p-4 space-y-4">
-                  {/* Filters Card */}
-                  <div className="bg-white rounded-lg shadow-lg">
-                    <HDSFilters
-                      filters={filters}
-                      onFiltersChange={setFilters}
-                      colorScheme={colorScheme}
-                      onColorSchemeChange={setColorScheme}
-                      isMobile={false}
-                    />
-                  </div>
+                  {error && (
+                    <div className="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center z-10">
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md shadow-lg">
+                        <p className="text-red-800 text-lg mb-4">{error}</p>
+                        <button 
+                          onClick={() => window.location.reload()}
+                          className="w-full px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+                        >
+                          Retry
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
-                  {/* Statistics Card */}
-                  <div className="bg-white rounded-lg shadow-lg">
-                    <HDSStatistics
-                      stats={stats}
-                      selectedGrid={selectedGrid}
-                      onClearSelection={handleClearSelection}
-                      isMobile={isMobile}
-                      provinceName={currentProvince.name}
-                      supplyData={supplyData} // Add this line
-                    />
-                  </div>
+                  <HDSMap 
+                    filters={filters}
+                    colorScheme={colorScheme}
+                    isMobile={false}
+                    onGridSelect={handleGridSelect}
+                    selectedGrid={selectedGrid}
+                    selectedProvince={selectedProvince}
+                    supplyData={supplyData}
+                  />
+                </div>
 
-                  {/* Additional Info Card */}
-                  <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                    <div className="flex items-start space-x-3">
-                      <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                      </svg>
-                      <div className="text-sm text-blue-800">
-                        <p className="font-semibold mb-1">วิธีใช้งาน</p>
-                        <ul className="space-y-1 text-xs">
-                          <li>• คลิกที่กริดบนแผนที่เพื่อดูรายละเอียด</li>
-                          <li>• ใช้ตัวกรองเพื่อแสดงเฉพาะข้อมูลที่ต้องการ</li>
-                          <li>• เปลี่ยนรูปแบบการแสดงสีได้จากเมนู</li>
-                        </ul>
+                {/* Right sidebar with filters and statistics */}
+                <div className="w-96 bg-gray-100 border-l border-gray-300 overflow-y-auto">
+                  <div className="p-4 space-y-4">
+                    {/* Filters Card - Now includes province selector */}
+                    <div className="bg-white rounded-lg shadow-lg">
+                      <HDSFilters
+                        filters={filters}
+                        onFiltersChange={setFilters}
+                        colorScheme={colorScheme}
+                        onColorSchemeChange={setColorScheme}
+                        isMobile={false}
+                        selectedProvince={selectedProvince}
+                        onProvinceChange={handleProvinceChange}
+                        provinces={provinces}
+                      />
+                    </div>
+
+                    {/* Statistics Card */}
+                    <div className="bg-white rounded-lg shadow-lg">
+                      <HDSStatistics
+                        stats={stats}
+                        selectedGrid={selectedGrid}
+                        onClearSelection={handleClearSelection}
+                        isMobile={isMobile}
+                        provinceName={currentProvince.name}
+                        supplyData={supplyData}
+                      />
+                    </div>
+
+                    {/* Additional Info Card */}
+                    <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                      <div className="flex items-start space-x-3">
+                        <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                        </svg>
+                        <div className="text-sm text-blue-800">
+                          <p className="font-semibold mb-1">วิธีใช้งาน</p>
+                          <ul className="space-y-1 text-xs">
+                            <li>• เลือกจังหวัดจากเมนูด้านบน</li>
+                            <li>• คลิกที่กริดบนแผนที่เพื่อดูรายละเอียด</li>
+                            <li>• ใช้ตัวกรองเพื่อแสดงเฉพาะข้อมูลที่ต้องการ</li>
+                            <li>• เปลี่ยนรูปแบบการแสดงสีได้จากเมนู</li>
+                          </ul>
+                        </div>
                       </div>
                     </div>
                   </div>
