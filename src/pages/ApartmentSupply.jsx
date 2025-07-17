@@ -334,7 +334,15 @@ const ApartmentSupply = () => {
         for (const resourceId of possibleResourceIds) {
           try {
             console.log(`Trying resource ID: ${resourceId}`);
-            data = await getCkanData(resourceId, { limit: 1000 });
+            // First get total count
+            const metaData = await getCkanData(resourceId, { limit: 0 });
+            const totalRecords = metaData.total || 0;
+            console.log(`Total records available: ${totalRecords}`);
+            
+            // Then fetch all records with a higher limit
+            data = await getCkanData(resourceId, { 
+              limit: Math.max(totalRecords, 50000) // Use total count or 50k max as safety
+            });
             console.log(`Successfully loaded data from resource: ${resourceId}`);
             break; // Exit loop if successful
           } catch (err) {
