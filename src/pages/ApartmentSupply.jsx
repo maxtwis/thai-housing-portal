@@ -28,7 +28,7 @@ const ApartmentSupply = () => {
   const [error, setError] = useState(null);
   const [selectedApartment, setSelectedApartment] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
-  const [showFilters, setShowFilters] = useState(false); // Changed to false by default
+  const [showFilters, setShowFilters] = useState(false); // Hidden by default
   
   // Province selection state - now defaults to all provinces
   const [selectedProvince, setSelectedProvince] = useState(null); // null = all provinces
@@ -85,7 +85,6 @@ const ApartmentSupply = () => {
   useEffect(() => {
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768);
-      // Don't auto-show filters on desktop anymore
     };
     
     checkMobile();
@@ -654,20 +653,32 @@ const ApartmentSupply = () => {
             />
           </div>
 
-          {/* Mobile Statistics - Scrollable bottom sheet when apartment is selected */}
+          {/* Mobile Statistics - Full screen overlay when apartment is selected */}
           {selectedApartment && (
-            <div className="bg-white border-t border-gray-300 shadow-lg max-h-[50vh] overflow-y-auto">
-              <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-2 flex items-center justify-between">
-                <h3 className="font-semibold text-gray-800">รายละเอียด</h3>
+            <div className="fixed inset-0 bg-white z-50 flex flex-col">
+              {/* Header with close button */}
+              <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setSelectedApartment(null)}
+                    className="p-2 -ml-2 text-gray-600 hover:text-gray-800"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+                  <h3 className="text-lg font-semibold text-gray-800">รายละเอียดอพาร์ตเมนต์</h3>
+                </div>
                 <button
                   onClick={() => setSelectedApartment(null)}
-                  className="text-gray-500 hover:text-gray-700"
+                  className="p-2 text-gray-500 hover:text-gray-700"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
+
               {/* Scrollable content area */}
               <div className="flex-1 overflow-y-auto bg-gray-50">
                 <ApartmentStatistics
@@ -716,10 +727,10 @@ const ApartmentSupply = () => {
           )}
         </div>
       ) : (
-        // Desktop Layout - Side by side with floating filter button
-        <div className="flex-1 overflow-hidden">
+        // Desktop Layout - Full width map with floating elements
+        <div className="flex-1 overflow-hidden relative">
           <div className="flex h-full">
-            {/* Map Container */}
+            {/* Map Container - Full width */}
             <div className="flex-1 relative">
               <ApartmentMap 
                 apartmentData={filteredData}
@@ -733,48 +744,18 @@ const ApartmentSupply = () => {
                 showingNearbyPlaces={showingNearbyPlaces}
                 isMobile={false}
               />
-
-              {/* Desktop floating filter toggle - fixed positioning and z-index */}
-              <button
-                onClick={toggleFilters}
-                className="fixed bottom-6 right-6 bg-orange-500 text-white rounded-full p-4 shadow-lg hover:bg-orange-600 transition-colors"
-                style={{ zIndex: 1000 }}
-                title="ตัวกรอง"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z" />
-                </svg>
-              </button>
             </div>
 
-            {/* Always show statistics card when apartment is selected - even without filters */}
-            {selectedApartment && !showFilters && (
-              <div className="absolute top-4 right-4 w-80 bg-white rounded-lg shadow-xl border border-gray-200 max-h-96 overflow-y-auto z-50">
-                <ApartmentStatistics
-                  selectedApartment={selectedApartment}
-                  stats={stats}
-                  proximityScores={proximityScores}
-                  calculateAmenityScore={calculateAmenityScore}
-                  filteredData={filteredData}
-                  isMobile={false}
-                />
-              </div>
-            )}
-
-            {/* Right sidebar with filters and statistics - only show when filters enabled */}
+            {/* Right sidebar - only show when filters enabled */}
             {showFilters && (
               <div 
                 className="w-96 bg-gray-100 border-l border-gray-300 overflow-y-auto"
                 style={{
-                  animation: 'slideInRight 0.3s ease-out',
-                  '@keyframes slideInRight': {
-                    'from': { transform: 'translateX(100%)', opacity: 0 },
-                    'to': { transform: 'translateX(0)', opacity: 1 }
-                  }
+                  animation: 'slideInRight 0.3s ease-out'
                 }}
               >
                 <div className="p-4 space-y-4">
-                  {/* Enhanced Filters Card - Now includes amenity and proximity score filters */}
+                  {/* Enhanced Filters Card */}
                   <div className="bg-white rounded-lg shadow-lg">
                     <ApartmentFilters
                       filters={filters}
@@ -791,7 +772,7 @@ const ApartmentSupply = () => {
                     />
                   </div>
 
-                  {/* Statistics Card - Enhanced with proximity and amenity data */}
+                  {/* Statistics Card */}
                   <div className="bg-white rounded-lg shadow-lg">
                     <ApartmentStatistics
                       selectedApartment={selectedApartment}
@@ -816,6 +797,54 @@ const ApartmentSupply = () => {
               </div>
             )}
           </div>
+
+          {/* Desktop floating filter toggle - always visible with very high z-index */}
+          <button
+            onClick={toggleFilters}
+            className="fixed bottom-6 right-6 bg-orange-500 text-white rounded-full p-4 shadow-xl hover:bg-orange-600 transition-colors"
+            style={{ zIndex: 999999 }}
+            title="ตัวกรอง"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z" />
+            </svg>
+          </button>
+        </div>
+      )}
+
+      {/* DESKTOP FLOATING STATISTICS CARD - OUTSIDE ALL CONTAINERS */}
+      {!isMobile && selectedApartment && !showFilters && (
+        <div 
+          className="bg-white rounded-lg shadow-2xl border border-gray-300 overflow-y-auto"
+          style={{
+            position: 'fixed',
+            top: '80px',
+            right: '20px',
+            width: '350px',
+            maxHeight: 'calc(100vh - 120px)',
+            zIndex: 999998,
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+          }}
+        >
+          <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+            <h3 className="font-semibold text-gray-800">รายละเอียด</h3>
+            <button
+              onClick={() => setSelectedApartment(null)}
+              className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <ApartmentStatistics
+            selectedApartment={selectedApartment}
+            stats={stats}
+            proximityScores={proximityScores}
+            calculateAmenityScore={calculateAmenityScore}
+            filteredData={filteredData}
+            isMobile={false}
+          />
         </div>
       )}
     </div>
