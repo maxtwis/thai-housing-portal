@@ -98,6 +98,10 @@ const ApartmentSupply = () => {
 
   // Toggle filters on mobile
   const toggleFilters = () => {
+    // If apartment is selected, close it first, then toggle filters
+    if (selectedApartment) {
+      setSelectedApartment(null);
+    }
     setShowFilters(!showFilters);
   };
 
@@ -614,11 +618,11 @@ const ApartmentSupply = () => {
 
       {/* Main Content */}
       {isMobile ? (
-        // Mobile Layout - Stacked with collapsible filters
+        // Mobile Layout - Improved with proper scrolling and map preservation
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Mobile Filters - Collapsible */}
+          {/* Mobile Filters - Collapsible with better scrolling */}
           {showFilters && (
-            <div className="bg-gray-100 border-b border-gray-300 overflow-y-auto" style={{ maxHeight: '40vh' }}>
+            <div className="bg-gray-100 border-b border-gray-300 max-h-[40vh] overflow-y-auto">
               <div className="p-4">
                 <ApartmentFilters
                   filters={filters}
@@ -630,14 +634,15 @@ const ApartmentSupply = () => {
                   provinces={provinces}
                   propertyTypes={getUniquePropertyTypes()}
                   roomTypes={getUniqueRoomTypes()}
+                  proximityScores={proximityScores}
                   isMobile={true}
                 />
               </div>
             </div>
           )}
 
-          {/* Mobile Map */}
-          <div className="flex-1 relative">
+          {/* Mobile Map - Always visible with proper height */}
+          <div className={`relative ${selectedApartment ? 'h-[50vh]' : 'flex-1'}`}>
             <ApartmentMap 
               apartmentData={filteredData}
               selectedApartment={selectedApartment}
@@ -650,19 +655,57 @@ const ApartmentSupply = () => {
               showingNearbyPlaces={showingNearbyPlaces}
               isMobile={true}
             />
+            
+            {/* Mobile close button for selected apartment */}
+            {selectedApartment && (
+              <button
+                onClick={() => setSelectedApartment(null)}
+                className="absolute top-4 right-4 bg-white rounded-full p-2 shadow-lg border border-gray-300 z-10"
+              >
+                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
           </div>
 
-          {/* Mobile Statistics - Floating bottom sheet */}
+          {/* Mobile Statistics - Scrollable bottom sheet when apartment is selected */}
           {selectedApartment && (
-            <div className="bg-white border-t border-gray-300 shadow-lg">
-              <ApartmentStatistics
-                selectedApartment={selectedApartment}
-                stats={stats}
-                proximityScores={proximityScores}
-                calculateAmenityScore={calculateAmenityScore}
-                isMobile={true}
-              />
+            <div className="bg-white border-t border-gray-300 shadow-lg max-h-[50vh] overflow-y-auto">
+              <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-2 flex items-center justify-between">
+                <h3 className="font-semibold text-gray-800">รายละเอียด</h3>
+                <button
+                  onClick={() => setSelectedApartment(null)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+              </div>
+              <div className="overflow-y-auto">
+                <ApartmentStatistics
+                  selectedApartment={selectedApartment}
+                  stats={stats}
+                  proximityScores={proximityScores}
+                  calculateAmenityScore={calculateAmenityScore}
+                  filteredData={filteredData}
+                  isMobile={true}
+                />
+              </div>
             </div>
+          )}
+
+          {/* Mobile floating filter toggle when no apartment selected */}
+          {!selectedApartment && (
+            <button
+              onClick={toggleFilters}
+              className="absolute bottom-6 right-6 bg-orange-500 text-white rounded-full p-4 shadow-lg z-10"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z" />
+              </svg>
+            </button>
           )}
         </div>
       ) : (
