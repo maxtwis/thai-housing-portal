@@ -458,7 +458,7 @@ const Dashboard = () => {
             {metrics.population > 0 && (
               <div className="bg-white rounded-lg shadow p-4 mt-4">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                  สงขลา Overview
+                   สถิติระดับจังหวัด
                 </h3>
                 
                 <div className="space-y-3">
