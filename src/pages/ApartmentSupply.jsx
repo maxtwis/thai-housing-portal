@@ -319,9 +319,13 @@ const ApartmentSupply = () => {
       
       try {
         console.log('Loading apartment data...');
-
+        
+        // Try multiple resource IDs in case the original one is not working
         const possibleResourceIds = [
-          'b6dbb8e0-1194-4eeb-945d-e883b3275b35',
+          'b6dbb8e0-1194-4eeb-945d-e883b3275b35', // The ID you provided - try this first
+          'bba7efcc-81d5-465d-a4bf-f05c2b30ba9c', // Original apartment supply resource
+          '15132377-edb0-40b0-9aad-8fd9f6769b92', // Housing supply resource (fallback)
+          '9cfc5468-36f6-40d3-b76e-febf79e9ca9f'  // Another supply resource (fallback)
         ];
         
         let data = null;
@@ -698,11 +702,12 @@ const ApartmentSupply = () => {
             </div>
           )}
 
-          {/* Mobile floating filter toggle when no apartment selected */}
+          {/* Mobile floating filter toggle when no apartment selected - fixed positioning */}
           {!selectedApartment && (
             <button
               onClick={toggleFilters}
-              className="absolute bottom-6 right-6 bg-orange-500 text-white rounded-full p-4 shadow-lg z-10"
+              className="fixed bottom-6 right-6 bg-orange-500 text-white rounded-full p-4 shadow-lg z-50"
+              style={{ zIndex: 1000 }}
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z" />
@@ -729,10 +734,11 @@ const ApartmentSupply = () => {
                 isMobile={false}
               />
 
-              {/* Desktop floating filter toggle - same style as mobile */}
+              {/* Desktop floating filter toggle - fixed positioning and z-index */}
               <button
                 onClick={toggleFilters}
-                className="absolute bottom-6 right-6 bg-orange-500 text-white rounded-full p-4 shadow-lg hover:bg-orange-600 transition-colors z-10"
+                className="fixed bottom-6 right-6 bg-orange-500 text-white rounded-full p-4 shadow-lg hover:bg-orange-600 transition-colors"
+                style={{ zIndex: 1000 }}
                 title="ตัวกรอง"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -740,6 +746,20 @@ const ApartmentSupply = () => {
                 </svg>
               </button>
             </div>
+
+            {/* Always show statistics card when apartment is selected - even without filters */}
+            {selectedApartment && !showFilters && (
+              <div className="absolute top-4 right-4 w-80 bg-white rounded-lg shadow-xl border border-gray-200 max-h-96 overflow-y-auto z-50">
+                <ApartmentStatistics
+                  selectedApartment={selectedApartment}
+                  stats={stats}
+                  proximityScores={proximityScores}
+                  calculateAmenityScore={calculateAmenityScore}
+                  filteredData={filteredData}
+                  isMobile={false}
+                />
+              </div>
+            )}
 
             {/* Right sidebar with filters and statistics - only show when filters enabled */}
             {showFilters && (
