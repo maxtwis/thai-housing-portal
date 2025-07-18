@@ -698,22 +698,6 @@ const ApartmentMap = ({
         </div>
       )}
 
-      {/* Map Legend */}
-      <div className="absolute bottom-4 left-4 bg-white rounded-lg shadow-lg p-3 z-10 border border-gray-200">
-        <div className="text-sm font-medium text-gray-700 mb-2">สีแสดง{getColorSchemeName(colorScheme)}</div>
-        <div className="space-y-1">
-          {getColorSchemeLabels(colorScheme).map((item, index) => (
-            <div key={index} className="flex items-center gap-2">
-              <div 
-                className="w-3 h-3 rounded-full border border-white" 
-                style={{ backgroundColor: item.color }}
-              ></div>
-              <span className="text-xs text-gray-600">{item.label}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
       {/* Proximity Calculation Status */}
       {Object.keys(proximityScores).length > 0 && (
         <div className="absolute top-4 left-4 bg-white rounded-lg shadow-lg p-2 z-10 border border-gray-200">
@@ -724,39 +708,6 @@ const ApartmentMap = ({
       )}
     </div>
   );
-};
-
-// Helper functions for legend
-const getColorSchemeName = (colorScheme) => {
-  switch (colorScheme) {
-    case 'priceRange': return 'ช่วงราคา';
-    case 'amenityScore': return 'คะแนนสิ่งอำนวยความสะดวก';
-    case 'proximityScore': return 'คะแนนความใกล้เคียง';
-    default: return 'ข้อมูล';
-  }
-};
-
-const getColorSchemeLabels = (colorScheme) => {
-  switch (colorScheme) {
-    case 'priceRange':
-      return [
-        { color: '#22c55e', label: '< 5,000 บาท' },
-        { color: '#84cc16', label: '5,000-10,000 บาท' },
-        { color: '#eab308', label: '10,000-20,000 บาท' },
-        { color: '#f97316', label: '20,000-30,000 บาท' },
-        { color: '#ef4444', label: '> 30,000 บาท' }
-      ];
-    case 'amenityScore':
-    case 'proximityScore':
-      return [
-        { color: '#10b981', label: 'สูง (80-100%)' },
-        { color: '#f59e0b', label: 'ปานกลาง (60-79%)' },
-        { color: '#ef4444', label: 'ต่ำ (40-59%)' },
-        { color: '#6b7280', label: 'ต่ำมาก (0-39%)' }
-      ];
-    default:
-      return [{ color: '#3b82f6', label: 'ข้อมูล' }];
-  }
 };
 
 export default ApartmentMap;
