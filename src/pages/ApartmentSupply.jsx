@@ -660,66 +660,6 @@ const ApartmentSupply = () => {
             />
           </div>
 
-          {/* Mobile Statistics - Full screen overlay when apartment is selected */}
-          {selectedApartment && (
-            <div className="fixed inset-0 bg-white z-50 flex flex-col">
-              {/* Header with close button */}
-              <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => setSelectedApartment(null)}
-                    className="p-2 -ml-2 text-gray-600 hover:text-gray-800"
-                  >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                    </svg>
-                  </button>
-                  <h3 className="text-lg font-semibold text-gray-800">รายละเอียดอพาร์ตเมนต์</h3>
-                </div>
-                <button
-                  onClick={() => setSelectedApartment(null)}
-                  className="p-2 text-gray-500 hover:text-gray-700"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-
-              {/* Scrollable content area */}
-              <div className="flex-1 overflow-y-auto bg-gray-50">
-                <ApartmentStatistics
-                  selectedApartment={selectedApartment}
-                  stats={stats}
-                  proximityScores={proximityScores}
-                  calculateAmenityScore={calculateAmenityScore}
-                  filteredData={filteredData}
-                  isMobile={true}
-                />
-              </div>
-
-              {/* Bottom action bar */}
-              <div className="bg-white border-t border-gray-200 px-4 py-3 flex gap-3">
-                <button
-                  onClick={() => setSelectedApartment(null)}
-                  className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium"
-                >
-                  ปิด
-                </button>
-                <button
-                  onClick={() => {
-                    // Show map view with selected apartment
-                    setSelectedApartment(null);
-                    // You could add logic here to zoom to the apartment on map
-                  }}
-                  className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg font-medium"
-                >
-                  ดูบนแผนที่
-                </button>
-              </div>
-            </div>
-          )}
-
           {/* Mobile floating filter toggle when no apartment selected - fixed positioning */}
           {!selectedApartment && (
             <button
@@ -852,6 +792,69 @@ const ApartmentSupply = () => {
             filteredData={filteredData}
             isMobile={false}
           />
+        </div>
+      )}
+
+      {/* MOBILE FULL-SCREEN STATISTICS MODAL - OUTSIDE ALL CONTAINERS */}
+      {isMobile && selectedApartment && (
+        <div 
+          className="fixed inset-0 bg-white flex flex-col"
+          style={{ zIndex: 999999 }}
+        >
+          {/* Header with close button */}
+          <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setSelectedApartment(null)}
+                className="p-2 -ml-2 text-gray-600 hover:text-gray-800"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <h3 className="text-lg font-semibold text-gray-800">รายละเอียดอพาร์ตเมนต์</h3>
+            </div>
+            <button
+              onClick={() => setSelectedApartment(null)}
+              className="p-2 text-gray-500 hover:text-gray-700"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Scrollable content area */}
+          <div className="flex-1 overflow-y-auto bg-gray-50">
+            <ApartmentStatistics
+              selectedApartment={selectedApartment}
+              stats={stats}
+              proximityScores={proximityScores}
+              calculateAmenityScore={calculateAmenityScore}
+              filteredData={filteredData}
+              isMobile={true}
+            />
+          </div>
+
+          {/* Bottom action bar */}
+          <div className="bg-white border-t border-gray-200 px-4 py-3 flex gap-3">
+            <button
+              onClick={() => setSelectedApartment(null)}
+              className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium"
+            >
+              ปิด
+            </button>
+            <button
+              onClick={() => {
+                // Show map view with selected apartment
+                setSelectedApartment(null);
+                // You could add logic here to zoom to the apartment on map
+              }}
+              className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg font-medium"
+            >
+              ดูบนแผนที่
+            </button>
+          </div>
         </div>
       )}
     </div>
