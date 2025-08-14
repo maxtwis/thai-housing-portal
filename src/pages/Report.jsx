@@ -20,6 +20,10 @@ import {
   Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell 
 } from 'recharts';
 
+// Import the actual chart components
+import HousingAffordabilityChart from '../components/charts/HousingAffordabilityChart';
+import HousingDemandChart from '../components/charts/HousingDemandChart';
+
 // Province name mapping
 const PROVINCE_NAME_MAPPING = {
   "กรุงเทพมหานคร": "กรุงเทพมหานคร",
