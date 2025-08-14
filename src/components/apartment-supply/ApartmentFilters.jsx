@@ -14,11 +14,20 @@ const ApartmentFilters = ({
   isMobile
 }) => {
 
+  // FIXED: Handle filter changes properly - accepts the entire filter object
   const handleFilterChange = (filterType, value) => {
-    onFiltersChange({
+    console.log('ApartmentFilters: Filter change requested:', filterType, value);
+    console.log('ApartmentFilters: Current filters before change:', filters);
+    
+    const newFilters = {
       ...filters,
       [filterType]: value
-    });
+    };
+    
+    console.log('ApartmentFilters: New filters after change:', newFilters);
+    
+    // Call the parent handler with the complete filter object
+    onFiltersChange(newFilters);
   };
 
   const getActiveFiltersCount = () => {
@@ -93,7 +102,10 @@ const ApartmentFilters = ({
           </label>
           <select
             value={filters.priceRange}
-            onChange={(e) => handleFilterChange('priceRange', e.target.value)}
+            onChange={(e) => {
+              console.log('Price filter select changed to:', e.target.value);
+              handleFilterChange('priceRange', e.target.value);
+            }}
             className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
           >
             <option value="all">แสดงทั้งหมด</option>
@@ -117,7 +129,14 @@ const ApartmentFilters = ({
           >
             <option value="all">แสดงทั้งหมด</option>
             {propertyTypes.map(type => (
-              <option key={type} value={type}>{type}</option>
+              <option key={type} value={type}>
+                {type === 'APARTMENT' && 'อพาร์ตเมนต์'}
+                {type === 'CONDO' && 'คอนโดมิเนียม'}
+                {type === 'HOUSE' && 'บ้าน'}
+                {type === 'TOWNHOUSE' && 'ทาวน์เฮ้าส์'}
+                {type === 'STUDIO' && 'สตูดิโอ'}
+                {!['APARTMENT', 'CONDO', 'HOUSE', 'TOWNHOUSE', 'STUDIO'].includes(type) && type}
+              </option>
             ))}
           </select>
         </div>
@@ -125,7 +144,7 @@ const ApartmentFilters = ({
         {/* Room Type Filter */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            ประเภทห้อง
+            จำนวนห้องนอน
           </label>
           <select
             value={filters.roomType}
@@ -134,7 +153,15 @@ const ApartmentFilters = ({
           >
             <option value="all">แสดงทั้งหมด</option>
             {roomTypes.map(type => (
-              <option key={type} value={type}>{type}</option>
+              <option key={type} value={type}>
+                {type === 'STUDIO' && 'สตูดิโอ'}
+                {type === 'ONE_BED_ROOM' && '1 ห้องนอน'}
+                {type === 'TWO_BED_ROOM' && '2 ห้องนอน'}
+                {type === 'THREE_BED_ROOM' && '3 ห้องนอน'}
+                {type === 'FOUR_BED_ROOM' && '4 ห้องนอน'}
+                {type === 'FIVE_BED_ROOM' && '5 ห้องนอน'}
+                {!['STUDIO', 'ONE_BED_ROOM', 'TWO_BED_ROOM', 'THREE_BED_ROOM', 'FOUR_BED_ROOM', 'FIVE_BED_ROOM'].includes(type) && type}
+              </option>
             ))}
           </select>
         </div>
@@ -142,35 +169,26 @@ const ApartmentFilters = ({
         {/* Size Range Filter */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            ขนาดห้อง (ตร.ม.)
+            ขนาดพื้นที่ (ตร.ม.)
           </label>
           <select
             value={filters.sizeRange}
             onChange={(e) => handleFilterChange('sizeRange', e.target.value)}
-            className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+            className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all"
           >
             <option value="all">แสดงทั้งหมด</option>
-            <option value="0-20">น้อยกว่า 20 ตร.ม.</option>
-            <option value="20-35">20-35 ตร.ม.</option>
-            <option value="35-50">35-50 ตร.ม.</option>
-            <option value="50-999">มากกว่า 50 ตร.ม.</option>
+            <option value="0-20">น้อยกว่า 20</option>
+            <option value="20-35">20-35</option>
+            <option value="35-50">35-50</option>
+            <option value="50-80">50-80</option>
+            <option value="80-999">มากกว่า 80</option>
           </select>
         </div>
 
-        {/* Amenity Score Filter - Moved from map tooltip */}
+        {/* Amenity Score Filter */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            <div className="flex items-center gap-2">
-              <span>คะแนนสิ่งอำนวยความสะดวก (%)</span>
-              <div className="group relative">
-                <svg className="w-4 h-4 text-gray-400 cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
-                  คะแนนจากสิ่งอำนวยความสะดวกที่มีให้
-                </div>
-              </div>
-            </div>
+            คะแนนสิ่งอำนวยความสะดวก (%)
           </label>
           <select
             value={filters.amenityScore}
@@ -178,27 +196,18 @@ const ApartmentFilters = ({
             className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all"
           >
             <option value="all">แสดงทั้งหมด</option>
-            <option value="0-25">0-25% (น้อย)</option>
-            <option value="25-50">25-50% (ปานกลาง)</option>
-            <option value="50-75">50-75% (ดี)</option>
-            <option value="75-100">75-100% (ดีเยี่ยม)</option>
+            <option value="80-100">ดีเยี่ยม (80-100%)</option>
+            <option value="60-79">ดี (60-79%)</option>
+            <option value="40-59">ปานกลาง (40-59%)</option>
+            <option value="20-39">พอใช้ (20-39%)</option>
+            <option value="0-19">น้อย (0-19%)</option>
           </select>
         </div>
 
-        {/* Proximity Score Filter - Moved from map tooltip */}
+        {/* Proximity Score Filter */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            <div className="flex items-center gap-2">
-              <span>คะแนนความใกล้เคียง (%)</span>
-              <div className="group relative">
-                <svg className="w-4 h-4 text-gray-400 cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
-                  คะแนนจากสถานที่สำคัญใกล้เคียง
-                </div>
-              </div>
-            </div>
+            คะแนนความใกล้เคียง (%)
           </label>
           <select
             value={filters.proximityScore}
@@ -206,18 +215,12 @@ const ApartmentFilters = ({
             className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all"
           >
             <option value="all">แสดงทั้งหมด</option>
-            <option value="0-25">0-25% (ไกล)</option>
-            <option value="25-50">25-50% (ปานกลาง)</option>
-            <option value="50-75">50-75% (ใกล้)</option>
-            <option value="75-100">75-100% (ใกล้มาก)</option>
+            <option value="80-100">ใกล้มาก (80-100%)</option>
+            <option value="60-79">ใกล้ (60-79%)</option>
+            <option value="40-59">ปานกลาง (40-59%)</option>
+            <option value="20-39">ไกล (20-39%)</option>
+            <option value="0-19">ไกลมาก (0-19%)</option>
           </select>
-          
-          {/* Show proximity score status */}
-          {Object.keys(proximityScores).length > 0 && (
-            <div className="mt-1 text-xs text-gray-500">
-              คำนวณแล้ว {Object.keys(proximityScores).length} รายการ
-            </div>
-          )}
         </div>
 
         {/* Required Amenities Filter */}
@@ -225,38 +228,37 @@ const ApartmentFilters = ({
           <label className="block text-sm font-medium text-gray-700 mb-2">
             สิ่งอำนวยความสะดวกที่จำเป็น
           </label>
-          <div className="space-y-2 max-h-32 overflow-y-auto">
+          <div className="space-y-2">
             {[
-              { key: 'air', label: 'เครื่องปรับอากาศ', icon: '❄️' },
-              { key: 'furniture', label: 'เฟอร์นิเจอร์', icon: '🛋️' },
-              { key: 'internet', label: 'อินเทอร์เน็ต', icon: '📶' },
-              { key: 'parking', label: 'ที่จอดรถ', icon: '🚗' },
-              { key: 'lift', label: 'ลิฟต์', icon: '🛗' },
-              { key: 'pool', label: 'สระว่ายน้ำ', icon: '🏊‍♂️' },
-              { key: 'fitness', label: 'ฟิตเนส', icon: '💪' },
-              { key: 'security', label: 'รักษาความปลอดภัย', icon: '🔒' }
+              { key: 'has_air', label: 'เครื่องปรับอากาศ' },
+              { key: 'has_furniture', label: 'เฟอร์นิเจอร์' },
+              { key: 'has_internet', label: 'อินเทอร์เน็ต' },
+              { key: 'has_parking', label: 'ที่จอดรถ' },
+              { key: 'has_lift', label: 'ลิฟต์' },
+              { key: 'has_pool', label: 'สระว่ายน้ำ' },
+              { key: 'has_fitness', label: 'ฟิตเนส' },
+              { key: 'has_security', label: 'รักษาความปลอดภัย' }
             ].map(amenity => (
-              <label key={amenity.key} className="flex items-center p-2 rounded-lg hover:bg-gray-50 transition-colors">
+              <label key={amenity.key} className="flex items-center gap-2 text-sm">
                 <input
                   type="checkbox"
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-offset-0"
                   checked={filters.requiredAmenities.includes(amenity.key)}
                   onChange={(e) => {
-                    const newAmenities = e.target.checked 
+                    const newAmenities = e.target.checked
                       ? [...filters.requiredAmenities, amenity.key]
                       : filters.requiredAmenities.filter(a => a !== amenity.key);
                     handleFilterChange('requiredAmenities', newAmenities);
                   }}
+                  className="rounded border-gray-300 text-orange-500 focus:ring-orange-500"
                 />
-                <span className="ml-2 text-lg">{amenity.icon}</span>
-                <span className="ml-2 text-sm text-gray-700">{amenity.label}</span>
+                <span className="text-gray-700">{amenity.label}</span>
               </label>
             ))}
           </div>
         </div>
 
         {/* Filter Actions */}
-        <div className="pt-4 flex gap-2 border-t border-gray-200">
+        <div className="pt-2 flex gap-2">
           <button
             onClick={() => onFiltersChange({
               priceRange: 'all',
