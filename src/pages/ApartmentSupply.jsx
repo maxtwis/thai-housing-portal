@@ -88,10 +88,10 @@ const ApartmentSupply = () => {
 
   // Resource IDs to try (in order of preference)
   const APARTMENT_RESOURCE_IDS = [
+    'b6dbb8e0-1194-4eeb-945d-e883b3275b35', // The correct apartment resource ID
     'a9b21797-3e04-43af-a5a9-33ae5c511f7f',
-    'e1234567-89ab-cdef-0123-456789abcdef',
-    'apartment-supply-data-2024',
-    'apartment-listings-thailand'
+    '15132377-edb0-40b0-9aad-8fd9f6769b92', // Housing supply fallback
+    'bba7efcc-81d5-465d-a4bf-f05c2b30ba9c'  // Another fallback
   ];
 
   // Load apartment data
