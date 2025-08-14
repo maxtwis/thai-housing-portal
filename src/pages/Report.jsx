@@ -307,51 +307,53 @@ const Report = () => {
             โดยประเภทที่อยู่อาศัยส่วนใหญ่เป็น${dominantType[0]} คิดเป็นร้อยละ ${dominantPercentage} ของจำนวนที่อยู่อาศัยทั้งหมด`;
   };
 
-  // NEW: Generate housing affordability analysis
+  // NEW: Generate housing affordability analysis (Fixed to match actual chart)
   const getAffordabilityAnalysis = () => {
     if (!housingAffordabilityData || housingAffordabilityData.length === 0) {
       return 'ไม่พบข้อมูลความสามารถในการซื้อที่อยู่อาศัย';
     }
 
-    // Calculate average housing burden by quintile
-    const quintileData = {};
+    // Group by demand type (matching the actual chart functionality)
+    const demandTypeData = {};
     housingAffordabilityData.forEach(record => {
-      const quintile = record.Quintile;
-      if (!quintileData[quintile]) {
-        quintileData[quintile] = {
+      const demandType = record.demand_type;
+      if (!demandTypeData[demandType]) {
+        demandTypeData[demandType] = {
           totalBurden: 0,
           count: 0,
-          totalExpense: 0
+          totalExpense: 0,
+          records: []
         };
       }
-      quintileData[quintile].totalBurden += parseFloat(record.Total_Hburden || 0);
-      quintileData[quintile].totalExpense += parseFloat(record.Exp_house || 0);
-      quintileData[quintile].count += 1;
+      demandTypeData[demandType].totalBurden += parseFloat(record.Total_Hburden || 0);
+      demandTypeData[demandType].totalExpense += parseFloat(record.Exp_house || 0);
+      demandTypeData[demandType].count += 1;
+      demandTypeData[demandType].records.push(record);
     });
 
-    // Find quintile with highest and lowest burden
-    let highestBurden = { quintile: 1, avg: 0 };
-    let lowestBurden = { quintile: 1, avg: 100 };
+    // Find demand type with highest burden
+    let highestBurden = { type: '', avg: 0 };
+    let lowestBurden = { type: '', avg: 100 };
 
-    Object.entries(quintileData).forEach(([quintile, data]) => {
+    Object.entries(demandTypeData).forEach(([demandType, data]) => {
       const avgBurden = data.count > 0 ? data.totalBurden / data.count : 0;
       if (avgBurden > highestBurden.avg) {
-        highestBurden = { quintile: parseInt(quintile), avg: avgBurden };
+        highestBurden = { type: demandType, avg: avgBurden };
       }
       if (avgBurden < lowestBurden.avg && avgBurden > 0) {
-        lowestBurden = { quintile: parseInt(quintile), avg: avgBurden };
+        lowestBurden = { type: demandType, avg: avgBurden };
       }
     });
 
-    // Calculate average housing expenditure
-    const totalExpense = Object.values(quintileData).reduce((sum, data) => sum + data.totalExpense, 0);
-    const totalRecords = Object.values(quintileData).reduce((sum, data) => sum + data.count, 0);
-    const avgExpense = totalRecords > 0 ? totalExpense / totalRecords : 0;
+    // Calculate overall average burden
+    const totalBurden = Object.values(demandTypeData).reduce((sum, data) => sum + data.totalBurden, 0);
+    const totalRecords = Object.values(demandTypeData).reduce((sum, data) => sum + data.count, 0);
+    const avgBurden = totalRecords > 0 ? totalBurden / totalRecords : 0;
 
-    return `จากการวิเคราะห์ความสามารถในการซื้อที่อยู่อาศัยในจังหวัด${mappedProvinceName} พบว่า กลุ่มประชากรที่มีรายได้น้อย (ควินไทล์ที่ ${highestBurden.quintile}) 
-            มีภาระค่าที่อยู่อาศัยสูงสุด คิดเป็นร้อยละ ${highestBurden.avg.toFixed(1)} ของรายได้ ในขณะที่กลุ่มประชากรที่มีรายได้สูง (ควินไทล์ที่ ${lowestBurden.quintile}) 
-            มีภาระค่าที่อยู่อาศัยต่ำสุด คิดเป็นร้อยละ ${lowestBurden.avg.toFixed(1)} ของรายได้ โดยค่าใช้จ่าายเฉลี่ยสำหรับที่อยู่อาศัยอยู่ที่ 
-            ${new Intl.NumberFormat('th-TH').format(avgExpense)} บาทต่อเดือน`;
+    return `จากการวิเคราะห์ความสามารถในการซื้อที่อยู่อาศัยในจังหวัด${mappedProvinceName} พบว่า กลุ่ม${highestBurden.type} 
+            มีภาระค่าใช้จ่ายที่อยู่อาศัยต่อรายได้สูงสุด คิดเป็นร้อยละ ${highestBurden.avg.toFixed(1)} ของรายได้ 
+            ในขณะที่กลุ่ม${lowestBurden.type} มีภาระต่ำสุด คิดเป็นร้อยละ ${lowestBurden.avg.toFixed(1)} ของรายได้ 
+            โดยภาระเฉลี่ยรวมทั้งจังหวัดอยู่ที่ร้อยละ ${avgBurden.toFixed(1)} ของรายได้`;
   };
 
   // NEW: Generate housing demand analysis  
