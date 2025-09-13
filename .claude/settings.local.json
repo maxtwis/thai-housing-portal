@@ -1,0 +1,42 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(del:*)",
+      "Bash(dir:*)",
+      "Bash(start http://localhost:5178)",
+      "Bash(claude mcp add:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run dev:*)",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_wait_for",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_select_option",
+      "mcp__playwright__browser_take_screenshot",
+      "mcp__playwright__browser_console_messages",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_evaluate",
+      "Bash(sed:*)",
+      "Bash(start http://localhost:5174)",
+      "Bash(npm run lint)",
+      "Bash(npm run build:*)",
+      "Bash(node:*)",
+      "Bash(claude mcp:*)",
+      "Bash(python test:*)",
+      "Bash(python:*)",
+      "Bash(copy survey_sampling_enhanced.csv survey_sampling.csv)",
+      "Bash(copy:*)",
+      "Read(\\/**)",
+      "Bash(start http://localhost:5179)",
+      "WebFetch(domain:localhost)",
+      "Bash(timeout:*)",
+      "mcp__playwright__browser_resize",
+      "mcp__playwright__browser_hover",
+      "Bash(grep:*)",
+      "Bash(mcp__playwright__browser_navigate:*)",
+      "Bash(ping:*)",
+      "Bash(taskkill:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
