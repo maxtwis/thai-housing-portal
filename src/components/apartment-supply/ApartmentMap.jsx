@@ -4,6 +4,7 @@ import 'leaflet/dist/leaflet.css';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import 'leaflet.markercluster';
+import 'material-symbols/outlined.css';
 
 // Calculate category score based on nearby count (original logic)
 const calculateCategoryScore = (count, category) => {
@@ -361,13 +362,13 @@ const ApartmentMap = ({
       if (data.elements && data.elements.length > 0) {
         const layerGroup = L.layerGroup();
         
-        // Place type icons and colors
+        // Place type icons and colors with Material Icons
         const placeConfig = {
-          restaurant: { icon: '🍽️', color: '#ef4444' },
-          health: { icon: '🏥', color: '#10b981' },
-          school: { icon: '🎓', color: '#3b82f6' },
-          convenience: { icon: '🏪', color: '#f97316' },
-          transport: { icon: '🚌', color: '#8b5cf6' }
+          restaurant: { icon: 'restaurant', color: '#ef4444' },
+          health: { icon: 'local_hospital', color: '#10b981' },
+          school: { icon: 'school', color: '#3b82f6' },
+          convenience: { icon: 'store', color: '#f97316' },
+          transport: { icon: 'directions_bus', color: '#8b5cf6' }
         };
 
         const config = placeConfig[placeType] || placeConfig.restaurant;
@@ -416,7 +417,9 @@ const ApartmentMap = ({
             
             marker.bindPopup(`
               <div class="text-center">
-                <div class="text-lg mb-1">${config.icon}</div>
+                <div class="mb-2">
+                  <span class="material-symbols-outlined" style="font-size: 24px; color: ${config.color};">${config.icon}</span>
+                </div>
                 <div class="font-medium text-sm mb-1">${name}</div>
                 <div class="text-xs text-gray-600 mb-1">${amenityType}</div>
                 ${address ? `<div class="text-xs text-gray-500">${address}</div>` : ''}
@@ -658,17 +661,21 @@ const ApartmentMap = ({
   };
 
   // Create marker style
+  // Create performant circle marker with property-type color coding
   const createSimpleMarker = (property, isSelected, isHovered) => {
     const markerColor = getMarkerColor(property, colorScheme);
-    const size = isSelected ? 12 : (isHovered ? 10 : 8);
+    const radius = isSelected ? 8 : (isHovered ? 6 : 5);
+    const weight = isSelected ? 3 : (isHovered ? 2 : 1);
+    const opacity = isSelected ? 1 : 0.8;
+    const fillOpacity = isSelected ? 0.9 : 0.7;
 
     return {
-      radius: size,
+      radius: radius,
       fillColor: markerColor,
       color: '#ffffff',
-      weight: isSelected ? 3 : 2,
-      opacity: 1,
-      fillOpacity: 0.9
+      weight: weight,
+      opacity: opacity,
+      fillOpacity: fillOpacity
     };
   };
 

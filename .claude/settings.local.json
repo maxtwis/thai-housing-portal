@@ -34,7 +34,12 @@
       "Bash(grep:*)",
       "Bash(mcp__playwright__browser_navigate:*)",
       "Bash(ping:*)",
-      "Bash(taskkill:*)"
+      "Bash(taskkill:*)",
+      "Bash(findstr:*)",
+      "Bash(tasklist)",
+      "mcp__playwright__browser_type",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__get-library-docs"
     ],
     "deny": [],
     "ask": []

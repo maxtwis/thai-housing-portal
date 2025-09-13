@@ -1,4 +1,5 @@
 import React from 'react';
+import 'material-symbols/outlined.css';
 
 const ProximityPlaceButtons = ({ 
   selectedPlace, 
@@ -11,35 +12,35 @@ const ProximityPlaceButtons = ({
     {
       id: 'restaurant',
       label: 'ร้านอาหาร',
-      icon: '🍽️',
+      icon: 'restaurant',
       color: 'bg-red-500 hover:bg-red-600',
       lightColor: 'bg-red-100 text-red-700 border-red-300'
     },
     {
       id: 'health',
       label: 'สถานพยาบาล',
-      icon: '🏥',
+      icon: 'local_hospital',
       color: 'bg-green-500 hover:bg-green-600',
       lightColor: 'bg-green-100 text-green-700 border-green-300'
     },
     {
       id: 'school',
       label: 'สถานศึกษา',
-      icon: '🎓',
+      icon: 'school',
       color: 'bg-blue-500 hover:bg-blue-600',
       lightColor: 'bg-blue-100 text-blue-700 border-blue-300'
     },
     {
       id: 'convenience',
       label: 'ร้านสะดวกซื้อ',
-      icon: '🏪',
+      icon: 'store',
       color: 'bg-orange-500 hover:bg-orange-600',
       lightColor: 'bg-orange-100 text-orange-700 border-orange-300'
     },
     {
       id: 'transport',
       label: 'ขนส่งสาธารณะ',
-      icon: '🚌',
+      icon: 'directions_bus',
       color: 'bg-purple-500 hover:bg-purple-600',
       lightColor: 'bg-purple-100 text-purple-700 border-purple-300'
     }
@@ -70,7 +71,7 @@ const ProximityPlaceButtons = ({
                   }
                 `}
               >
-                <span className="text-lg">{place.icon}</span>
+                <span className="material-symbols-outlined text-lg">{place.icon}</span>
                 <span>{place.label}</span>
                 {isSelected && showingNearbyPlaces && (
                   <div className="w-2 h-2 bg-current rounded-full animate-pulse"></div>

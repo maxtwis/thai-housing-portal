@@ -1,12 +1,4 @@
 import { useQuery, useQueries, useQueryClient } from '@tanstack/react-query';
-import { 
-  getPopulationData,
-  getHouseholdData,
-  getIncomeData,
-  getExpenditureData,
-  getPopulationAgeData,
-  getHousingSupplyByYear
-} from '../utils/dataUtils';
 import { getCkanData } from '../utils/ckanClient';
 import { getPolicyData } from '../utils/policyUtils';
 

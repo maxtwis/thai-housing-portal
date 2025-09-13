@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { provinces } from '../utils/dataUtils';
 import { useAllProvinceData, usePrefetchProvinceData } from '../hooks/useCkanQueries';
 import { useProvincePreloader } from '../hooks/useProvincePreloader';
@@ -18,11 +18,18 @@ import PolicyChart from '../components/charts/PolicyChart';
 import PopulationAgeChart from '../components/charts/PopulationAgeChart';
 import HousingAffordabilityChart from '../components/charts/HousingAffordabilityChart';
 import HousingDemandChart from '../components/charts/HousingDemandChart';
+import ErrorBoundary from '../components/ErrorBoundary';
+
+// Constants
+const VALID_TOPICS = ['demographics', 'housing', 'affordability', 'demand', 'policy'];
+const DEFAULT_PROVINCE_ID = 10; // Bangkok
+const POINTER_CURSOR_STYLE = { cursor: 'pointer' };
 
 const Dashboard = () => {
-  const [activeProvince, setActiveProvince] = useState(10); // Default to Bangkok
+  const [activeProvince, setActiveProvince] = useState(DEFAULT_PROVINCE_ID);
   const [activeTopic, setActiveTopic] = useState('demographics');
   const [policyFilter, setPolicyFilter] = useState(null);
+  const [isInitialized, setIsInitialized] = useState(false);
   
   // Use React Query for all data
   const {
@@ -50,87 +57,105 @@ const Dashboard = () => {
     const urlParams = new URLSearchParams(window.location.search);
     const provinceParam = urlParams.get('province');
     const topicParam = urlParams.get('topic');
-    
+
     if (provinceParam) {
-      const provinceId = parseInt(provinceParam);
-      if (provinces.find(p => p.id === provinceId)) {
+      const provinceId = parseInt(provinceParam, 10);
+      if (!isNaN(provinceId) && provinces.find(p => p.id === provinceId)) {
         setActiveProvince(provinceId);
       }
     }
-    
-    if (topicParam && ['demographics', 'housing', 'affordability', 'demand', 'policy'].includes(topicParam)) {
+
+    if (topicParam && VALID_TOPICS.includes(topicParam)) {
       setActiveTopic(topicParam);
     }
+
+    // Mark as initialized after reading URL parameters
+    setIsInitialized(true);
   }, []);
 
-  // Update URL when province or topic changes
+  // Update URL when province or topic changes (only after initialization)
   useEffect(() => {
-    const url = new URL(window.location);
-    url.searchParams.set('province', activeProvince.toString());
-    url.searchParams.set('topic', activeTopic);
-    window.history.replaceState({}, '', url);
-  }, [activeProvince, activeTopic]);
+    if (!isInitialized) return; // Don't update URL until we've read initial parameters
+
+    const searchParams = new URLSearchParams(window.location.search);
+    searchParams.set('province', activeProvince.toString());
+    searchParams.set('topic', activeTopic);
+
+    const newUrl = `${window.location.pathname}?${searchParams.toString()}`;
+    window.history.replaceState({}, '', newUrl);
+  }, [activeProvince, activeTopic, isInitialized]);
   
-  const provinceName = provinces.find(p => p.id === activeProvince)?.name || 'Unknown Province';
-  
+  const provinceName = useMemo(() =>
+    provinces.find(p => p.id === activeProvince)?.name || 'Unknown Province',
+    [activeProvince]
+  );
+
   // Prefetch data for other provinces on hover
-  const handleProvinceHover = (provinceId) => {
+  const handleProvinceHover = useCallback((provinceId) => {
     if (provinceId !== activeProvince) {
       prefetchProvince(provinceId);
     }
-  };
-  
+  }, [activeProvince, prefetchProvince]);
+
   // Handle province change from map or dropdown
-  const handleProvinceChange = (provinceId) => {
+  const handleProvinceChange = useCallback((provinceId) => {
     setActiveProvince(provinceId);
-  };
+  }, []);
+
+  // Handle report generation
+  const handleGenerateReport = useCallback(() => {
+    window.location.href = `/report/${activeProvince}`;
+  }, [activeProvince]);
+
+  // Handle error retry
+  const handleRetry = useCallback(() => {
+    window.location.reload();
+  }, []);
   
   // Get filtered policies based on current filter
-  const getFilteredPolicies = () => {
+  const filteredPolicies = useMemo(() => {
     if (!policy.data) return [];
-    
+
     if (!policyFilter) return policy.data;
-    
+
     if (policyFilter.startsWith('type:')) {
       const typeCode = policyFilter.split(':')[1];
-      return policy.data.filter(p => 
+      return policy.data.filter(p =>
         p['3S Model'] && p['3S Model'].includes(typeCode)
       );
     }
-    
+
     return policy.data;
-  };
-  
+  }, [policy.data, policyFilter]);
+
   // Get key metrics for summary
-  const getLatestMetrics = () => {
-    const latestPop = population.data && population.data.length > 0 
-      ? population.data[population.data.length - 1].population 
+  const metrics = useMemo(() => {
+    const latestPop = population.data && population.data.length > 0
+      ? population.data[population.data.length - 1].population
       : 0;
-    
-    const latestHouseholds = household.data && household.data.length > 0 
-      ? household.data[household.data.length - 1].household 
+
+    const latestHouseholds = household.data && household.data.length > 0
+      ? household.data[household.data.length - 1].household
       : 0;
-    
-    const latestIncome = income.data && income.data.length > 0 
-      ? income.data[income.data.length - 1].income 
+
+    const latestIncome = income.data && income.data.length > 0
+      ? income.data[income.data.length - 1].income
       : 0;
-    
-    const firstIncome = income.data && income.data.length > 0 
-      ? income.data[0].income 
+
+    const firstIncome = income.data && income.data.length > 0
+      ? income.data[0].income
       : 0;
-    
-    const incomeGrowth = firstIncome > 0 && latestIncome > 0 
+
+    const incomeGrowth = firstIncome > 0 && latestIncome > 0
       ? ((latestIncome / firstIncome) - 1) * 100 : 0;
-    
+
     return {
       population: latestPop,
       households: latestHouseholds,
       income: latestIncome,
       incomeGrowth: incomeGrowth
     };
-  };
-  
-  const metrics = getLatestMetrics();
+  }, [population.data, household.data, income.data]);
   
   return (
     <div className="container mx-auto px-4 py-4">
@@ -181,8 +206,8 @@ const Dashboard = () => {
         <div className="w-full md:w-7/12">
           {/* Report generation button */}
           <div className="flex justify-end mb-4">
-            <button 
-              onClick={() => window.location.href = `/report/${activeProvince}`}
+            <button
+              onClick={handleGenerateReport}
               className="flex items-center bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md shadow-sm text-sm font-medium transition-colors"
             >
               <svg className="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -246,8 +271,8 @@ const Dashboard = () => {
             <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
               <p className="font-medium">Failed to load some data</p>
               <p className="text-sm mt-1">Please check your connection and try again.</p>
-              <button 
-                onClick={() => window.location.reload()}
+              <button
+                onClick={handleRetry}
                 className="mt-2 text-sm text-red-800 underline hover:no-underline"
               >
                 Reload page
@@ -257,7 +282,7 @@ const Dashboard = () => {
           
           {/* Demographics Content */}
           {activeTopic === 'demographics' && (
-            <div>
+            <ErrorBoundary>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <PopulationChart 
                   provinceName={provinceName} 
@@ -280,17 +305,17 @@ const Dashboard = () => {
                 />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <HouseholdChart 
-                  provinceName={provinceName} 
+                <HouseholdChart
+                  provinceName={provinceName}
                   provinceId={activeProvince}
                 />
               </div>
-            </div>
+            </ErrorBoundary>
           )}
                       
           {/* Housing Content */}
           {activeTopic === 'housing' && (
-            <div>
+            <ErrorBoundary>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <HousingSupplyChart 
                   provinceName={provinceName}
@@ -312,7 +337,7 @@ const Dashboard = () => {
                   provinceId={activeProvince}
                 />
               </div>
-            </div>
+            </ErrorBoundary>
           )}
 
           {/* Housing Affordability Content */}
@@ -412,13 +437,13 @@ const Dashboard = () => {
               )}
               
               <div className="grid grid-cols-1 gap-4">
-                <PolicyTable 
-                  policies={getFilteredPolicies()} 
+                <PolicyTable
+                  policies={filteredPolicies}
                   provinceName={provinceName}
                 />
-                
-                <PolicyChart 
-                  policies={getFilteredPolicies()} 
+
+                <PolicyChart
+                  policies={filteredPolicies}
                   provinceName={provinceName}
                 />
               </div>
@@ -436,8 +461,9 @@ const Dashboard = () => {
               </label>
               <select
                 value={activeProvince}
-                onChange={(e) => handleProvinceChange(parseInt(e.target.value))}
+                onChange={(e) => handleProvinceChange(parseInt(e.target.value, 10))}
                 className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm flex-1"
+                aria-label="เลือกจังหวัด"
               >
                 {provinces.map(province => (
                   <option key={province.id} value={province.id}>
@@ -511,11 +537,12 @@ const Dashboard = () => {
                       const totalCount = policy.data.length;
                       
                       return count > 0 ? (
-                        <span 
-                          key={typeCode} 
-                          className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-                            policyFilter === `type:${typeCode}` 
-                              ? 'bg-blue-200 text-blue-800' 
+                        <button
+                          key={typeCode}
+                          type="button"
+                          className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium transition-colors hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 ${
+                            policyFilter === `type:${typeCode}`
+                              ? 'bg-blue-200 text-blue-800'
                               : 'bg-gray-100 text-gray-800'
                           } ${count === 0 ? 'opacity-50' : ''}`}
                           onClick={() => {
@@ -528,13 +555,13 @@ const Dashboard = () => {
                               setPolicyFilter(`type:${typeCode}`);
                             }
                           }}
-                          style={{ cursor: 'pointer' }}
+                          aria-label={`${policyFilter === `type:${typeCode}` ? 'Remove' : 'Apply'} ${typeCode} policy filter`}
                         >
                           {typeCode} 
                           <span className="ml-1 text-xs text-gray-500">
                             ({count}{policyFilter && count !== totalCount ? `/${totalCount}` : ''})
                           </span>
-                        </span>
+                        </button>
                       ) : null;
                     })}
                   </div>
@@ -543,44 +570,6 @@ const Dashboard = () => {
             </div>
           )}
           
-          {/* React Query DevTools Info */}
-          {process.env.NODE_ENV === 'development' && (
-            <div className="bg-white p-3 rounded-lg shadow text-xs mt-4">
-              <h4 className="font-medium text-gray-800 mb-2">Query Cache Status</h4>
-              <div className="space-y-1 text-xs">
-                <div className="flex justify-between">
-                  <span>Population:</span>
-                  <span className={`${population.isStale ? 'text-orange-600' : 'text-green-600'}`}>
-                    {population.isLoading ? 'Loading...' : population.isStale ? 'Stale' : 'Fresh'}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Housing:</span>
-                  <span className={`${housingSupply.isStale ? 'text-orange-600' : 'text-green-600'}`}>
-                    {housingSupply.isLoading ? 'Loading...' : housingSupply.isStale ? 'Stale' : 'Fresh'}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Affordability:</span>
-                  <span className={`${housingAffordability.isStale ? 'text-orange-600' : 'text-green-600'}`}>
-                    {housingAffordability.isLoading ? 'Loading...' : housingAffordability.isStale ? 'Stale' : 'Fresh'}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Demand:</span>
-                  <span className={`${housingDemand.isStale ? 'text-orange-600' : 'text-green-600'}`}>
-                    {housingDemand.isLoading ? 'Loading...' : housingDemand.isStale ? 'Stale' : 'Fresh'}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Policy:</span>
-                  <span className={`${policy.isStale ? 'text-orange-600' : 'text-green-600'}`}>
-                    {policy.isLoading ? 'Loading...' : policy.isStale ? 'Stale' : 'Fresh'}
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>

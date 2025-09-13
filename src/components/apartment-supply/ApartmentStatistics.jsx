@@ -1,4 +1,5 @@
 import React from 'react';
+import 'material-symbols/outlined.css';
 
 const ApartmentStatistics = ({ 
   selectedApartment, 
@@ -36,16 +37,16 @@ const ApartmentStatistics = ({
   // Get available amenities for display
   const getAvailableAmenities = (property) => {
     const amenityConfig = [
-      { key: 'has_air', label: 'เครื่องปรับอากาศ', icon: '❄️' },
-      { key: 'has_furniture', label: 'เฟอร์นิเจอร์', icon: '🛋️' },
-      { key: 'has_internet', label: 'อินเทอร์เน็ต', icon: '📶' },
-      { key: 'has_parking', label: 'ที่จอดรถ', icon: '🚗' },
-      { key: 'has_lift', label: 'ลิฟต์', icon: '🛗' },
-      { key: 'has_pool', label: 'สระว่ายน้ำ', icon: '🏊‍♂️' },
-      { key: 'has_fitness', label: 'ฟิตเนส', icon: '💪' },
-      { key: 'has_security', label: 'รักษาความปลอดภัย', icon: '🔒' },
-      { key: 'has_cctv', label: 'กล้องวงจรปิด', icon: '📹' },
-      { key: 'allow_pet', label: 'อนุญาตสัตว์เลี้ยง', icon: '🐕' }
+      { key: 'has_air', label: 'เครื่องปรับอากาศ', icon: 'ac_unit' },
+      { key: 'has_furniture', label: 'เฟอร์นิเจอร์', icon: 'chair' },
+      { key: 'has_internet', label: 'อินเทอร์เน็ต', icon: 'wifi' },
+      { key: 'has_parking', label: 'ที่จอดรถ', icon: 'local_parking' },
+      { key: 'has_lift', label: 'ลิฟต์', icon: 'elevator' },
+      { key: 'has_pool', label: 'สระว่ายน้ำ', icon: 'pool' },
+      { key: 'has_fitness', label: 'ฟิตเนส', icon: 'fitness_center' },
+      { key: 'has_security', label: 'รักษาความปลอดภัย', icon: 'security' },
+      { key: 'has_cctv', label: 'กล้องวงจรปิด', icon: 'videocam' },
+      { key: 'allow_pet', label: 'อนุญาตสัตว์เลี้ยง', icon: 'pets' }
     ];
 
     return amenityConfig.filter(amenity => 
@@ -64,7 +65,7 @@ const ApartmentStatistics = ({
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
           <div className="flex items-center gap-2">
             <div className="w-1 h-5 bg-blue-500 rounded"></div>
-            <h2 className="text-lg font-semibold text-gray-800">รายละเอียด</h2>
+            <h2 className="text-lg font-semibold text-gray-800">ข้อมูลอพาร์ตเมนต์</h2>
           </div>
         </div>
 
@@ -179,7 +180,7 @@ const ApartmentStatistics = ({
                 {availableAmenities.map(amenity => (
                   <div key={amenity.key} className="bg-gray-50 rounded-lg p-2 border border-gray-200">
                     <div className="flex flex-col items-center text-center">
-                      <div className="text-lg mb-1">{amenity.icon}</div>
+                      <span className="material-symbols-outlined text-lg mb-1" style={{color: '#059669'}}>{amenity.icon}</span>
                       <div className="text-xs text-gray-700 font-medium leading-tight">{amenity.label}</div>
                     </div>
                   </div>
