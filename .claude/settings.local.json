@@ -39,7 +39,9 @@
       "Bash(tasklist)",
       "mcp__playwright__browser_type",
       "mcp__context7__resolve-library-id",
-      "mcp__context7__get-library-docs"
+      "mcp__context7__get-library-docs",
+      "mcp__playwright__browser_press_key",
+      "mcp__playwright__browser_close"
     ],
     "deny": [],
     "ask": []

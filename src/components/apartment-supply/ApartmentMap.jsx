@@ -6,15 +6,15 @@ import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import 'leaflet.markercluster';
 import 'material-symbols/outlined.css';
 
-// Calculate category score based on nearby count (original logic)
+// Calculate category score based on nearby count (adjusted for Thai vehicle access)
 const calculateCategoryScore = (count, category) => {
-  // Original thresholds from the working version
+  // Updated thresholds for larger search radius (car/motorcycle access)
   const thresholds = {
-    restaurant: { excellent: 15, good: 8, fair: 3 },
-    convenience: { excellent: 8, good: 4, fair: 2 },
-    school: { excellent: 5, good: 3, fair: 1 },
-    health: { excellent: 8, good: 4, fair: 2 },
-    transport: { excellent: 10, good: 5, fair: 2 }
+    restaurant: { excellent: 50, good: 25, fair: 10 },     // More restaurants in larger radius
+    convenience: { excellent: 25, good: 12, fair: 5 },     // More convenience stores
+    school: { excellent: 15, good: 8, fair: 3 },           // More schools in larger area
+    health: { excellent: 20, good: 10, fair: 4 },          // More healthcare facilities
+    transport: { excellent: 30, good: 15, fair: 6 }        // More transport options
   };
 
   const threshold = thresholds[category] || thresholds.restaurant;
@@ -26,8 +26,26 @@ const calculateCategoryScore = (count, category) => {
   return 0;
 };
 
-// Fetch nearby count for a specific category (with error handling)
-const fetchNearbyCount = async (category, lat, lng, radius = 1000) => {
+// Service-specific radius limits optimized for Thai transportation (car/motorcycle)
+const getServiceRadius = (category) => {
+  const serviceRadii = {
+    // Public transport: BTS/MRT stations, bus stops - motorcycle/car access (2-3km)
+    transport: 2500,
+    // Daily convenience stores: 7-Eleven, shopping - quick motorcycle trips (1-2km)
+    convenience: 1500,
+    // Restaurants/food: Dining out culture - willing to drive further (2-4km)
+    restaurant: 3000,
+    // Healthcare: Hospital/clinic access - important, will travel by car (3-5km)
+    health: 4000,
+    // Schools: Educational institutions - daily commute by car/motorcycle (2-5km)
+    school: 3500
+  };
+  return serviceRadii[category] || 2000; // Default 2km for Thai context
+};
+
+// Fetch nearby places and return both count and data for caching
+const fetchNearbyPlacesData = async (category, lat, lng, customRadius = null) => {
+  const radius = customRadius || getServiceRadius(category);
   const buildOverpassQuery = (category, lat, lng, radius) => {
     const timeout = 15; // Increased timeout for better results
     switch(category) {
@@ -75,7 +93,8 @@ const fetchNearbyCount = async (category, lat, lng, radius = 1000) => {
         }
         
         const retryData = await retryResponse.json();
-        return retryData.elements ? retryData.elements.length : 0;
+        const elements = retryData.elements || [];
+        return { count: elements.length, elements };
       }
       
       if (response.status === 504) {
@@ -94,10 +113,11 @@ const fetchNearbyCount = async (category, lat, lng, radius = 1000) => {
         
         if (fallbackResponse.ok) {
           const fallbackData = await fallbackResponse.json();
-          const count = fallbackData.elements ? fallbackData.elements.length : 0;
+          const elements = fallbackData.elements || [];
+          const count = elements.length;
           console.log(`Fallback success for ${category}: ${count} places in ${smallerRadius}m radius`);
           // Scale up the count to approximate the original radius
-          return Math.round(count * 1.4);
+          return { count: Math.round(count * 1.4), elements };
         }
       }
       
@@ -105,12 +125,42 @@ const fetchNearbyCount = async (category, lat, lng, radius = 1000) => {
     }
 
     const data = await response.json();
-    const count = data.elements ? data.elements.length : 0;
+    const elements = data.elements || [];
+    const count = elements.length;
     console.log(`Overpass API returned ${count} elements for ${category}`);
-    return count;
+    return { count, elements };
   } catch (error) {
     console.error(`Error fetching ${category}:`, error);
-    return 0;
+    return { count: 0, elements: [] };
+  }
+};
+
+// Legacy function for backward compatibility
+const fetchNearbyCount = async (category, lat, lng, customRadius = null) => {
+  const result = await fetchNearbyPlacesData(category, lat, lng, customRadius);
+  return result.count;
+};
+
+// Calculate distance between two coordinates using Haversine formula
+const calculateDistance = (lat1, lng1, lat2, lng2) => {
+  const R = 6371; // Radius of the Earth in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const distance = R * c * 1000; // Convert to meters
+  return Math.round(distance);
+};
+
+// Format distance for display
+const formatDistance = (distanceInMeters) => {
+  if (distanceInMeters < 1000) {
+    return `${distanceInMeters} เมตร`;
+  } else {
+    return `${(distanceInMeters / 1000).toFixed(1)} กิโลเมตร`;
   }
 };
 
@@ -145,6 +195,8 @@ const ApartmentMap = ({
   
   const [loadingNearby, setLoadingNearby] = useState(false);
   const [calculatingProximity, setCalculatingProximity] = useState(null);
+  const [selectedApartmentCoords, setSelectedApartmentCoords] = useState(null);
+  const [cachedServiceData, setCachedServiceData] = useState({});
 
   // Initialize map
   useEffect(() => {
@@ -234,24 +286,36 @@ const ApartmentMap = ({
     try {
       console.log(`Calculating proximity score for: ${property.apartment_name || property.name || property.id} at coordinates [${property.latitude}, ${property.longitude}]`);
       
-      // Use weighted categories like the original
+      // Use weighted categories with radius information
       const categories = {
-        transport: { weight: 0.25, name: 'ขนส่งสาธารณะ' },
-        convenience: { weight: 0.20, name: 'ร้านสะดวกซื้อ' },
-        restaurant: { weight: 0.20, name: 'ร้านอาหาร' },
-        health: { weight: 0.20, name: 'สถานพยาบาล' },
-        school: { weight: 0.15, name: 'สถานศึกษา' }
+        transport: { weight: 0.25, name: 'ขนส่งสาธารณะ', radius: getServiceRadius('transport') },
+        convenience: { weight: 0.20, name: 'ร้านสะดวกซื้อ', radius: getServiceRadius('convenience') },
+        restaurant: { weight: 0.20, name: 'ร้านอาหาร', radius: getServiceRadius('restaurant') },
+        health: { weight: 0.20, name: 'สถานพยาบาล', radius: getServiceRadius('health') },
+        school: { weight: 0.15, name: 'สถานศึกษา', radius: getServiceRadius('school') }
       };
 
       let weightedScore = 0;
       let totalWeight = 0;
       let completedCategories = [];
+      const propertyServiceData = {};
 
       for (const [category, config] of Object.entries(categories)) {
         try {
-          console.log(`Fetching ${config.name} data for ${property.apartment_name || property.name || property.id}...`);
-          const nearbyCount = await fetchNearbyCount(category, property.latitude, property.longitude, 1000);
+          const radius = getServiceRadius(category);
+          console.log(`Fetching ${config.name} data for ${property.apartment_name || property.name || property.id} within ${radius}m...`);
+          const nearbyData = await fetchNearbyPlacesData(category, property.latitude, property.longitude, radius);
+          const nearbyCount = nearbyData.count;
           const categoryScore = calculateCategoryScore(nearbyCount, category);
+
+          // Store the service data for later use
+          propertyServiceData[category] = {
+            elements: nearbyData.elements,
+            count: nearbyCount,
+            radius: radius,
+            centerLat: property.latitude,
+            centerLng: property.longitude
+          };
           
           weightedScore += categoryScore * config.weight;
           totalWeight += config.weight;
@@ -262,8 +326,8 @@ const ApartmentMap = ({
             weight: config.weight 
           });
           
-          console.log(`${config.name}: ${nearbyCount} places found, score: ${categoryScore}% (weight: ${config.weight}) for ${property.apartment_name || property.name || property.id}`);
-          
+          console.log(`${config.name}: ${nearbyCount} places found within ${config.radius}m, score: ${categoryScore}% (weight: ${config.weight}) for ${property.apartment_name || property.name || property.id}`);
+
           // Update with partial weighted score after 2 categories
           if (completedCategories.length === 2) {
             const partialScore = totalWeight > 0 ? Math.round(weightedScore / totalWeight) : 0;
@@ -287,17 +351,23 @@ const ApartmentMap = ({
 
       const finalScore = totalWeight > 0 ? Math.round(weightedScore / totalWeight) : 0;
       
-      // Update final score
+      // Update final score and cache service data
       setProximityScores(prev => {
         const newScores = {
           ...prev,
           [property.id]: finalScore
         };
-        console.log(`Updated proximity scores:`, Object.keys(newScores).map(id => 
+        console.log(`Updated proximity scores:`, Object.keys(newScores).map(id =>
           `${id.substring(0, 20)}...: ${newScores[id]}%`
         ));
         return newScores;
       });
+
+      // Cache the service data for this property
+      setCachedServiceData(prev => ({
+        ...prev,
+        [property.id]: propertyServiceData
+      }));
       
       console.log(`Final weighted proximity score: ${finalScore}% for ${property.apartment_name || property.name || property.id}`);
       console.log('Category breakdown:', completedCategories.map(c => 
@@ -310,70 +380,84 @@ const ApartmentMap = ({
         ...prev,
         [property.id]: 0
       }));
+      // Clear any partial cached data on error
+      setCachedServiceData(prev => {
+        const newCache = { ...prev };
+        delete newCache[property.id];
+        return newCache;
+      });
     } finally {
       setCalculatingProximity(null);
     }
   };
 
-  // Show nearby places based on selected proximity place
-  const showNearbyPlaces = async (placeType, centerLat, centerLng) => {
-    if (!mapRef.current || loadingNearby) return;
+  // Show nearby places using cached data from proximity calculations
+  const showNearbyPlaces = async (placeType, selectedApartment) => {
+    if (!mapRef.current || loadingNearby || !selectedApartment) return;
 
     setLoadingNearby(true);
     clearNearbyPlaces();
 
     try {
-      console.log(`Loading nearby ${placeType} around ${centerLat}, ${centerLng}`);
-      
-      // Build query for showing places on map (different from counting)
-      const buildShowQuery = (category, lat, lng, radius) => {
-        const timeout = 20;
-        switch(category) {
-          case 'restaurant':
-            return `[out:json][timeout:${timeout}];(node["amenity"~"^(restaurant|cafe|fast_food|food_court)$"](around:${radius},${lat},${lng});way["amenity"~"^(restaurant|cafe|fast_food|food_court)$"](around:${radius},${lat},${lng}););out geom;`;
-          case 'convenience':
-            return `[out:json][timeout:${timeout}];(node["shop"~"^(convenience|supermarket|mall|department_store)$"](around:${radius},${lat},${lng});way["shop"~"^(convenience|supermarket|mall|department_store)$"](around:${radius},${lat},${lng}););out geom;`;
-          case 'school':
-            return `[out:json][timeout:${timeout}];(node["amenity"~"^(school|university|college|kindergarten)$"](around:${radius},${lat},${lng});way["amenity"~"^(school|university|college|kindergarten)$"](around:${radius},${lat},${lng}););out geom;`;
-          case 'health':
-            return `[out:json][timeout:${timeout}];(node["amenity"~"^(hospital|clinic|doctors|dentist|pharmacy)$"](around:${radius},${lat},${lng});node["healthcare"](around:${radius},${lat},${lng});node["shop"="chemist"](around:${radius},${lat},${lng});way["amenity"~"^(hospital|clinic|doctors|dentist|pharmacy)$"](around:${radius},${lat},${lng});way["healthcare"](around:${radius},${lat},${lng}););out geom;`;
-          case 'transport':
-            return `[out:json][timeout:${timeout}];(node["public_transport"](around:${radius},${lat},${lng});node["highway"="bus_stop"](around:${radius},${lat},${lng});node["amenity"="bus_station"](around:${radius},${lat},${lng});node["railway"~"^(station|halt|tram_stop)$"](around:${radius},${lat},${lng});way["public_transport"](around:${radius},${lat},${lng});way["amenity"="bus_station"](around:${radius},${lat},${lng});way["railway"~"^(station|halt)$"](around:${radius},${lat},${lng}););out geom;`;
-          default:
-            return buildShowQuery('restaurant', lat, lng, radius);
-        }
-      };
+      console.log(`Loading nearby ${placeType} for apartment ${selectedApartment.id}`);
 
-      const query = buildShowQuery(placeType, centerLat, centerLng, 2000);
-      const response = await fetch('https://overpass-api.de/api/interpreter', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: query,
-      });
-
-      if (!response.ok) {
-        throw new Error(`Overpass API error: ${response.status}`);
+      // Check if we have cached data for this apartment and service type
+      const apartmentData = cachedServiceData[selectedApartment.id];
+      if (!apartmentData || !apartmentData[placeType]) {
+        console.log(`No cached data for ${placeType}. Please wait for proximity calculation to complete.`);
+        setLoadingNearby(false);
+        return;
       }
 
-      const data = await response.json();
+      const serviceData = apartmentData[placeType];
+      const elements = serviceData.elements;
+      const maxRadius = serviceData.radius;
       
-      if (data.elements && data.elements.length > 0) {
+      if (elements && elements.length > 0) {
         const layerGroup = L.layerGroup();
         
-        // Place type icons and colors with Material Icons
+        // Place type icons and colors - exactly matching ProximityPlaceButtons
         const placeConfig = {
-          restaurant: { icon: 'restaurant', color: '#ef4444' },
-          health: { icon: 'local_hospital', color: '#10b981' },
-          school: { icon: 'school', color: '#3b82f6' },
-          convenience: { icon: 'store', color: '#f97316' },
-          transport: { icon: 'directions_bus', color: '#8b5cf6' }
+          restaurant: { icon: 'restaurant', color: '#ef4444' },      // Red-500 - matches proximity panel
+          health: { icon: 'local_hospital', color: '#10b981' },      // Green-500 - matches proximity panel
+          school: { icon: 'school', color: '#3b82f6' },              // Blue-500 - matches proximity panel
+          convenience: { icon: 'store', color: '#f97316' },          // Orange-500 - matches proximity panel
+          transport: { icon: 'directions_bus', color: '#8b5cf6' }    // Purple-500 - matches proximity panel
         };
 
         const config = placeConfig[placeType] || placeConfig.restaurant;
 
-        data.elements.forEach(element => {
+        // Create custom icon for this service type
+        const createServiceIcon = (iconName, color) => {
+          return L.divIcon({
+            html: `
+              <div class="service-marker" style="
+                background-color: ${color};
+                width: 32px;
+                height: 32px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border: 2px solid #ffffff;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+              ">
+                <span class="material-symbols-outlined" style="color: white; font-size: 18px;">${iconName}</span>
+              </div>
+            `,
+            className: 'custom-service-marker',
+            iconSize: [32, 32],
+            iconAnchor: [16, 16],
+            popupAnchor: [0, -16]
+          });
+        };
+
+        const serviceIcon = createServiceIcon(config.icon, config.color);
+
+        // Process cached elements and add distance info
+        const elementsWithDistance = [];
+
+        elements.forEach(element => {
           let lat, lng, name = 'ไม่ระบุชื่อ';
 
           // Handle different element types
@@ -395,51 +479,70 @@ const ApartmentMap = ({
 
           if (lat && lng) {
             if (element.tags) {
-              name = element.tags.name || 
-                     element.tags['name:th'] || 
-                     element.tags['name:en'] || 
-                     element.tags.brand || 
+              name = element.tags.name ||
+                     element.tags['name:th'] ||
+                     element.tags['name:en'] ||
+                     element.tags.brand ||
                      'ไม่ระบุชื่อ';
             }
 
-            const marker = L.circleMarker([lat, lng], {
-              radius: 8,
-              fillColor: config.color,
-              color: '#ffffff',
-              weight: 2,
-              opacity: 1,
-              fillOpacity: 0.8
+            // Calculate distance from apartment center
+            const distanceFromCenter = calculateDistance(serviceData.centerLat, serviceData.centerLng, lat, lng);
+
+            // Only include if within the service radius
+            if (distanceFromCenter <= maxRadius) {
+              elementsWithDistance.push({ ...element, lat, lng, name, distanceFromCenter });
+            }
+          }
+        });
+
+        // Sort by distance and create markers
+        elementsWithDistance
+          .sort((a, b) => a.distanceFromCenter - b.distanceFromCenter)
+          .forEach(element => {
+            const marker = L.marker([element.lat, element.lng], {
+              icon: serviceIcon
             });
 
-            // Enhanced popup with more info
+            // Enhanced popup with more info and distance
             const amenityType = element.tags?.amenity || element.tags?.shop || element.tags?.public_transport || element.tags?.railway || element.tags?.highway || placeType;
             const address = element.tags?.['addr:street'] || element.tags?.['addr:housenumber'] || '';
-            
+
+            // Calculate distance from selected apartment
+            const distance = calculateDistance(
+              selectedApartment.latitude,
+              selectedApartment.longitude,
+              element.lat,
+              element.lng
+            );
+            const distanceColor = distance <= maxRadius ? 'text-green-600' : 'text-orange-600';
+            const distanceInfo = `<div class="text-xs font-medium ${distanceColor} mb-1">ระยะทาง: ${formatDistance(distance)}</div>`;
+
             marker.bindPopup(`
               <div class="text-center">
                 <div class="mb-2">
                   <span class="material-symbols-outlined" style="font-size: 24px; color: ${config.color};">${config.icon}</span>
                 </div>
-                <div class="font-medium text-sm mb-1">${name}</div>
+                <div class="font-medium text-sm mb-1">${element.name}</div>
                 <div class="text-xs text-gray-600 mb-1">${amenityType}</div>
+                ${distanceInfo}
                 ${address ? `<div class="text-xs text-gray-500">${address}</div>` : ''}
               </div>
             `, {
               closeButton: true,
-              maxWidth: 200,
+              maxWidth: 220,
               className: 'simple-place-popup'
             });
 
             layerGroup.addLayer(marker);
-          }
-        });
+          });
 
         layerGroup.addTo(mapRef.current);
         nearbyLayersRef.current[placeType] = layerGroup;
-        
-        console.log(`Loaded ${data.elements.length} ${placeType} places on map`);
+
+        console.log(`Loaded ${elementsWithDistance.length} of ${elements.length} ${placeType} places within ${maxRadius}m radius from cache`);
       } else {
-        console.log(`No ${placeType} places found in the area`);
+        console.log(`No ${placeType} places found in cached data`);
       }
     } catch (error) {
       console.error(`Error loading nearby ${placeType}:`, error);
@@ -460,13 +563,12 @@ const ApartmentMap = ({
 
   // Handle proximity place selection
   useEffect(() => {
-    if (selectedProximityPlace && showingNearbyPlaces && mapRef.current) {
-      const center = mapRef.current.getCenter();
-      showNearbyPlaces(selectedProximityPlace, center.lat, center.lng);
+    if (selectedProximityPlace && showingNearbyPlaces && mapRef.current && selectedApartment) {
+      showNearbyPlaces(selectedProximityPlace, selectedApartment);
     } else {
       clearNearbyPlaces();
     }
-  }, [selectedProximityPlace, showingNearbyPlaces]);
+  }, [selectedProximityPlace, showingNearbyPlaces, selectedApartment, cachedServiceData]);
 
   // Update markers when data changes
   useEffect(() => {
@@ -516,7 +618,10 @@ const ApartmentMap = ({
             
             // Select apartment (this will update the statistics panel)
             onApartmentSelect(property);
-            
+
+            // Store selected apartment coordinates for distance calculations
+            setSelectedApartmentCoords({ lat, lng });
+
             // Calculate proximity score if not already calculated
             if (!proximityScores[property.id] && calculatingProximity !== property.id) {
               calculateProximityForProperty(property);
@@ -615,18 +720,24 @@ const ApartmentMap = ({
       try {
         const lat = parseFloat(selectedApartment.latitude);
         const lng = parseFloat(selectedApartment.longitude);
-        
+
         if (!isNaN(lat) && !isNaN(lng)) {
           const pinnedMarker = L.circleMarker([lat, lng], createSimpleMarker(selectedApartment, true, false));
-          
+
           pinnedMarker.addTo(mapRef.current);
           pinnedMarkerRef.current = pinnedMarker;
+
+          // Store coordinates for distance calculations
+          setSelectedApartmentCoords({ lat, lng });
         } else {
           console.warn('Invalid coordinates for selected apartment:', selectedApartment.id);
         }
       } catch (pinnedError) {
         console.error('Error creating pinned marker:', pinnedError);
       }
+    } else {
+      // Clear coordinates when no apartment is selected
+      setSelectedApartmentCoords(null);
     }
   }, [selectedApartment]);
 
@@ -701,6 +812,30 @@ const ApartmentMap = ({
               {loadingNearby && 'กำลังโหลดสถานที่ใกล้เคียง...'}
               {calculatingProximity && 'กำลังคำนวณคะแนน...'}
             </span>
+          </div>
+        </div>
+      )}
+
+      {/* Service Radius Information */}
+      {selectedProximityPlace && showingNearbyPlaces && (
+        <div className="absolute bottom-4 left-4 bg-white rounded-lg shadow-lg p-3 z-10 border border-gray-200">
+          <div className="text-xs text-gray-600">
+            <div className="font-medium mb-1">รัศมีการเดินทาง (รถ/มอเตอร์ไซค์):</div>
+            <div className="text-blue-600">
+              {(() => {
+                const radius = getServiceRadius(selectedProximityPlace);
+                const categoryNames = {
+                  transport: 'ขนส่งสาธารณะ',
+                  convenience: 'ร้านสะดวกซื้อ',
+                  restaurant: 'ร้านอาหาร',
+                  health: 'สถานพยาบาล',
+                  school: 'สถานศึกษา'
+                };
+                const kmDistance = (radius / 1000).toFixed(1);
+                return `${categoryNames[selectedProximityPlace] || selectedProximityPlace}: ในรัศมี ${kmDistance} กม.`;
+              })()
+            }
+            </div>
           </div>
         </div>
       )}

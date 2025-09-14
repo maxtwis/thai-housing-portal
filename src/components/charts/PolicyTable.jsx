@@ -9,12 +9,12 @@ const PolicyTable = ({ policies, provinceName }) => {
       <div className="bg-white p-0 rounded-lg shadow">
         <div className="px-3 py-2 border-b border-gray-200">
           <div className="flex justify-between items-center">
-            <h2 className="text-sm font-semibold text-gray-800">Housing Policies</h2>
+            <h2 className="text-sm font-semibold text-gray-800">นโยบายที่อยู่อาศัย</h2>
             <ExportButton data={[]} filename={`policies_${provinceName}`} />
           </div>
         </div>
         <div className="px-4 py-8 flex items-center justify-center">
-          <p className="text-gray-500">No policy data available for this province</p>
+          <p className="text-gray-500">ไม่มีข้อมูลนโยบายสำหรับจังหวัดนี้</p>
         </div>
       </div>
     );
@@ -70,7 +70,7 @@ const PolicyTable = ({ policies, provinceName }) => {
     <div className="bg-white p-0 rounded-lg shadow">
       <div className="px-3 py-2 border-b border-gray-200">
         <div className="flex justify-between items-center">
-          <h2 className="text-sm font-semibold text-gray-800">Housing Policies</h2>
+          <h2 className="text-sm font-semibold text-gray-800">นโยบายที่อยู่อาศัย</h2>
           <ExportButton data={policies} filename={`policies_${provinceName}`} />
         </div>
       </div>
@@ -80,10 +80,10 @@ const PolicyTable = ({ policies, provinceName }) => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">Project</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">Ministry/Dept.</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">Type</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">Status</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">โครงการ</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">กระทรวง/กรม</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">ประเภท</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">สถานะ</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -127,29 +127,29 @@ const PolicyTable = ({ policies, provinceName }) => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
                             <div className="mb-2">
-                              <p className="text-xs font-medium text-gray-500">Ministry</p>
+                              <p className="text-xs font-medium text-gray-500">กระทรวง</p>
                               <p className="text-sm">{policy["Ministry (if applicable)"] || "N/A"}</p>
                             </div>
                             <div className="mb-2">
-                              <p className="text-xs font-medium text-gray-500">Department(s)</p>
+                              <p className="text-xs font-medium text-gray-500">กรม</p>
                               <p className="text-sm whitespace-pre-line">{policy["Department(s)"] || "N/A"}</p>
                             </div>
                             <div className="mb-2">
-                              <p className="text-xs font-medium text-gray-500">Joint Organization</p>
+                              <p className="text-xs font-medium text-gray-500">องค์กรร่วม</p>
                               <p className="text-sm">{policy["Joint Org. (If applicable)"] || "N/A"}</p>
                             </div>
                             <div className="mb-2">
-                              <p className="text-xs font-medium text-gray-500">Year</p>
+                              <p className="text-xs font-medium text-gray-500">ปี</p>
                               <p className="text-sm">{policy.Year || "N/A"}</p>
                             </div>
                           </div>
                           <div>
                             <div className="mb-2">
-                              <p className="text-xs font-medium text-gray-500">Annual Budget</p>
+                              <p className="text-xs font-medium text-gray-500">งบประมาณประจำปี</p>
                               <p className="text-sm">{policy["Annual Budget"] || "N/A"}</p>
                             </div>
                             <div className="mb-2">
-                              <p className="text-xs font-medium text-gray-500">Synopsis</p>
+                              <p className="text-xs font-medium text-gray-500">สาระสำคัญ</p>
                               <p className="text-sm whitespace-pre-line">{policy.Synopsis || "N/A"}</p>
                             </div>
                             <div>
@@ -169,7 +169,7 @@ const PolicyTable = ({ policies, provinceName }) => {
       </div>
       
       <div className="px-3 py-1 text-xs text-gray-500 border-t border-gray-200">
-        <p>Source: National Housing Authority of Thailand</p>
+        <p>แหล่งที่มา: การเครืออาคารแห่งชาติ</p>
       </div>
     </div>
   );

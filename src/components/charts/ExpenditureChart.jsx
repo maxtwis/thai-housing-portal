@@ -97,13 +97,13 @@ const ExpenditureChart = ({ provinceName, provinceId }) => {
       <div className="bg-white p-0 rounded-lg shadow">
         <div className="px-3 py-2 border-b border-gray-200">
           <div className="flex justify-between items-center">
-            <h2 className="text-sm font-semibold text-gray-800">Expenditure by Income Quintile</h2>
+            <h2 className="text-sm font-semibold text-gray-800">รายจ่ายตามกลุ่มรายได้</h2>
           </div>
         </div>
         <div className="px-2 py-1 h-52 flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
-            <p className="mt-3 text-gray-600">Loading expenditure data...</p>
+            <p className="mt-3 text-gray-600">กำลังโหลดข้อมูลรายจ่าย...</p>
           </div>
         </div>
       </div>
@@ -116,18 +116,18 @@ const ExpenditureChart = ({ provinceName, provinceId }) => {
       <div className="bg-white p-0 rounded-lg shadow">
         <div className="px-3 py-2 border-b border-gray-200">
           <div className="flex justify-between items-center">
-            <h2 className="text-sm font-semibold text-gray-800">Expenditure by Income Quintile</h2>
+            <h2 className="text-sm font-semibold text-gray-800">รายจ่ายตามกลุ่มรายได้</h2>
             <ExportButton data={[]} filename={`expenditure_${provinceName}`} />
           </div>
         </div>
         <div className="px-2 py-1 h-52 flex items-center justify-center">
           <div className="text-center text-red-500">
-            <p>Failed to load data</p>
+            <p>โหลดข้อมูลไม่สำเร็จ</p>
             <p className="text-xs">Please try again later</p>
           </div>
         </div>
         <div className="px-3 py-1 text-xs text-gray-500 border-t border-gray-200">
-          <p>Source: Thailand National Statistics Office</p>
+          <p>แหล่งที่มา: สำนักงานสถิติแห่งชาติ</p>
         </div>
       </div>
     );
@@ -138,15 +138,15 @@ const ExpenditureChart = ({ provinceName, provinceId }) => {
       <div className="bg-white p-0 rounded-lg shadow">
         <div className="px-3 py-2 border-b border-gray-200">
           <div className="flex justify-between items-center">
-            <h2 className="text-sm font-semibold text-gray-800">Expenditure by Income Quintile</h2>
+            <h2 className="text-sm font-semibold text-gray-800">รายจ่ายตามกลุ่มรายได้</h2>
             <ExportButton data={[]} filename={`expenditure_${provinceName}`} />
           </div>
         </div>
         <div className="px-2 py-1 h-52 flex items-center justify-center">
-          <p className="text-gray-500">No data available</p>
+          <p className="text-gray-500">ไม่มีข้อมูล</p>
         </div>
         <div className="px-3 py-1 text-xs text-gray-500 border-t border-gray-200">
-          <p>Source: Thailand National Statistics Office</p>
+          <p>แหล่งที่มา: สำนักงานสถิติแห่งชาติ</p>
         </div>
       </div>
     );
@@ -178,7 +178,7 @@ const ExpenditureChart = ({ provinceName, provinceId }) => {
     <div className="bg-white p-0 rounded-lg shadow">
       <div className="px-3 py-2 border-b border-gray-200">
         <div className="flex justify-between items-center">
-          <h2 className="text-sm font-semibold text-gray-800">Expenditure by Income Quintile</h2>
+          <h2 className="text-sm font-semibold text-gray-800">รายจ่ายตามกลุ่มรายได้</h2>
           <div className="flex items-center space-x-2">
             {isFetching && (
               <div className="text-xs text-blue-600">
@@ -211,7 +211,9 @@ const ExpenditureChart = ({ provinceName, provinceId }) => {
               domain={[0, 'auto']}
               label={{ value: '%', angle: -90, position: 'insideLeft', offset: -5, fontSize: 10 }}
             />
-            <Tooltip content={<CustomTooltip />}  />
+            <Tooltip content={<CustomTooltip />}
+              labelFormatter={(value) => `ปี พ.ศ. ${value + 543}`}
+            />
             <Legend 
               verticalAlign="bottom" 
               height={40}
@@ -230,7 +232,7 @@ const ExpenditureChart = ({ provinceName, provinceId }) => {
         </ResponsiveContainer>
       </div>
       <div className="px-3 py-1 text-xs text-gray-500 border-t border-gray-200">
-        <p className="w-full overflow-hidden text-ellipsis whitespace-nowrap">Source: Thailand National Statistics Office</p>
+        <p className="w-full overflow-hidden text-ellipsis whitespace-nowrap">แหล่งที่มา: สำนักงานสถิติแห่งชาติ</p>
       </div>
     </div>
   );

@@ -160,9 +160,9 @@ const Dashboard = () => {
   return (
     <div className="container mx-auto px-4 py-4">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Housing Profile</h1>
+        <h1 className="text-2xl font-bold text-gray-800">โปรไฟล์ที่อยู่อาศัย</h1>
         <p className="text-gray-600 mt-2">
-          Explore province-level data, housing policies and frameworks.
+          สำรวจข้อมูลระดับจังหวัด นโยบายที่อยู่อาศัย และกรอบการทำงาน
         </p>
         
         {/* Loading indicator for overall data */}
@@ -193,11 +193,11 @@ const Dashboard = () => {
           value={activeTopic}
           onChange={(e) => setActiveTopic(e.target.value)}
         >
-          <option value="demographics">Demographics</option>
-          <option value="housing">Housing Supply</option>
-          <option value="affordability">Housing Affordability</option>
-          <option value="demand">Housing Demand</option>
-          <option value="policy">Policy</option>
+          <option value="demographics">ข้อมูลประชากร</option>
+          <option value="housing">อุปทานที่อยู่อาศัย</option>
+          <option value="affordability">ความสามารถในการจ่าย</option>
+          <option value="demand">ความต้องการที่อยู่อาศัย</option>
+          <option value="policy">นโยบาย</option>
         </select>
       </div>
       
@@ -213,7 +213,7 @@ const Dashboard = () => {
               <svg className="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              Generate Full Report
+              สร้างรายงานแบบเต็ม
             </button>
           </div>
 
@@ -226,7 +226,7 @@ const Dashboard = () => {
                   ? 'bg-blue-800 text-white' 
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
             >
-              DEMOGRAPHICS
+              ข้อมูลประชากร
             </button>
             <button 
               onClick={() => setActiveTopic('housing')}
@@ -235,7 +235,7 @@ const Dashboard = () => {
                   ? 'bg-blue-800 text-white' 
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
             >
-              HOUSING SUPPLY
+              อุปทานที่อยู่อาศัย
             </button>
             <button 
               onClick={() => setActiveTopic('affordability')}
@@ -244,7 +244,7 @@ const Dashboard = () => {
                   ? 'bg-blue-800 text-white' 
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
             >
-              HOUSING AFFORDABILITY
+              ความสามารถในการจ่าย
             </button>
             <button 
               onClick={() => setActiveTopic('demand')}
@@ -253,7 +253,7 @@ const Dashboard = () => {
                   ? 'bg-blue-800 text-white' 
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
             >
-              HOUSING DEMAND
+              ความต้องการที่อยู่อาศัย
             </button>
             <button 
               onClick={() => setActiveTopic('policy')}
@@ -262,7 +262,7 @@ const Dashboard = () => {
                   ? 'bg-blue-800 text-white' 
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
             >
-              POLICY
+              นโยบาย
             </button>
           </div>
           
@@ -517,18 +517,18 @@ const Dashboard = () => {
           {policy.data && policy.data.length > 0 && (
             <div className="bg-white rounded-lg shadow p-4 mt-4">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                Policy Summary
+                สรุปนโยบาย
               </h3>
               
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Total Policies</span>
+                  <span className="text-gray-600">จำนวนนโยบายทั้งหมด</span>
                   <span className="font-medium">{policy.data.length}</span>
                 </div>
                 
                 {/* Policy type breakdown */}
                 <div className="pt-2">
-                  <p className="text-xs font-medium text-gray-700 mb-2">By Type:</p>
+                  <p className="text-xs font-medium text-gray-700 mb-2">แยกตามประเภท:</p>
                   <div className="flex flex-wrap gap-1">
                     {['S1', 'S2', 'S3'].map(typeCode => {
                       const count = policy.data.filter(p => 

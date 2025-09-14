@@ -141,13 +141,9 @@ const ApartmentStatistics = ({
             <div className="bg-white border border-gray-200 rounded-lg p-4">
               <div className="flex items-center justify-between mb-2">
                 <h4 className="text-sm font-medium text-gray-700">คะแนนสถานบริการโดยรอบ</h4>
-                {proximityScore > 0 ? (
+                {proximityScore > 0 && (
                   <span className={`px-2 py-1 rounded-full text-sm font-medium ${getScoreColor(proximityScore)}`}>
                     {proximityScore}%
-                  </span>
-                ) : (
-                  <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
-                    ยังไม่คำนวณ
                   </span>
                 )}
               </div>
@@ -161,11 +157,6 @@ const ApartmentStatistics = ({
                   style={{ width: `${proximityScore}%` }}
                 ></div>
               </div>
-              {proximityScore === 0 && (
-                <p className="text-xs text-gray-500 mt-1">
-                  คลิกที่อพาร์ตเมนต์บนแผนที่เพื่อคำนวณ
-                </p>
-              )}
             </div>
           </div>
 

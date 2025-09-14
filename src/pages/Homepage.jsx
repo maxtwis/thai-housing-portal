@@ -38,27 +38,27 @@ const Homepage = () => {
     {
       icon: Home,
       title: "Housing Profile",
-      titleTh: "โปรไฟล์ที่อยู่อาศัย",
+      titleTh: "แสดงข้อมูลภาพรวมด้านที่อยู่อาศัย\nในระดับจังหวัด",
       description: "Comprehensive housing data analysis and provincial insights",
-      descriptionTh: "วิเคราะห์ข้อมูลที่อยู่อาศัยและข้อมูลเชิงลึกระดับจังหวัด",
+      descriptionTh: "แสดงข้อมูลภาพรวมด้านที่อยู่อาศัยในระดับจังหวัด",
       link: "/housing-profile",
       color: "from-blue-500 to-blue-600"
     },
     {
       icon: Building,
       title: "Housing Stock",
-      titleTh: "สต็อกที่อยู่อาศัย",
+      titleTh: "ข้อมูลอุปสงค์ที่อยู่อาศัย\nภายในเมือง",
       description: "Housing supply analysis and apartment market data",
-      descriptionTh: "วิเคราะห์อุปทานที่อยู่อาศัยและข้อมูลตลาดอพาร์ตเมนต์",
+      descriptionTh: "ข้อมูลอุปสงค์ที่อยู่อาศัยภายในเมือง",
       link: "/apartment-supply",
       color: "from-teal-500 to-teal-600"
     },
     {
       icon: Truck,
       title: "Housing Delivery System",
-      titleTh: "ระบบการจัดการที่อยู่อาศัย",
+      titleTh: "ข้อมูลภาพรวมที่อยู่อาศัย\nในระดับพื้นที่",
       description: "Housing development and delivery system analytics",
-      descriptionTh: "วิเคราะห์การพัฒนาและระบบการจัดการที่อยู่อาศัย",
+      descriptionTh: "ข้อมูลภาพรวมที่อยู่อาศัยในระดับพื้นที่",
       link: "/housing-delivery-system",
       color: "from-purple-500 to-purple-600"
     }
@@ -142,14 +142,16 @@ const Homepage = () => {
                   <Link
                     key={index}
                     to={func.link}
-                    className="group p-8 bg-white/10 backdrop-blur-md border border-white/20 text-white font-semibold rounded-2xl hover:bg-white/15 transition-all duration-300 hover:scale-105 active:scale-95 flex flex-col items-center text-center shadow-2xl hover:shadow-blue-500/25"
+                    className="group p-8 bg-white/10 backdrop-blur-md border border-white/20 text-white font-semibold rounded-2xl hover:bg-white/15 transition-all duration-300 hover:scale-105 active:scale-95 flex flex-col items-center justify-between text-center shadow-2xl hover:shadow-blue-500/25 min-h-[280px]"
                   >
-                    <div className={`mb-6 p-4 bg-gradient-to-r ${func.color} rounded-xl group-hover:scale-110 transition-transform duration-300 shadow-lg`}>
-                      <Icon size={28} className="text-white" />
+                    <div className="flex flex-col items-center flex-1">
+                      <div className={`mb-6 p-4 bg-gradient-to-r ${func.color} rounded-xl group-hover:scale-110 transition-transform duration-300 shadow-lg`}>
+                        <Icon size={28} className="text-white" />
+                      </div>
+                      <h3 className="font-bold text-lg mb-2">{func.title}</h3>
+                      <p className="text-blue-200 text-sm mb-4 whitespace-pre-line leading-relaxed">{func.titleTh}</p>
                     </div>
-                    <h3 className="font-bold text-xl mb-2">{func.title}</h3>
-                    <p className="text-blue-200 text-base mb-4">{func.titleTh}</p>
-                    <ArrowRight size={18} className="group-hover:translate-x-2 transition-transform opacity-70 group-hover:opacity-100" />
+                    <ArrowRight size={18} className="group-hover:translate-x-2 transition-transform opacity-70 group-hover:opacity-100 mt-auto" />
                   </Link>
                 );
               })}

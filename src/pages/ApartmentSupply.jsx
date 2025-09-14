@@ -621,6 +621,8 @@ const ApartmentSupply = () => {
           onPlaceClick={handleProximityPlaceClick}
           onClearPlaces={clearNearbyPlaces}
           showingNearbyPlaces={showingNearbyPlaces}
+          selectedApartment={selectedApartment}
+          proximityCalculated={selectedApartment && proximityScores[selectedApartment.id] !== undefined}
         />
       </div>
 

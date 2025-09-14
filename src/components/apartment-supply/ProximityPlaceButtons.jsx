@@ -1,11 +1,13 @@
 import React from 'react';
 import 'material-symbols/outlined.css';
 
-const ProximityPlaceButtons = ({ 
-  selectedPlace, 
-  onPlaceClick, 
-  onClearPlaces, 
-  showingNearbyPlaces 
+const ProximityPlaceButtons = ({
+  selectedPlace,
+  onPlaceClick,
+  onClearPlaces,
+  showingNearbyPlaces,
+  selectedApartment,
+  proximityCalculated = false
 }) => {
   
   const proximityPlaces = [
@@ -61,13 +63,16 @@ const ProximityPlaceButtons = ({
             return (
               <button
                 key={place.id}
-                onClick={() => onPlaceClick(place.id)}
+                onClick={() => selectedApartment && proximityCalculated ? onPlaceClick(place.id) : null}
+                disabled={!selectedApartment || !proximityCalculated}
                 className={`
                   flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium
                   transition-all duration-200 whitespace-nowrap border
-                  ${isSelected 
-                    ? `${place.lightColor} border shadow-sm` 
-                    : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 hover:border-gray-300'
+                  ${!selectedApartment || !proximityCalculated
+                    ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-50'
+                    : isSelected
+                      ? `${place.lightColor} border shadow-sm`
+                      : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 hover:border-gray-300 cursor-pointer'
                   }
                 `}
               >
@@ -100,17 +105,29 @@ const ProximityPlaceButtons = ({
         )}
       </div>
 
-      {/* Active Status Indicator */}
-      {showingNearbyPlaces && selectedPlace && (
+      {/* Status Messages */}
+      {!selectedApartment && (
         <div className="mt-2 flex items-center gap-2 text-sm">
           <div className="flex items-center gap-1">
-            <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-            <span className="text-gray-600">
-              กำลังแสดง{proximityPlaces.find(p => p.id === selectedPlace)?.label}ใกล้เคียง
+            <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+            <span className="text-gray-500">
+              เลือกอพาร์ตเมนต์ก่อนเพื่อดูสถานที่ใกล้เคียง
             </span>
           </div>
         </div>
       )}
+
+      {selectedApartment && !proximityCalculated && (
+        <div className="mt-2 flex items-center gap-2 text-sm">
+          <div className="flex items-center gap-1">
+            <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+            <span className="text-gray-600">
+              กำลังคำนวณคะแนนความใกล้เคียง...
+            </span>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

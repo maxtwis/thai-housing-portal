@@ -11,14 +11,14 @@ const PolicyChart = ({ policies, onFilterChange, activeFilter }) => {
       <div className="bg-white p-0 rounded-lg shadow">
         <div className="px-3 py-2 border-b border-gray-200">
           <div className="flex justify-between items-center">
-            <h2 className="text-sm font-semibold text-gray-800">Policy Distribution</h2>
+            <h2 className="text-sm font-semibold text-gray-800">การกระจายนโยบาย</h2>
           </div>
         </div>
         <div className="px-2 py-1 h-52 flex items-center justify-center">
-          <p className="text-gray-500">No policy data available</p>
+          <p className="text-gray-500">ไม่มีข้อมูลนโยบาย</p>
         </div>
         <div className="px-3 py-1 text-xs text-gray-500 border-t border-gray-200">
-          <p>Source: National Housing Authority of Thailand</p>
+          <p>แหล่งที่มา: การเครืออาคารแห่งชาติ</p>
         </div>
       </div>
     );
@@ -68,11 +68,11 @@ const PolicyChart = ({ policies, onFilterChange, activeFilter }) => {
       return (
         <div className="bg-white p-2 border border-gray-200 shadow-sm rounded text-xs">
           <p className="font-semibold">{payload[0].name}</p>
-          <p>{payload[0].value} policies</p>
+          <p>{payload[0].value} นโยบาย</p>
           <p className="text-gray-500 text-xs">
             {((payload[0].value / policies.length) * 100).toFixed(1)}%
           </p>
-          <p className="text-blue-500 text-xs mt-1">Click to filter</p>
+          <p className="text-blue-500 text-xs mt-1">คลิกเพื่อกรอง</p>
         </div>
       );
     }
@@ -85,8 +85,8 @@ const PolicyChart = ({ policies, onFilterChange, activeFilter }) => {
       return (
         <div className="bg-white p-2 border border-gray-200 shadow-sm rounded text-xs">
           <p className="font-semibold">{payload[0].payload.fullName}</p>
-          <p>{payload[0].value} policies</p>
-          <p className="text-blue-500 text-xs mt-1">Click to filter</p>
+          <p>{payload[0].value} นโยบาย</p>
+          <p className="text-blue-500 text-xs mt-1">คลิกเพื่อกรอง</p>
         </div>
       );
     }
@@ -128,13 +128,13 @@ const PolicyChart = ({ policies, onFilterChange, activeFilter }) => {
       <div className="bg-white p-0 rounded-lg shadow">
         <div className="px-3 py-2 border-b border-gray-200">
           <div className="flex justify-between items-center">
-            <h2 className="text-sm font-semibold text-gray-800">Policy Status</h2>
+            <h2 className="text-sm font-semibold text-gray-800">สถานะนโยบาย</h2>
             {activeFilter && activeFilter.startsWith('status:') && (
               <button 
                 onClick={() => onFilterChange(null)} 
                 className="text-xs text-blue-600 hover:text-blue-800"
               >
-                Clear Filter
+ลบตัวกรอง
               </button>
             )}
           </div>
@@ -172,7 +172,7 @@ const PolicyChart = ({ policies, onFilterChange, activeFilter }) => {
           </ResponsiveContainer>
         </div>
         <div className="px-3 py-1 text-xs text-gray-500 border-t border-gray-200">
-          <p className="w-full overflow-hidden text-ellipsis whitespace-nowrap">Total policies: {policies.length}</p>
+          <p className="w-full overflow-hidden text-ellipsis whitespace-nowrap">นโยบายรวม: {policies.length}</p>
         </div>
       </div>
       
@@ -180,13 +180,13 @@ const PolicyChart = ({ policies, onFilterChange, activeFilter }) => {
       <div className="bg-white p-0 rounded-lg shadow">
         <div className="px-3 py-2 border-b border-gray-200">
           <div className="flex justify-between items-center">
-            <h2 className="text-sm font-semibold text-gray-800">Policy Types (3S Model)</h2>
+            <h2 className="text-sm font-semibold text-gray-800">ประเภทนโยบาย (แบบจำลอง 3S)</h2>
             {activeFilter && activeFilter.startsWith('type:') && (
               <button 
                 onClick={() => onFilterChange(null)} 
                 className="text-xs text-blue-600 hover:text-blue-800"
               >
-                Clear Filter
+ลบตัวกรอง
               </button>
             )}
           </div>
