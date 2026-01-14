@@ -109,32 +109,33 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
     }
   };
 
-  // Color mapping - different keys for local data, CKAN province, and CKAN district
+  // Color mapping - Professional academic palette inspired by Our World in Data
+  // Muted, sophisticated colors that work well for data visualization
   const getHouseTypeColors = () => {
     if (USE_LOCAL_DATA) {
       return {
-        'บ้านเดี่ยว': '#3B82F6', // Blue
-        'ตึกแถว': '#10B981', // Green
-        'ทาวน์เฮาส์/บ้านแฝด': '#F59E0B', // Yellow
-        'แฟลต อาคารชุด อพาร์ตเมนต์': '#EF4444', // Red
-        'ห้องแบ่งเช่า': '#8B5CF6', // Purple
-        'ที่พักกึ่งถาวร': '#EC4899'  // Pink
+        'บ้านเดี่ยว': '#5470C6', // Professional Blue
+        'ตึกแถว': '#91CC75', // Sage Green
+        'ทาวน์เฮาส์/บ้านแฝด': '#FAC858', // Muted Gold
+        'แฟลต อาคารชุด อพาร์ตเมนต์': '#EE6666', // Soft Red
+        'ห้องแบ่งเช่า': '#73C0DE', // Sky Blue
+        'ที่พักกึ่งถาวร': '#9A60B4'  // Muted Purple
       };
     } else if (dataLevel === 'province') {
       return {
-        1: '#3B82F6', // Blue
-        2: '#10B981', // Green
-        3: '#F59E0B', // Yellow
-        4: '#EF4444', // Red
-        5: '#8B5CF6'  // Purple
+        1: '#5470C6', // Professional Blue
+        2: '#91CC75', // Sage Green
+        3: '#FAC858', // Muted Gold
+        4: '#EE6666', // Soft Red
+        5: '#73C0DE'  // Sky Blue
       };
     } else {
       return {
-        'ห้องแถว/ตึกแถว': '#3B82F6', // Blue
-        'ทาวน์เฮ้าส์/ทาวโฮม': '#10B981', // Green
-        'บ้านเดี่ยว': '#F59E0B', // Yellow
-        'ตึกแถวพาณิชย์': '#EF4444', // Red
-        'หอพัก/แฟลต/อพาร์ทเมนต์': '#8B5CF6'  // Purple
+        'ห้องแถว/ตึกแถว': '#5470C6', // Professional Blue
+        'ทาวน์เฮ้าส์/ทาวโฮม': '#91CC75', // Sage Green
+        'บ้านเดี่ยว': '#FAC858', // Muted Gold
+        'ตึกแถวพาณิชย์': '#EE6666', // Soft Red
+        'หอพัก/แฟลต/อพาร์ทเมนต์': '#73C0DE'  // Sky Blue
       };
     }
   };
@@ -269,33 +270,53 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
     if (active && payload && payload.length) {
       // Filter out zero values for cleaner tooltip
       const nonZeroPayload = payload.filter(entry => entry.value > 0);
-      
+
       if (nonZeroPayload.length === 0) return null;
 
+      // Get income level from quintile label
+      const quintileNumber = label.replace('Q', '').replace('ไม่ระบุรายได้', '0');
+      const incomeLevel = incomeRankLabels && incomeRankLabels[quintileNumber]
+        ? incomeRankLabels[quintileNumber]
+        : '';
+
       return (
-        <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
-          <h4 className="font-semibold text-gray-800 mb-2 text-sm">{label}</h4>
-          <p className="text-xs text-gray-600 mb-2">
+        <div className="bg-white p-4 border-2 border-blue-200 rounded-lg shadow-xl max-w-xs">
+          <div className="flex items-center gap-2 mb-2 pb-2 border-b border-gray-200">
+            <div className="flex items-center justify-center w-7 h-7 bg-blue-600 text-white font-bold rounded-full text-xs">
+              {label}
+            </div>
+            <div className="flex-1">
+              <h4 className="font-bold text-gray-900 text-sm">{label}</h4>
+              {incomeLevel && (
+                <p className="text-xs text-blue-700 font-medium">{incomeLevel}</p>
+              )}
+            </div>
+          </div>
+          <p className="text-xs text-gray-600 mb-3 pb-2 border-b border-gray-100">
             {selectedDemandType} • {availableMetrics[selectedMetric]}
             {dataLevel === 'district' && selectedDistrict && (
               <span className="ml-1">• {selectedDistrict}</span>
             )}
           </p>
-          {nonZeroPayload.map((entry, index) => (
-            <div key={index} className="flex items-center gap-2 text-xs">
-              <div 
-                className="w-2 h-2 rounded-full" 
-                style={{ backgroundColor: entry.color }}
-              ></div>
-              <span className="text-gray-600">{entry.dataKey}:</span>
-              <span className="font-medium">
-                {selectedMetric === 'Exp_house' 
-                  ? `${entry.value.toLocaleString()} บาท`
-                  : `${entry.value}%`
-                }
-              </span>
-            </div>
-          ))}
+          <div className="space-y-2">
+            {nonZeroPayload.map((entry, index) => (
+              <div key={index} className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 flex-1">
+                  <div
+                    className="w-3 h-3 rounded-sm flex-shrink-0"
+                    style={{ backgroundColor: entry.color }}
+                  ></div>
+                  <span className="text-xs text-gray-700">{entry.dataKey}</span>
+                </div>
+                <span className="text-sm font-bold text-gray-900">
+                  {selectedMetric === 'Exp_house'
+                    ? `${entry.value.toLocaleString()} ฿`
+                    : `${entry.value}%`
+                  }
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       );
     }
@@ -443,46 +464,98 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
         )}
       </div>
 
-      <div className="px-4 py-4">
+      <div className="px-6 py-6 bg-gradient-to-b from-gray-50 to-white">
         {chartData.length > 0 ? (
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer width="100%" height={400}>
             <BarChart
               data={chartData}
-              margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+              margin={{ top: 20, right: 40, left: 30, bottom: 70 }}
+              barGap={8}
+              barCategoryGap="20%"
             >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis 
-                dataKey="quintile" 
-                fontSize={10}
-                angle={-45}
-                textAnchor="end"
-                height={60}
+              <defs>
+                {/* Add gradients for each house type */}
+                {Object.entries(houseTypeMapping).map(([key, houseTypeName]) => {
+                  const color = houseTypeColors[key];
+                  const safeId = houseTypeName.replace(/\s+/g, '-').replace(/\//g, '-');
+                  return (
+                    <linearGradient key={`gradient-${safeId}`} id={`gradient-${safeId}`} x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={color} stopOpacity={0.9} />
+                      <stop offset="100%" stopColor={color} stopOpacity={0.7} />
+                    </linearGradient>
+                  );
+                })}
+              </defs>
+
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke="#e5e7eb"
+                strokeOpacity={0.5}
+                vertical={false}
               />
-              <YAxis 
-                fontSize={10}
-                label={{ 
-                  value: selectedMetric === 'Exp_house' ? 'บาท' : '%', 
-                  angle: -90, 
-                  position: 'insideLeft' 
+
+              <XAxis
+                dataKey="quintile"
+                fontSize={13}
+                fontWeight={600}
+                angle={0}
+                textAnchor="middle"
+                height={60}
+                stroke="#6b7280"
+                tick={{ fill: '#374151' }}
+                axisLine={{ stroke: '#d1d5db', strokeWidth: 2 }}
+              />
+
+              <YAxis
+                fontSize={12}
+                fontWeight={500}
+                stroke="#6b7280"
+                tick={{ fill: '#374151' }}
+                axisLine={{ stroke: '#d1d5db', strokeWidth: 2 }}
+                label={{
+                  value: selectedMetric === 'Exp_house' ? 'บาท' : '%',
+                  angle: -90,
+                  position: 'insideLeft',
+                  style: {
+                    fontSize: 13,
+                    fontWeight: 'bold',
+                    fill: '#1f2937'
+                  }
                 }}
               />
-              <Tooltip content={customTooltip} />
-              <Legend 
-                wrapperStyle={{ fontSize: '10px' }}
-                iconType="rect"
+
+              <Tooltip
+                content={customTooltip}
+                cursor={{ fill: 'rgba(59, 130, 246, 0.08)' }}
               />
-              
-              {/* Create stacked bars for each house type - different iteration for province vs district */}
-              {Object.entries(houseTypeMapping).map(([houseTypeKey, houseTypeName]) => (
-                <Bar 
-                  key={houseTypeKey}
-                  dataKey={houseTypeName}
-                  name={houseTypeName}
-                  stackId="housing"
-                  fill={houseTypeColors[houseTypeKey]}
-                  radius={Object.keys(houseTypeMapping).indexOf(houseTypeKey) === Object.keys(houseTypeMapping).length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
-                />
-              ))}
+
+              <Legend
+                wrapperStyle={{
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  paddingTop: '20px'
+                }}
+                iconType="circle"
+                iconSize={10}
+              />
+
+              {/* Create stacked bars with gradients and rounded corners */}
+              {Object.entries(houseTypeMapping).map(([houseTypeKey, houseTypeName], index, array) => {
+                const safeId = houseTypeName.replace(/\s+/g, '-').replace(/\//g, '-');
+                return (
+                  <Bar
+                    key={houseTypeKey}
+                    dataKey={houseTypeName}
+                    name={houseTypeName}
+                    stackId="housing"
+                    fill={`url(#gradient-${safeId})`}
+                    radius={index === array.length - 1 ? [8, 8, 0, 0] : [0, 0, 0, 0]}
+                    stroke={houseTypeColors[houseTypeKey]}
+                    strokeWidth={1}
+                    strokeOpacity={0.3}
+                  />
+                );
+              })}
             </BarChart>
           </ResponsiveContainer>
         ) : (
