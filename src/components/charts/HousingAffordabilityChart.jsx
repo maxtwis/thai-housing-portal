@@ -1,30 +1,35 @@
 import React, { useState, useMemo } from 'react';
-import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, 
-  Tooltip, Legend, ResponsiveContainer 
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
 import ExportButton from '../ExportButton';
 import { useHousingAffordabilityData, useDistrictsData } from '../../hooks/useCkanQueries';
+import { useLocalAffordabilityData, useIncomeRankLabels } from '../../hooks/useLocalAffordabilityData';
+
+// Configuration: Set to true to use local CSV data instead of CKAN API
+const USE_LOCAL_DATA = true;
 
 const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
-  const [selectedDemandType, setSelectedDemandType] = useState('First Jobber'); // Changed default
+  const [selectedDemandType, setSelectedDemandType] = useState('กลุ่มประชากรทั่วไป'); // Default for local data
   const [selectedMetric, setSelectedMetric] = useState('Total_Hburden');
   const [dataLevel, setDataLevel] = useState('province'); // 'province' or 'district'
   const [selectedDistrict, setSelectedDistrict] = useState(null);
-  
-  // Get districts data for the province
+
+  // Use local CSV data or CKAN API based on configuration
+  const localDataQuery = useLocalAffordabilityData(provinceId);
+  const ckanDataQuery = useHousingAffordabilityData(provinceId, dataLevel, selectedDistrict);
   const { data: districtsData, isLoading: districtsLoading } = useDistrictsData(provinceId);
-  
-  // Check if province has district-level data available
-  const hasDistrictData = districtsData && districtsData.length > 0;
-  
-  // Use React Query for data fetching with level and district support
-  const { 
-    data: rawData, 
-    isLoading, 
-    error,
-    isFetching
-  } = useHousingAffordabilityData(provinceId, dataLevel, selectedDistrict);
+
+  // Load income rank labels for legend
+  const { data: incomeRankLabels } = useIncomeRankLabels();
+
+  // Select data source based on configuration
+  const dataQuery = USE_LOCAL_DATA ? localDataQuery : ckanDataQuery;
+  const { data: rawData, isLoading, error, isFetching } = dataQuery;
+
+  // Check if province has district-level data available (only for CKAN mode)
+  const hasDistrictData = !USE_LOCAL_DATA && districtsData && districtsData.length > 0;
 
   // Auto-select first district when switching to district level
   React.useEffect(() => {
@@ -49,25 +54,42 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
     'Exp_house': 'ค่าใช้จ่ายที่อยู่อาศัย (บาท)'
   };
 
-  // Get available metrics based on data level
+  // Get available metrics based on data level and data source
   const getAvailableMetrics = () => {
-    if (dataLevel === 'province') {
-      // Province level only has Total_Hburden (no rent/mortgage breakdown)
+    if (USE_LOCAL_DATA) {
+      // Local CSV data has all three burden metrics
+      return {
+        'Total_Hburden': 'อัตราส่วนค่าใช้จ่ายที่อยู่อาศัยรวม (%)',
+        'Exp_hbrent': 'อัตราส่วนค่าใช้จ่ายที่อยู่อาศัย เช่า (%)',
+        'Exp_hbmort': 'อัตราส่วนค่าใช้จ่ายที่อยู่อาศัย ผ่อน (%)'
+      };
+    } else if (dataLevel === 'province') {
+      // CKAN Province level only has Total_Hburden (no rent/mortgage breakdown)
       return {
         'Total_Hburden': 'อัตราส่วนค่าใช้จ่ายที่อยู่อาศัยรวม (%)'
       };
     } else {
-      // District level has all metrics including rent and mortgage breakdown
+      // CKAN District level has all metrics including rent and mortgage breakdown
       return metrics;
     }
   };
 
   const availableMetrics = getAvailableMetrics();
 
-  // House type mapping - completely different for province vs district
+  // House type mapping - different for local data, CKAN province, and CKAN district
   const getHouseTypeMapping = () => {
-    if (dataLevel === 'province') {
-      // Province uses numeric IDs (1-5)
+    if (USE_LOCAL_DATA) {
+      // Local CSV data uses Thai house type names directly
+      return {
+        'บ้านเดี่ยว': 'บ้านเดี่ยว',
+        'ตึกแถว': 'ตึกแถว',
+        'ทาวน์เฮาส์/บ้านแฝด': 'ทาวน์เฮาส์/บ้านแฝด',
+        'แฟลต อาคารชุด อพาร์ตเมนต์': 'แฟลต อาคารชุด อพาร์ตเมนต์',
+        'ห้องแบ่งเช่า': 'ห้องแบ่งเช่า',
+        'ที่พักกึ่งถาวร': 'ที่พักกึ่งถาวร'
+      };
+    } else if (dataLevel === 'province') {
+      // CKAN Province uses numeric IDs (1-5)
       return {
         1: 'บ้านเดี่ยว',
         2: 'ห้องแถว',
@@ -76,7 +98,7 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
         5: 'ห้องแบ่งเช่า'
       };
     } else {
-      // District uses Thai names directly
+      // CKAN District uses Thai names directly
       return {
         'ห้องแถว/ตึกแถว': 'ห้องแถว/ตึกแถว',
         'ทาวน์เฮ้าส์/ทาวโฮม': 'ทาวน์เฮ้าส์/ทาวโฮม',
@@ -87,9 +109,18 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
     }
   };
 
-  // Color mapping - different keys for province vs district
+  // Color mapping - different keys for local data, CKAN province, and CKAN district
   const getHouseTypeColors = () => {
-    if (dataLevel === 'province') {
+    if (USE_LOCAL_DATA) {
+      return {
+        'บ้านเดี่ยว': '#3B82F6', // Blue
+        'ตึกแถว': '#10B981', // Green
+        'ทาวน์เฮาส์/บ้านแฝด': '#F59E0B', // Yellow
+        'แฟลต อาคารชุด อพาร์ตเมนต์': '#EF4444', // Red
+        'ห้องแบ่งเช่า': '#8B5CF6', // Purple
+        'ที่พักกึ่งถาวร': '#EC4899'  // Pink
+      };
+    } else if (dataLevel === 'province') {
       return {
         1: '#3B82F6', // Blue
         2: '#10B981', // Green
@@ -190,21 +221,25 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
       });
     }
 
-    // Process the data - different logic for province vs district
+    // Process the data - different logic for local data, CKAN province, and CKAN district
     filteredData.forEach(item => {
       const quintile = parseInt(item.Quintile);
       let houseTypeKey, houseTypeName;
-      
-      if (dataLevel === 'province') {
-        // Province data: house_type is numeric (1-5)
+
+      if (USE_LOCAL_DATA) {
+        // Local CSV data: house_type is Thai name directly
+        houseTypeKey = item.house_type;
+        houseTypeName = houseTypeMapping[houseTypeKey];
+      } else if (dataLevel === 'province') {
+        // CKAN Province data: house_type is numeric (1-5)
         houseTypeKey = parseInt(item.house_type);
         houseTypeName = houseTypeMapping[houseTypeKey];
       } else {
-        // District data: House_type is Thai name
+        // CKAN District data: House_type is Thai name
         houseTypeKey = item.House_type;
         houseTypeName = houseTypeMapping[houseTypeKey];
       }
-      
+
       const value = parseFloat(item[selectedMetric]);
       
       console.log('Processing item:', {
@@ -296,90 +331,97 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
     : 'ความสามารถในการจ่ายค่าที่อยู่อาศัยตามกลุ่มรายได้';
 
   return (
-    <div className="bg-white rounded-lg shadow">
-      <div className="px-4 py-2 border-b border-gray-200">
-        <div className="flex justify-between items-center mb-3">
-          <h2 className="text-sm font-semibold text-gray-800">
-            {chartTitle}
-          </h2>
-          <ExportButton 
-            data={chartData} 
-            filename={`affordability_${provinceName}_${selectedDemandType}_${dataLevel}${currentDistrictName ? `_${currentDistrictName}` : ''}`} 
+    <div className="bg-white rounded-lg shadow-md border border-gray-200">
+      <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-white">
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <h2 className="text-lg font-bold text-gray-900 mb-1">
+              {chartTitle}
+            </h2>
+            <p className="text-xs text-gray-600">
+              {provinceName} • {selectedDemandType}
+            </p>
+          </div>
+          <ExportButton
+            data={chartData}
+            filename={`affordability_${provinceName}_${selectedDemandType}_${dataLevel}${currentDistrictName ? `_${currentDistrictName}` : ''}`}
           />
         </div>
         
         {/* Controls */}
         <div className="space-y-3">
-          {/* First Row: Data Level and District */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {/* Data Level Selector */}
-            <div className="flex items-center gap-2">
-              <label className="text-xs font-medium text-gray-700 whitespace-nowrap">
-                ระดับข้อมูล:
-              </label>
-              <select
-                value={dataLevel}
-                onChange={(e) => {
-                  setDataLevel(e.target.value);
-                  if (e.target.value === 'province') {
-                    setSelectedDistrict(null);
-                  }
-                }}
-                className="text-xs px-2 py-1 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 flex-1"
-              >
-                <option value="province">จังหวัด</option>
-                {hasDistrictData && <option value="district">อำเภอ/เขต</option>}
-              </select>
-            </div>
-
-            {/* District Selector (only show when district level is selected) */}
-            {dataLevel === 'district' && hasDistrictData && (
+          {/* First Row: Data Level and District - Only show for CKAN mode */}
+          {!USE_LOCAL_DATA && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {/* Data Level Selector */}
               <div className="flex items-center gap-2">
                 <label className="text-xs font-medium text-gray-700 whitespace-nowrap">
-                  อำเภอ/เขต:
+                  ระดับข้อมูล:
                 </label>
                 <select
-                  value={selectedDistrict || ''}
-                  onChange={(e) => setSelectedDistrict(e.target.value)}
+                  value={dataLevel}
+                  onChange={(e) => {
+                    setDataLevel(e.target.value);
+                    if (e.target.value === 'province') {
+                      setSelectedDistrict(null);
+                    }
+                  }}
                   className="text-xs px-2 py-1 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 flex-1"
                 >
-                  {districtsData.map(district => (
-                    <option key={district.id} value={district.id}>
-                      {district.name}
-                    </option>
-                  ))}
+                  <option value="province">จังหวัด</option>
+                  {hasDistrictData && <option value="district">อำเภอ/เขต</option>}
                 </select>
               </div>
-            )}
-          </div>
+
+              {/* District Selector (only show when district level is selected) */}
+              {dataLevel === 'district' && hasDistrictData && (
+                <div className="flex items-center gap-2">
+                  <label className="text-xs font-medium text-gray-700 whitespace-nowrap">
+                    อำเภอ/เขต:
+                  </label>
+                  <select
+                    value={selectedDistrict || ''}
+                    onChange={(e) => setSelectedDistrict(e.target.value)}
+                    className="text-xs px-2 py-1 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 flex-1"
+                  >
+                    {districtsData.map(district => (
+                      <option key={district.id} value={district.id}>
+                        {district.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Second Row: Demand Type and Metric */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Demand Type Selector */}
-            <div className="flex items-center gap-2">
-              <label className="text-xs font-medium text-gray-700 whitespace-nowrap">
-                กลุ่มผู้มีความต้องการ:
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                กลุ่มผู้มีความต้องการ
               </label>
               <select
                 value={selectedDemandType}
                 onChange={(e) => setSelectedDemandType(e.target.value)}
-                className="text-xs px-2 py-1 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 flex-1"
+                className="text-sm px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white shadow-sm hover:border-gray-400 transition-colors"
               >
                 {availableDemandTypes.map(type => (
                   <option key={type} value={type}>{type}</option>
                 ))}
               </select>
             </div>
-            
+
             {/* Metric Selector */}
-            <div className="flex items-center gap-2">
-              <label className="text-xs font-medium text-gray-700 whitespace-nowrap">
-                ตัวชี้วัด:
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                ตัวชี้วัด
               </label>
               <select
                 value={selectedMetric}
                 onChange={(e) => setSelectedMetric(e.target.value)}
-                className="text-xs px-2 py-1 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 flex-1"
+                className="text-sm px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white shadow-sm hover:border-gray-400 transition-colors"
               >
                 {Object.entries(availableMetrics).map(([key, label]) => (
                   <option key={key} value={key}>{label}</option>
@@ -391,13 +433,17 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
 
         {/* Loading indicator for data fetching */}
         {isFetching && (
-          <div className="mt-2 text-xs text-blue-600">
-            🔄 กำลังอัปเดตข้อมูล...
+          <div className="mt-3 flex items-center gap-2 text-xs text-blue-600 bg-blue-50 px-3 py-2 rounded-lg">
+            <svg className="animate-spin h-4 w-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            กำลังอัปเดตข้อมูล...
           </div>
         )}
       </div>
-      
-      <div className="px-2 py-1">
+
+      <div className="px-4 py-4">
         {chartData.length > 0 ? (
           <ResponsiveContainer width="100%" height={300}>
             <BarChart
@@ -461,18 +507,54 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
         )}
       </div>
 
+      {/* Income Rank Legend - Show when using local data */}
+      {USE_LOCAL_DATA && incomeRankLabels && (
+        <div className="px-6 py-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-t border-blue-100">
+          <div className="flex items-center gap-2 mb-3">
+            <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <h4 className="text-sm font-bold text-blue-900">
+              คำอธิบายกลุ่มรายได้ (Income Quintiles)
+            </h4>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {Object.entries(incomeRankLabels).map(([id, label]) => (
+              <div key={id} className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-blue-200 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-center w-8 h-8 bg-blue-600 text-white font-bold rounded-full text-sm">
+                  Q{id}
+                </div>
+                <span className="text-sm text-gray-700 font-medium">{label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Data Source Information */}
-      <div className="px-4 py-2 border-t border-gray-100 text-xs text-gray-500">
-        <div className="flex justify-between items-center">
-          <span>
-            แหล่งข้อมูล: {dataLevel === 'district' ? 'ข้อมูลสำรวจระดับอำเภอ' : 'ข้อมูลระดับจังหวัด'}
-          </span>
-          {chartData.length > 0 && (
-            <span>
-              จำนวนข้อมูล: {chartData.filter(item => 
-                Object.values(houseTypeMapping).some(houseType => item[houseType] > 0)
-              ).length} กลุ่ม
+      <div className="px-6 py-3 border-t border-gray-200 bg-gray-50">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 text-xs">
+          <div className="flex items-center gap-2 text-gray-600">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <span className="font-medium">
+              แหล่งข้อมูล: {USE_LOCAL_DATA
+                ? 'การสำรวจภาวะเศรษฐกิจและสังคมของครัวเรือน พ.ศ. 2566 สำนักงานสถิติแห่งชาติ'
+                : (dataLevel === 'district' ? 'ข้อมูลสำรวจระดับอำเภอ' : 'ข้อมูลระดับจังหวัด')}
             </span>
+          </div>
+          {chartData.length > 0 && (
+            <div className="flex items-center gap-2 text-gray-600">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+              <span className="font-medium">
+                จำนวนข้อมูล: {chartData.filter(item =>
+                  Object.values(houseTypeMapping).some(houseType => item[houseType] > 0)
+                ).length} กลุ่ม
+              </span>
+            </div>
           )}
         </div>
       </div>

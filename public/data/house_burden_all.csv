@@ -1,4 +1,4 @@
-﻿cwt_id,income_rank,house_type,house_burden,house_burden_rent,house_burden_mort
+﻿cwt_id,income_rank_id,house_type,house_burden,house_burden_rent,house_burden_mort
 10,1,ตึกแถว,25.1,25.1,
 10,1,บ้านเดี่ยว,14.2,14.2,
 10,1,แฟลต อาคารชุด อพาร์ตเมนต์,23.8,23.8,

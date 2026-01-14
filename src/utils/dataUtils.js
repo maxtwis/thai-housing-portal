@@ -35,12 +35,19 @@ export const quintiles = [
   { id: 5, name: 'Quintile 5 (Highest 20%)' }
 ];
 
-// Provinces data - still needed for map and province selection
+// Provinces data - updated to match cwt_id.csv
 export const provinces = [
   { id: 10, name: 'กรุงเทพมหานคร', lat: 13.7563, lon: 100.5018 },
+  { id: 13, name: 'ปทุมธานี', lat: 14.0208, lon: 100.5250 },
+  { id: 24, name: 'ฉะเชิงเทรา', lat: 13.6904, lon: 101.0779 },
+  { id: 33, name: 'ศรีสะเกษ', lat: 15.1186, lon: 104.3220 },
   { id: 40, name: 'ขอนแก่น', lat: 16.4419, lon: 102.8359 },
+  { id: 45, name: 'ร้อยเอ็ด', lat: 16.0538, lon: 103.6531 },
   { id: 50, name: 'เชียงใหม่', lat: 18.7883, lon: 98.9817 },
-  { id: 90, name: 'สงขลา', lat: 7.1891, lon: 100.5951 }
+  { id: 83, name: 'ภูเก็ต', lat: 7.8804, lon: 98.3923 },
+  { id: 84, name: 'สุราษฎร์ธานี', lat: 9.1382, lon: 99.3331 },
+  { id: 90, name: 'สงขลา', lat: 7.1891, lon: 100.5951 },
+  { id: 95, name: 'ยะลา', lat: 6.5408, lon: 101.2805 }
 ];
 
 // Get chart colors - utility function still used

@@ -24,7 +24,7 @@ export default defineConfig({
     chunkSizeWarningLimit: 1000
   },
   server: {
-    port: 3002,
+    port: 5000,
     // Add proxy configuration for development only
     proxy: {
       '/api': {

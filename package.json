@@ -19,7 +19,7 @@
     "leaflet.markercluster": "^1.5.3",
     "lodash": "^4.17.21",
     "lucide-react": "^0.263.1",
-    "material-symbols": "^0.35.1",
+    "material-symbols": "^0.35.2",
     "papaparse": "^5.4.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

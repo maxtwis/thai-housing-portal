@@ -4,7 +4,7 @@ import { useAllProvinceData, usePrefetchProvinceData } from '../hooks/useCkanQue
 import { useProvincePreloader } from '../hooks/useProvincePreloader';
 
 // Import chart components
-import MapView from '../components/MapView';
+// import MapView from '../components/MapView'; // Removed map from Housing Profile
 import PopulationChart from '../components/charts/PopulationChart';
 import HouseholdChart from '../components/charts/HouseholdChart';
 import IncomeChart from '../components/charts/IncomeChart';
@@ -201,9 +201,50 @@ const Dashboard = () => {
         </select>
       </div>
       
-      <div className="flex flex-col md:flex-row gap-6">
-        {/* Left side - Charts */}
-        <div className="w-full md:w-7/12">
+      {/* Province Selector - Moved to top for better space utilization */}
+      <div className="mb-6 bg-white rounded-lg shadow p-4">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="flex items-center gap-3 flex-1">
+            <label className="text-sm font-semibold text-gray-700 whitespace-nowrap">
+              เลือกจังหวัด:
+            </label>
+            <select
+              value={activeProvince}
+              onChange={(e) => handleProvinceChange(parseInt(e.target.value, 10))}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm flex-1 max-w-xs bg-white shadow-sm hover:border-gray-400 transition-colors"
+              aria-label="เลือกจังหวัด"
+            >
+              {provinces.map(province => (
+                <option key={province.id} value={province.id}>
+                  {province.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Province Stats Summary - Inline */}
+          {metrics.population > 0 && (
+            <div className="flex items-center gap-4 text-xs text-gray-600 border-l pl-4">
+              <div className="flex items-center gap-1">
+                <span className="text-gray-500">ประชากร:</span>
+                <span className="font-semibold text-gray-800">{metrics.population.toLocaleString()}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="text-gray-500">ครัวเรือน:</span>
+                <span className="font-semibold text-gray-800">{metrics.households.toLocaleString()}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="text-gray-500">รายได้เฉลี่ย:</span>
+                <span className="font-semibold text-gray-800">฿{metrics.income.toLocaleString()}</span>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-6">
+        {/* Charts - Full width */}
+        <div className="w-full">
           {/* Report generation button */}
           <div className="flex justify-end mb-4">
             <button
@@ -266,8 +307,8 @@ const Dashboard = () => {
             </button>
           </div>
           
-          {/* Global error message */}
-          {isError && (
+          {/* Global error message - Hidden during transition to local data */}
+          {false && isError && (
             <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
               <p className="font-medium">Failed to load some data</p>
               <p className="text-sm mt-1">Please check your connection and try again.</p>
@@ -451,126 +492,62 @@ const Dashboard = () => {
           )}
         </div>
 
-        {/* Right side - Map and summary */}
-        <div className="w-full md:w-5/12">
-          {/* Province Filter Section - Moved above map */}
-          <div className="mb-4">
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-gray-700">
-                เลือกจังหวัด:
-              </label>
-              <select
-                value={activeProvince}
-                onChange={(e) => handleProvinceChange(parseInt(e.target.value, 10))}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm flex-1"
-                aria-label="เลือกจังหวัด"
-              >
-                {provinces.map(province => (
-                  <option key={province.id} value={province.id}>
-                    {province.name}
-                  </option>
-                ))}
-              </select>
+        {/* Policy Summary - Moved below charts when policy tab is active */}
+        {activeTopic === 'policy' && policy.data && policy.data.length > 0 && (
+          <div className="bg-white rounded-lg shadow p-6 mt-4">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">
+              สรุปนโยบาย
+            </h3>
+
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">จำนวนนโยบายทั้งหมด</span>
+                <span className="font-semibold text-lg text-blue-600">{policy.data.length}</span>
+              </div>
+
+              {/* Policy type breakdown */}
+              <div className="pt-3 border-t">
+                <p className="text-sm font-medium text-gray-700 mb-3">แยกตามประเภท:</p>
+                <div className="flex flex-wrap gap-2">
+                  {['S1', 'S2', 'S3'].map(typeCode => {
+                    const count = policy.data.filter(p =>
+                      p['3S Model'] && p['3S Model'].includes(typeCode)
+                    ).length;
+                    const totalCount = policy.data.length;
+
+                    return count > 0 ? (
+                      <button
+                        key={typeCode}
+                        type="button"
+                        className={`inline-flex items-center rounded-full px-4 py-2 text-sm font-medium transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                          policyFilter === `type:${typeCode}`
+                            ? 'bg-blue-600 text-white shadow-md'
+                            : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                        }`}
+                        onClick={() => {
+                          if (activeTopic !== 'policy') {
+                            setActiveTopic('policy');
+                          }
+                          if (policyFilter === `type:${typeCode}`) {
+                            setPolicyFilter(null);
+                          } else {
+                            setPolicyFilter(`type:${typeCode}`);
+                          }
+                        }}
+                        aria-label={`${policyFilter === `type:${typeCode}` ? 'Remove' : 'Apply'} ${typeCode} policy filter`}
+                      >
+                        {typeCode}
+                        <span className="ml-2 px-2 py-0.5 rounded-full bg-white bg-opacity-30 text-xs">
+                          {count}
+                        </span>
+                      </button>
+                    ) : null;
+                  })}
+                </div>
+              </div>
             </div>
           </div>
-
-          <MapView
-            activeProvince={activeProvince}
-            onProvinceChange={handleProvinceChange}
-            onProvinceHover={handleProvinceHover}
-          />
-
-          {/* Province Summary Card */}
-            {metrics.population > 0 && (
-              <div className="bg-white rounded-lg shadow p-4 mt-4">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                   สถิติระดับจังหวัด
-                </h3>
-                
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">ประชากร</span>
-                    <span className="font-medium">{metrics.population.toLocaleString()}</span>
-                  </div>
-                  
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">ครัวเรือน</span>
-                    <span className="font-medium">{metrics.households.toLocaleString()}</span>
-                  </div>
-                  
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">รายได้เฉลี่ย</span>
-                    <span className="font-medium">฿{metrics.income.toLocaleString()}</span>
-                  </div>
-                  
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">การเติบโตของรายได้</span>
-                    <span className={`font-medium ${metrics.incomeGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {metrics.incomeGrowth >= 0 ? '+' : ''}{metrics.incomeGrowth.toFixed(1)}%
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-          {/* Policy Summary */}
-          {policy.data && policy.data.length > 0 && (
-            <div className="bg-white rounded-lg shadow p-4 mt-4">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                สรุปนโยบาย
-              </h3>
-              
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">จำนวนนโยบายทั้งหมด</span>
-                  <span className="font-medium">{policy.data.length}</span>
-                </div>
-                
-                {/* Policy type breakdown */}
-                <div className="pt-2">
-                  <p className="text-xs font-medium text-gray-700 mb-2">แยกตามประเภท:</p>
-                  <div className="flex flex-wrap gap-1">
-                    {['S1', 'S2', 'S3'].map(typeCode => {
-                      const count = policy.data.filter(p => 
-                        p['3S Model'] && p['3S Model'].includes(typeCode)
-                      ).length;
-                      const totalCount = policy.data.length;
-                      
-                      return count > 0 ? (
-                        <button
-                          key={typeCode}
-                          type="button"
-                          className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium transition-colors hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 ${
-                            policyFilter === `type:${typeCode}`
-                              ? 'bg-blue-200 text-blue-800'
-                              : 'bg-gray-100 text-gray-800'
-                          } ${count === 0 ? 'opacity-50' : ''}`}
-                          onClick={() => {
-                            if (activeTopic !== 'policy') {
-                              setActiveTopic('policy');
-                            }
-                            if (policyFilter === `type:${typeCode}`) {
-                              setPolicyFilter(null);
-                            } else {
-                              setPolicyFilter(`type:${typeCode}`);
-                            }
-                          }}
-                          aria-label={`${policyFilter === `type:${typeCode}` ? 'Remove' : 'Apply'} ${typeCode} policy filter`}
-                        >
-                          {typeCode} 
-                          <span className="ml-1 text-xs text-gray-500">
-                            ({count}{policyFilter && count !== totalCount ? `/${totalCount}` : ''})
-                          </span>
-                        </button>
-                      ) : null;
-                    })}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-          
-        </div>
+        )}
       </div>
     </div>
   );
