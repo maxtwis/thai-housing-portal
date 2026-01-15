@@ -117,12 +117,12 @@ const HouseholdByIncomeChart = ({ provinceName, provinceId }) => {
         </div>
       </div>
 
-      <div className="px-6 py-6 bg-gradient-to-b from-gray-50 to-white">
+      <div className="px-6 py-4 bg-gradient-to-b from-gray-50 to-white">
         {chartData.length > 0 ? (
           <ResponsiveContainer width="100%" height={400}>
             <BarChart
               data={chartData}
-              margin={{ top: 20, right: 40, left: 30, bottom: 70 }}
+              margin={{ top: 20, right: 40, left: 30, bottom: 20 }}
               barCategoryGap="20%"
             >
               <defs>
@@ -179,7 +179,7 @@ const HouseholdByIncomeChart = ({ provinceName, provinceId }) => {
                 wrapperStyle={{
                   fontSize: '13px',
                   fontWeight: 500,
-                  paddingTop: '20px'
+                  paddingTop: '5px'
                 }}
                 iconType="circle"
                 iconSize={10}
@@ -217,8 +217,8 @@ const HouseholdByIncomeChart = ({ provinceName, provinceId }) => {
 
       {/* Income Rank Legend */}
       {incomeRankLabels && (
-        <div className="px-6 py-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-t border-blue-100">
-          <div className="flex items-center gap-2 mb-3">
+        <div className="px-6 pt-3 pb-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-t border-blue-100">
+          <div className="flex items-center gap-2 mb-2">
             <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
