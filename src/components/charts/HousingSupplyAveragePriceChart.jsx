@@ -75,7 +75,7 @@ const HousingSupplyAveragePriceChart = ({ provinceName, provinceId }) => {
         <div className="bg-white p-3 border border-gray-200 rounded shadow-lg">
           <p className="font-semibold text-gray-800 mb-1">{data.supply_type}</p>
           <p className="text-sm text-gray-600">
-            ราคาเฉลี่ย: <span className="font-semibold">฿{data.average_price.toLocaleString()}</span>
+            ราคาเฉลี่ย: <span className="font-semibold">{data.average_price.toLocaleString()} บาท</span>
           </p>
         </div>
       );
