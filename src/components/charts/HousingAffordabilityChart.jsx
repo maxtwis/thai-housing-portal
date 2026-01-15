@@ -4,11 +4,9 @@ import {
   Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
 import ExportButton from '../ExportButton';
-import { useHousingAffordabilityData, useDistrictsData } from '../../hooks/useCkanQueries';
+// CKAN API removed - using local CSV data only
+// import { useHousingAffordabilityData, useDistrictsData } from '../../hooks/useCkanQueries';
 import { useLocalAffordabilityData, useIncomeRankLabels } from '../../hooks/useLocalAffordabilityData';
-
-// Configuration: Set to true to use local CSV data instead of CKAN API
-const USE_LOCAL_DATA = true;
 
 const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
   const [selectedDemandType, setSelectedDemandType] = useState('กลุ่มประชากรทั่วไป'); // Default for local data
@@ -16,28 +14,17 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
   const [dataLevel, setDataLevel] = useState('province'); // 'province' or 'district'
   const [selectedDistrict, setSelectedDistrict] = useState(null);
 
-  // Use local CSV data or CKAN API based on configuration
+  // Use local CSV data only - CKAN API removed
   const localDataQuery = useLocalAffordabilityData(provinceId);
-
-  // Only call CKAN hooks when NOT using local data (pass null to disable)
-  const ckanDataQuery = useHousingAffordabilityData(
-    USE_LOCAL_DATA ? null : provinceId,
-    dataLevel,
-    selectedDistrict
-  );
-  const { data: districtsData, isLoading: districtsLoading } = useDistrictsData(
-    USE_LOCAL_DATA ? null : provinceId
-  );
+  const { data: rawData, isLoading, error, isFetching } = localDataQuery;
 
   // Load income rank labels for legend
   const { data: incomeRankLabels } = useIncomeRankLabels();
 
-  // Select data source based on configuration
-  const dataQuery = USE_LOCAL_DATA ? localDataQuery : ckanDataQuery;
-  const { data: rawData, isLoading, error, isFetching } = dataQuery;
-
-  // Check if province has district-level data available (only for CKAN mode)
-  const hasDistrictData = !USE_LOCAL_DATA && districtsData && districtsData.length > 0;
+  // District data not available in local mode
+  const districtsData = null;
+  const districtsLoading = false;
+  const hasDistrictData = false;
 
   // Auto-select first district when switching to district level
   React.useEffect(() => {
@@ -62,90 +49,40 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
     'Exp_house': 'ค่าใช้จ่ายที่อยู่อาศัย (บาท)'
   };
 
-  // Get available metrics based on data level and data source
+  // Get available metrics - Local CSV data has all three burden metrics
   const getAvailableMetrics = () => {
-    if (USE_LOCAL_DATA) {
-      // Local CSV data has all three burden metrics
-      return {
-        'Total_Hburden': 'อัตราส่วนค่าใช้จ่ายที่อยู่อาศัยรวม (%)',
-        'Exp_hbrent': 'อัตราส่วนค่าใช้จ่ายที่อยู่อาศัย เช่า (%)',
-        'Exp_hbmort': 'อัตราส่วนค่าใช้จ่ายที่อยู่อาศัย ผ่อน (%)'
-      };
-    } else if (dataLevel === 'province') {
-      // CKAN Province level only has Total_Hburden (no rent/mortgage breakdown)
-      return {
-        'Total_Hburden': 'อัตราส่วนค่าใช้จ่ายที่อยู่อาศัยรวม (%)'
-      };
-    } else {
-      // CKAN District level has all metrics including rent and mortgage breakdown
-      return metrics;
-    }
+    return {
+      'Total_Hburden': 'อัตราส่วนค่าใช้จ่ายที่อยู่อาศัยรวม (%)',
+      'Exp_hbrent': 'อัตราส่วนค่าใช้จ่ายที่อยู่อาศัย เช่า (%)',
+      'Exp_hbmort': 'อัตราส่วนค่าใช้จ่ายที่อยู่อาศัย ผ่อน (%)'
+    };
   };
 
   const availableMetrics = getAvailableMetrics();
 
-  // House type mapping - different for local data, CKAN province, and CKAN district
+  // House type mapping - Local CSV data uses Thai house type names directly
   const getHouseTypeMapping = () => {
-    if (USE_LOCAL_DATA) {
-      // Local CSV data uses Thai house type names directly
-      return {
-        'บ้านเดี่ยว': 'บ้านเดี่ยว',
-        'ตึกแถว': 'ตึกแถว',
-        'ทาวน์เฮาส์/บ้านแฝด': 'ทาวน์เฮาส์/บ้านแฝด',
-        'แฟลต อาคารชุด อพาร์ตเมนต์': 'แฟลต อาคารชุด อพาร์ตเมนต์',
-        'ห้องแบ่งเช่า': 'ห้องแบ่งเช่า',
-        'ที่พักกึ่งถาวร': 'ที่พักกึ่งถาวร'
-      };
-    } else if (dataLevel === 'province') {
-      // CKAN Province uses numeric IDs (1-5)
-      return {
-        1: 'บ้านเดี่ยว',
-        2: 'ห้องแถว',
-        3: 'ตึกแถว/ทาวน์เฮาส์',
-        4: 'แฟลต/อพาร์ทเม้นท์/คอนโดมิเนี่ยม',
-        5: 'ห้องแบ่งเช่า'
-      };
-    } else {
-      // CKAN District uses Thai names directly
-      return {
-        'ห้องแถว/ตึกแถว': 'ห้องแถว/ตึกแถว',
-        'ทาวน์เฮ้าส์/ทาวโฮม': 'ทาวน์เฮ้าส์/ทาวโฮม',
-        'บ้านเดี่ยว': 'บ้านเดี่ยว',
-        'ตึกแถวพาณิชย์': 'ตึกแถวพาณิชย์',
-        'หอพัก/แฟลต/อพาร์ทเมนต์': 'หอพัก/แฟลต/อพาร์ทเมนต์'
-      };
-    }
+    return {
+      'บ้านเดี่ยว': 'บ้านเดี่ยว',
+      'ตึกแถว': 'ตึกแถว',
+      'ทาวน์เฮาส์/บ้านแฝด': 'ทาวน์เฮาส์/บ้านแฝด',
+      'แฟลต อาคารชุด อพาร์ตเมนต์': 'แฟลต อาคารชุด อพาร์ตเมนต์',
+      'ห้องแบ่งเช่า': 'ห้องแบ่งเช่า',
+      'ที่พักกึ่งถาวร': 'ที่พักกึ่งถาวร'
+    };
   };
 
   // Color mapping - Professional academic palette inspired by Our World in Data
   // Muted, sophisticated colors that work well for data visualization
   const getHouseTypeColors = () => {
-    if (USE_LOCAL_DATA) {
-      return {
-        'บ้านเดี่ยว': '#5470C6', // Professional Blue
-        'ตึกแถว': '#91CC75', // Sage Green
-        'ทาวน์เฮาส์/บ้านแฝด': '#FAC858', // Muted Gold
-        'แฟลต อาคารชุด อพาร์ตเมนต์': '#EE6666', // Soft Red
-        'ห้องแบ่งเช่า': '#73C0DE', // Sky Blue
-        'ที่พักกึ่งถาวร': '#9A60B4'  // Muted Purple
-      };
-    } else if (dataLevel === 'province') {
-      return {
-        1: '#5470C6', // Professional Blue
-        2: '#91CC75', // Sage Green
-        3: '#FAC858', // Muted Gold
-        4: '#EE6666', // Soft Red
-        5: '#73C0DE'  // Sky Blue
-      };
-    } else {
-      return {
-        'ห้องแถว/ตึกแถว': '#5470C6', // Professional Blue
-        'ทาวน์เฮ้าส์/ทาวโฮม': '#91CC75', // Sage Green
-        'บ้านเดี่ยว': '#FAC858', // Muted Gold
-        'ตึกแถวพาณิชย์': '#EE6666', // Soft Red
-        'หอพัก/แฟลต/อพาร์ทเมนต์': '#73C0DE'  // Sky Blue
-      };
-    }
+    return {
+      'บ้านเดี่ยว': '#5470C6', // Professional Blue
+      'ตึกแถว': '#91CC75', // Sage Green
+      'ทาวน์เฮาส์/บ้านแฝด': '#FAC858', // Muted Gold
+      'แฟลต อาคารชุด อพาร์ตเมนต์': '#EE6666', // Soft Red
+      'ห้องแบ่งเช่า': '#73C0DE', // Sky Blue
+      'ที่พักกึ่งถาวร': '#9A60B4'  // Muted Purple
+    };
   };
 
   const houseTypeMapping = getHouseTypeMapping();
@@ -230,25 +167,11 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
       });
     }
 
-    // Process the data - different logic for local data, CKAN province, and CKAN district
+    // Process the data - Local CSV data: house_type is Thai name directly
     filteredData.forEach(item => {
       const quintile = parseInt(item.Quintile);
-      let houseTypeKey, houseTypeName;
-
-      if (USE_LOCAL_DATA) {
-        // Local CSV data: house_type is Thai name directly
-        houseTypeKey = item.house_type;
-        houseTypeName = houseTypeMapping[houseTypeKey];
-      } else if (dataLevel === 'province') {
-        // CKAN Province data: house_type is numeric (1-5)
-        houseTypeKey = parseInt(item.house_type);
-        houseTypeName = houseTypeMapping[houseTypeKey];
-      } else {
-        // CKAN District data: House_type is Thai name
-        houseTypeKey = item.House_type;
-        houseTypeName = houseTypeMapping[houseTypeKey];
-      }
-
+      const houseTypeKey = item.house_type;
+      const houseTypeName = houseTypeMapping[houseTypeKey];
       const value = parseFloat(item[selectedMetric]);
       
       console.log('Processing item:', {
@@ -379,52 +302,7 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
         
         {/* Controls */}
         <div className="space-y-3">
-          {/* First Row: Data Level and District - Only show for CKAN mode */}
-          {!USE_LOCAL_DATA && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {/* Data Level Selector */}
-              <div className="flex items-center gap-2">
-                <label className="text-xs font-medium text-gray-700 whitespace-nowrap">
-                  ระดับข้อมูล:
-                </label>
-                <select
-                  value={dataLevel}
-                  onChange={(e) => {
-                    setDataLevel(e.target.value);
-                    if (e.target.value === 'province') {
-                      setSelectedDistrict(null);
-                    }
-                  }}
-                  className="text-xs px-2 py-1 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 flex-1"
-                >
-                  <option value="province">จังหวัด</option>
-                  {hasDistrictData && <option value="district">อำเภอ/เขต</option>}
-                </select>
-              </div>
-
-              {/* District Selector (only show when district level is selected) */}
-              {dataLevel === 'district' && hasDistrictData && (
-                <div className="flex items-center gap-2">
-                  <label className="text-xs font-medium text-gray-700 whitespace-nowrap">
-                    อำเภอ/เขต:
-                  </label>
-                  <select
-                    value={selectedDistrict || ''}
-                    onChange={(e) => setSelectedDistrict(e.target.value)}
-                    className="text-xs px-2 py-1 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 flex-1"
-                  >
-                    {districtsData.map(district => (
-                      <option key={district.id} value={district.id}>
-                        {district.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Second Row: Demand Type and Metric */}
+          {/* Demand Type and Metric */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Demand Type Selector */}
             <div className="flex flex-col gap-1.5">
@@ -588,8 +466,8 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
         )}
       </div>
 
-      {/* Income Rank Legend - Show when using local data */}
-      {USE_LOCAL_DATA && incomeRankLabels && (
+      {/* Income Rank Legend */}
+      {incomeRankLabels && (
         <div className="px-6 py-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-t border-blue-100">
           <div className="flex items-center gap-2 mb-3">
             <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -620,9 +498,7 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
             <span className="font-medium">
-              แหล่งข้อมูล: {USE_LOCAL_DATA
-                ? 'การสำรวจภาวะเศรษฐกิจและสังคมของครัวเรือน พ.ศ. 2566 สำนักงานสถิติแห่งชาติ'
-                : (dataLevel === 'district' ? 'ข้อมูลสำรวจระดับอำเภอ' : 'ข้อมูลระดับจังหวัด')}
+              แหล่งข้อมูล: การสำรวจภาวะเศรษฐกิจและสังคมของครัวเรือน พ.ศ. 2566 สำนักงานสถิติแห่งชาติ
             </span>
           </div>
           {chartData.length > 0 && (

@@ -124,34 +124,13 @@ const Dashboard = () => {
     return policy.data;
   }, [policy.data, policyFilter]);
 
-  // Get key metrics for summary
-  const metrics = useMemo(() => {
-    const latestPop = population.data && population.data.length > 0
-      ? population.data[population.data.length - 1].population
-      : 0;
-
-    const latestHouseholds = household.data && household.data.length > 0
-      ? household.data[household.data.length - 1].household
-      : 0;
-
-    const latestIncome = income.data && income.data.length > 0
-      ? income.data[income.data.length - 1].income
-      : 0;
-
-    const firstIncome = income.data && income.data.length > 0
-      ? income.data[0].income
-      : 0;
-
-    const incomeGrowth = firstIncome > 0 && latestIncome > 0
-      ? ((latestIncome / firstIncome) - 1) * 100 : 0;
-
-    return {
-      population: latestPop,
-      households: latestHouseholds,
-      income: latestIncome,
-      incomeGrowth: incomeGrowth
-    };
-  }, [population.data, household.data, income.data]);
+  // Metrics disabled - will be replaced with local data in future
+  const metrics = {
+    population: 0,
+    households: 0,
+    income: 0,
+    incomeGrowth: 0
+  };
   
   return (
     <div className="container mx-auto px-4 py-4">
