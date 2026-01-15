@@ -19,6 +19,7 @@ import PolicyChart from '../components/charts/PolicyChart';
 import PopulationAgeChart from '../components/charts/PopulationAgeChart';
 import HousingAffordabilityChart from '../components/charts/HousingAffordabilityChart';
 import HousingDemandChart from '../components/charts/HousingDemandChart';
+import HouseholdByIncomeChart from '../components/charts/HouseholdByIncomeChart';
 import ErrorBoundary from '../components/ErrorBoundary';
 
 // Constants
@@ -322,6 +323,10 @@ const Dashboard = () => {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <HouseholdChart
+                  provinceName={provinceName}
+                  provinceId={activeProvince}
+                />
+                <HouseholdByIncomeChart
                   provinceName={provinceName}
                   provinceId={activeProvince}
                 />

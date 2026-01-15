@@ -43,7 +43,9 @@
       "mcp__playwright__browser_press_key",
       "mcp__playwright__browser_close",
       "Bash(npm run dev:vite:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []
