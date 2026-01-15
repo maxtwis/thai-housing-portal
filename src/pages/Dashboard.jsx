@@ -23,6 +23,7 @@ import HouseholdByIncomeChart from '../components/charts/HouseholdByIncomeChart'
 import PopulationByYearChart from '../components/charts/PopulationByYearChart';
 import HousingSupplyByPriceChart from '../components/charts/HousingSupplyByPriceChart';
 import HousingSupplyAveragePriceChart from '../components/charts/HousingSupplyAveragePriceChart';
+import AverageExpenditureChart from '../components/charts/AverageExpenditureChart';
 import ErrorBoundary from '../components/ErrorBoundary';
 
 // Constants
@@ -139,7 +140,7 @@ const Dashboard = () => {
   return (
     <div className="container mx-auto px-4 py-4">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">โปรไฟล์ที่อยู่อาศัย</h1>
+        <h1 className="text-2xl font-bold text-gray-800">รายงานสถานการณ์ที่อยู่อาศัย</h1>
         <p className="text-gray-600 mt-2">
           สำรวจข้อมูลระดับจังหวัด นโยบายที่อยู่อาศัย และกรอบการทำงาน
         </p>
@@ -335,9 +336,13 @@ const Dashboard = () => {
           {/* Housing Affordability Content */}
           {activeTopic === 'affordability' && (
             <div className="grid grid-cols-1 gap-4">
-              <HousingAffordabilityChart 
-                provinceName={provinceName} 
-                provinceId={activeProvince} 
+              <HousingAffordabilityChart
+                provinceName={provinceName}
+                provinceId={activeProvince}
+              />
+              <AverageExpenditureChart
+                provinceName={provinceName}
+                provinceId={activeProvince}
               />
               
               {/* Additional affordability metrics */}
@@ -375,11 +380,16 @@ const Dashboard = () => {
           {/* Housing Demand Content */}
           {activeTopic === 'demand' && (
             <div className="grid grid-cols-1 gap-4">
-              <HousingDemandChart 
-                provinceName={provinceName} 
-                provinceId={activeProvince} 
-              />
-              
+              <div className="bg-white rounded-lg shadow-md border border-gray-200 p-12">
+                <div className="flex flex-col items-center justify-center text-center">
+                  <svg className="w-16 h-16 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <h3 className="text-lg font-bold text-gray-900 mb-2">อยู่ในระหว่างการจัดทำข้อมูล</h3>
+                  <p className="text-sm text-gray-600">ข้อมูลความต้องการที่อยู่อาศัยกำลังอยู่ในระหว่างการรวบรวมและประมวลผล</p>
+                </div>
+              </div>
+
               {/* Additional demand insights */}
               <div className="bg-white p-4 rounded-lg shadow">
                 <h3 className="text-sm font-semibold text-gray-800 mb-3">
@@ -414,30 +424,15 @@ const Dashboard = () => {
           
           {/* Policy Content */}
           {activeTopic === 'policy' && (
-            <div>
-              {/* Policy filter notice */}
-              {policyFilter && (
-                <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-2 rounded-md mb-4 flex justify-between items-center">
-                  <span>Filtered by: {policyFilter}</span>
-                  <button 
-                    onClick={() => setPolicyFilter(null)}
-                    className="text-blue-800 hover:text-blue-900 underline"
-                  >
-                    Clear filter
-                  </button>
+            <div className="grid grid-cols-1 gap-4">
+              <div className="bg-white rounded-lg shadow-md border border-gray-200 p-12">
+                <div className="flex flex-col items-center justify-center text-center">
+                  <svg className="w-16 h-16 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <h3 className="text-lg font-bold text-gray-900 mb-2">อยู่ในระหว่างการจัดทำข้อมูล</h3>
+                  <p className="text-sm text-gray-600">ข้อมูลนโยบายที่อยู่อาศัยกำลังอยู่ในระหว่างการรวบรวมและประมวลผล</p>
                 </div>
-              )}
-              
-              <div className="grid grid-cols-1 gap-4">
-                <PolicyTable
-                  policies={filteredPolicies}
-                  provinceName={provinceName}
-                />
-
-                <PolicyChart
-                  policies={filteredPolicies}
-                  provinceName={provinceName}
-                />
               </div>
             </div>
           )}

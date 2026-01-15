@@ -212,23 +212,22 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
 
       return (
         <div className="bg-white p-4 border-2 border-blue-200 rounded-lg shadow-xl max-w-xs">
-          <div className="flex items-center gap-2 mb-2 pb-2 border-b border-gray-200">
-            <div className="flex items-center justify-center w-7 h-7 bg-blue-600 text-white font-bold rounded-full text-xs">
+          <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-200">
+            <div className="flex items-center justify-center w-7 h-7 bg-blue-600 text-white font-bold rounded-full text-xs flex-shrink-0">
               {label}
             </div>
             <div className="flex-1">
-              <h4 className="font-bold text-gray-900 text-sm">{label}</h4>
-              {incomeLevel && (
-                <p className="text-xs text-blue-700 font-medium">{incomeLevel}</p>
-              )}
+              <h4 className="font-bold text-gray-900 text-sm">
+                {label} {incomeLevel}
+              </h4>
+              <p className="text-xs text-gray-600">
+                {selectedDemandType} • {availableMetrics[selectedMetric]}
+                {dataLevel === 'district' && selectedDistrict && (
+                  <span className="ml-1">• {selectedDistrict}</span>
+                )}
+              </p>
             </div>
           </div>
-          <p className="text-xs text-gray-600 mb-3 pb-2 border-b border-gray-100">
-            {selectedDemandType} • {availableMetrics[selectedMetric]}
-            {dataLevel === 'district' && selectedDistrict && (
-              <span className="ml-1">• {selectedDistrict}</span>
-            )}
-          </p>
           <div className="space-y-2">
             {nonZeroPayload.map((entry, index) => (
               <div key={index} className="flex items-center justify-between gap-3">

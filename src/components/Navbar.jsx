@@ -15,12 +15,6 @@ const Navbar = () => {
             </div>
             <div className="hidden md:ml-6 md:flex md:space-x-8">
               <a
-                href="/"
-                className="text-white hover:bg-gray-700 px-3 py-2 rounded-md text-sm font-medium"
-              >
-                Home
-              </a>
-              <a
                 href="/housing-profile"
                 className="text-white hover:bg-gray-700 px-3 py-2 rounded-md text-sm font-medium"
               >
@@ -78,13 +72,6 @@ const Navbar = () => {
       {/* Mobile menu */}
       <div className={isOpen ? "md:hidden" : "hidden"}>
         <div className="space-y-1 px-2 pb-3 pt-2">
-          <a
-            href="/"
-            className="text-white hover:bg-gray-700 block rounded-md px-3 py-2 text-base font-medium"
-            onClick={() => setIsOpen(false)}
-          >
-            Home
-          </a>
           <a
             href="/housing-profile"
             className="text-white hover:bg-gray-700 block rounded-md px-3 py-2 text-base font-medium"
