@@ -20,6 +20,7 @@ import PopulationAgeChart from '../components/charts/PopulationAgeChart';
 import HousingAffordabilityChart from '../components/charts/HousingAffordabilityChart';
 import HousingDemandChart from '../components/charts/HousingDemandChart';
 import HouseholdByIncomeChart from '../components/charts/HouseholdByIncomeChart';
+import PopulationByYearChart from '../components/charts/PopulationByYearChart';
 import ErrorBoundary from '../components/ErrorBoundary';
 
 // Constants
@@ -300,7 +301,11 @@ const Dashboard = () => {
           {/* Demographics Content */}
           {activeTopic === 'demographics' && (
             <ErrorBoundary>
-              <div className="grid grid-cols-1 gap-4 mb-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <PopulationByYearChart
+                  provinceName={provinceName}
+                  provinceId={activeProvince}
+                />
                 <HouseholdByIncomeChart
                   provinceName={provinceName}
                   provinceId={activeProvince}

@@ -2,6 +2,53 @@ import { useQuery } from '@tanstack/react-query';
 import { loadCSV, loadLookupMap } from '../utils/csvLoader';
 
 /**
+ * Custom hook to load local population data by year
+ * @param {number} provinceId - Province ID (cwt_id)
+ * @returns {Object} React Query result with processed data
+ */
+export const useLocalPopulationData = (provinceId) => {
+  return useQuery({
+    queryKey: ['local-population', provinceId],
+    queryFn: async () => {
+      console.log('Loading local population data for province:', provinceId);
+
+      // Load all data in parallel
+      const [populationData, provinceMap] = await Promise.all([
+        loadCSV('/data/population_data.csv'),
+        loadLookupMap('/data/cwt_id.csv', 'cwt_id', 'cwt_name')
+      ]);
+
+      console.log('Loaded population data:', populationData.length, 'records');
+
+      // Filter by province and sort by year
+      const provinceData = populationData
+        .filter(row => row.cwt_id === provinceId)
+        .sort((a, b) => a.year - b.year);
+
+      console.log('Filtered data for province:', provinceData.length, 'records');
+
+      // Transform data
+      const transformedData = provinceData.map(row => ({
+        cwt_id: row.cwt_id,
+        year: row.year,
+        population: parseFloat(row.population) || 0,
+        province_name: provinceMap[row.cwt_id] || 'ไม่ระบุ'
+      }));
+
+      console.log('Transformed population data:', transformedData);
+
+      return {
+        records: transformedData,
+        provinceMap
+      };
+    },
+    enabled: !!provinceId,
+    staleTime: 10 * 60 * 1000,
+    cacheTime: 15 * 60 * 1000,
+  });
+};
+
+/**
  * Custom hook to load local household by income data
  * @param {number} provinceId - Province ID (cwt_id)
  * @returns {Object} React Query result with processed data
