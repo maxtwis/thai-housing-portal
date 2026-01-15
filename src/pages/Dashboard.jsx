@@ -21,6 +21,7 @@ import HousingAffordabilityChart from '../components/charts/HousingAffordability
 import HousingDemandChart from '../components/charts/HousingDemandChart';
 import HouseholdByIncomeChart from '../components/charts/HouseholdByIncomeChart';
 import PopulationByYearChart from '../components/charts/PopulationByYearChart';
+import HousingSupplyByPriceChart from '../components/charts/HousingSupplyByPriceChart';
 import ErrorBoundary from '../components/ErrorBoundary';
 
 // Constants
@@ -317,23 +318,8 @@ const Dashboard = () => {
           {/* Housing Content */}
           {activeTopic === 'housing' && (
             <ErrorBoundary>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <HousingSupplyChart 
-                  provinceName={provinceName}
-                  provinceId={activeProvince}
-                />
-                <HousingDistributionChart 
-                  provinceName={provinceName}
-                  provinceId={activeProvince}
-                />
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <HousingUnitsChart 
-                  provinceName={provinceName}
-                  provinceId={activeProvince}
-                />
-                <TotalHousingChart 
+              <div className="grid grid-cols-1 gap-4 mb-4">
+                <HousingSupplyByPriceChart
                   provinceName={provinceName}
                   provinceId={activeProvince}
                 />
