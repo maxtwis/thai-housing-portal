@@ -10,14 +10,20 @@ const PopulationByYearChart = ({ provinceName, provinceId }) => {
   // Use local CSV data only
   const { data: rawData, isLoading, error, isFetching } = useLocalPopulationData(provinceId);
 
-  // Process data for chart
+  // Process data for chart - Convert AD year to BE year
   const chartData = useMemo(() => {
     if (!rawData || !rawData.records || !rawData.records.length) {
       return [];
     }
 
     console.log('Processing population data:', rawData.records);
-    return rawData.records;
+
+    // Convert Christian year (AD) to Buddhist year (BE) by adding 543
+    return rawData.records.map(record => ({
+      ...record,
+      year: record.year + 543,
+      year_ad: record.year // Keep original for reference
+    }));
   }, [rawData]);
 
   // Custom tooltip
@@ -116,16 +122,6 @@ const PopulationByYearChart = ({ provinceName, provinceId }) => {
                 stroke="#6b7280"
                 tick={{ fill: '#374151' }}
                 axisLine={{ stroke: '#d1d5db', strokeWidth: 2 }}
-                label={{
-                  value: 'ปี พ.ศ.',
-                  position: 'insideBottom',
-                  offset: -10,
-                  style: {
-                    fontSize: 12,
-                    fontWeight: 'bold',
-                    fill: '#6b7280'
-                  }
-                }}
               />
 
               <YAxis
