@@ -22,6 +22,7 @@ import HousingDemandChart from '../components/charts/HousingDemandChart';
 import HouseholdByIncomeChart from '../components/charts/HouseholdByIncomeChart';
 import PopulationByYearChart from '../components/charts/PopulationByYearChart';
 import HousingSupplyByPriceChart from '../components/charts/HousingSupplyByPriceChart';
+import HousingSupplyAveragePriceChart from '../components/charts/HousingSupplyAveragePriceChart';
 import ErrorBoundary from '../components/ErrorBoundary';
 
 // Constants
@@ -320,6 +321,10 @@ const Dashboard = () => {
             <ErrorBoundary>
               <div className="grid grid-cols-1 gap-4 mb-4">
                 <HousingSupplyByPriceChart
+                  provinceName={provinceName}
+                  provinceId={activeProvince}
+                />
+                <HousingSupplyAveragePriceChart
                   provinceName={provinceName}
                   provinceId={activeProvince}
                 />

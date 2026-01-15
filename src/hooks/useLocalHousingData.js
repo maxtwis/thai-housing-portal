@@ -88,3 +88,45 @@ export const usePriceRankLabels = () => {
     cacheTime: 60 * 60 * 1000,
   });
 };
+
+/**
+ * Custom hook to load housing supply average price data
+ * @param {number} provinceId - Province ID (cwt_id)
+ * @returns {Object} React Query result with processed data
+ */
+export const useLocalHousingAveragePriceData = (provinceId) => {
+  return useQuery({
+    queryKey: ['local-housing-average-price', provinceId],
+    queryFn: async () => {
+      console.log('Loading housing supply average price data for province:', provinceId);
+
+      // Load CSV data
+      const averagePriceData = await loadCSV('/data/housing_supply_average_price.csv');
+
+      console.log('Loaded average price data:', averagePriceData.length, 'records');
+
+      // Filter by province
+      const provinceData = averagePriceData.filter(row =>
+        row.cwt_id === provinceId
+      );
+
+      console.log('Filtered average price data for province:', provinceData.length, 'records');
+
+      // Transform data
+      const transformedData = provinceData.map(row => ({
+        cwt_id: row.cwt_id,
+        supply_type: row.supply_type,
+        average_price: parseFloat(row.average_price) || 0
+      }));
+
+      console.log('Transformed average price data:', transformedData);
+
+      return {
+        records: transformedData
+      };
+    },
+    enabled: !!provinceId,
+    staleTime: 10 * 60 * 1000,
+    cacheTime: 15 * 60 * 1000,
+  });
+};
