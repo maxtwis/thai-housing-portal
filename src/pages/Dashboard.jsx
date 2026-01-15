@@ -31,7 +31,8 @@ const Dashboard = () => {
   const [policyFilter, setPolicyFilter] = useState(null);
   const [isInitialized, setIsInitialized] = useState(false);
   
-  // Use React Query for all data
+  // Completely disable ALL CKAN API calls - transitioning to local CSV data
+  // Set provinceId to null to prevent any CKAN queries from running
   const {
     population,
     household,
@@ -44,13 +45,13 @@ const Dashboard = () => {
     expenditure,
     isLoading,
     isError,
-  } = useAllProvinceData(activeProvince);
-  
-  // Prefetch hook
+  } = useAllProvinceData(null); // Pass null to disable all CKAN queries
+
+  // Disable prefetch
   const { prefetchProvince } = usePrefetchProvinceData();
-  
-  // Use the preloader hook for background prefetching
-  useProvincePreloader();
+
+  // Disable preloader
+  // useProvincePreloader(); // Commented out to stop background loading
   
   // URL parameters
   useEffect(() => {

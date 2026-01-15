@@ -18,8 +18,16 @@ const HousingAffordabilityChart = ({ provinceName, provinceId }) => {
 
   // Use local CSV data or CKAN API based on configuration
   const localDataQuery = useLocalAffordabilityData(provinceId);
-  const ckanDataQuery = useHousingAffordabilityData(provinceId, dataLevel, selectedDistrict);
-  const { data: districtsData, isLoading: districtsLoading } = useDistrictsData(provinceId);
+
+  // Only call CKAN hooks when NOT using local data (pass null to disable)
+  const ckanDataQuery = useHousingAffordabilityData(
+    USE_LOCAL_DATA ? null : provinceId,
+    dataLevel,
+    selectedDistrict
+  );
+  const { data: districtsData, isLoading: districtsLoading } = useDistrictsData(
+    USE_LOCAL_DATA ? null : provinceId
+  );
 
   // Load income rank labels for legend
   const { data: incomeRankLabels } = useIncomeRankLabels();
