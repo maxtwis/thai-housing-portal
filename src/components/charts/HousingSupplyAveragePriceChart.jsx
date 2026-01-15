@@ -134,39 +134,64 @@ const HousingSupplyAveragePriceChart = ({ provinceName, provinceId }) => {
             <defs>
               <linearGradient id="gradient-average-price" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor={chartColor} stopOpacity={0.9} />
-                <stop offset="100%" stopColor={chartColor} stopOpacity={0.6} />
+                <stop offset="100%" stopColor={chartColor} stopOpacity={0.7} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke="#e5e7eb"
+              strokeOpacity={0.5}
+              vertical={false}
+            />
             <XAxis
               dataKey="supply_type"
               angle={-45}
               textAnchor="end"
               height={100}
-              tick={{ fontSize: 11, fill: '#4B5563' }}
+              tick={{ fill: '#374151', fontSize: 12 }}
+              fontWeight={500}
               stroke="#9CA3AF"
+              axisLine={{ stroke: '#d1d5db', strokeWidth: 2 }}
             />
             <YAxis
-              tick={{ fontSize: 11, fill: '#4B5563' }}
-              stroke="#9CA3AF"
+              tick={{ fill: '#374151', fontSize: 12 }}
+              fontWeight={500}
+              stroke="#6b7280"
+              axisLine={{ stroke: '#d1d5db', strokeWidth: 2 }}
               tickFormatter={formatPrice}
               label={{
-                value: 'ราคาเฉลี่ย (บาท)',
+                value: 'บาท',
                 angle: -90,
                 position: 'insideLeft',
-                style: { fontSize: 11, fill: '#6B7280' }
+                style: {
+                  fontSize: 13,
+                  fontWeight: 'bold',
+                  fill: '#1f2937'
+                }
               }}
             />
-            <Tooltip content={<CustomTooltip />} />
+            <Tooltip
+              content={<CustomTooltip />}
+              cursor={{ fill: 'rgba(250, 200, 88, 0.1)' }}
+            />
             <Legend
-              wrapperStyle={{ paddingTop: '5px', fontSize: '11px' }}
-              iconType="rect"
+              wrapperStyle={{
+                fontSize: '13px',
+                fontWeight: 500,
+                paddingTop: '5px'
+              }}
+              iconType="circle"
+              iconSize={10}
             />
             <Bar
               dataKey="average_price"
-              fill="url(#gradient-average-price)"
               name="ราคาเฉลี่ย (บาท)"
-              radius={[4, 4, 0, 0]}
+              fill="url(#gradient-average-price)"
+              radius={[8, 8, 0, 0]}
+              stroke={chartColor}
+              strokeWidth={1}
+              strokeOpacity={0.3}
+              background={{ fill: 'rgba(250, 200, 88, 0.05)', radius: [8, 8, 0, 0] }}
             />
           </BarChart>
         </ResponsiveContainer>
