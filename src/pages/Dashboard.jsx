@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { provinces } from '../utils/dataUtils';
-import { useAllProvinceData, usePrefetchProvinceData } from '../hooks/useCkanQueries';
-import { useProvincePreloader } from '../hooks/useProvincePreloader';
+// CKAN API removed - transitioning to local CSV data
+// import { useAllProvinceData, usePrefetchProvinceData } from '../hooks/useCkanQueries';
+// import { useProvincePreloader } from '../hooks/useProvincePreloader';
 
 // Import chart components
 // import MapView from '../components/MapView'; // Removed map from Housing Profile
@@ -31,27 +32,21 @@ const Dashboard = () => {
   const [policyFilter, setPolicyFilter] = useState(null);
   const [isInitialized, setIsInitialized] = useState(false);
   
-  // Completely disable ALL CKAN API calls - transitioning to local CSV data
-  // Set provinceId to null to prevent any CKAN queries from running
-  const {
-    population,
-    household,
-    income,
-    populationAge,
-    policy,
-    housingSupply,
-    housingAffordability,
-    housingDemand,
-    expenditure,
-    isLoading,
-    isError,
-  } = useAllProvinceData(null); // Pass null to disable all CKAN queries
+  // CKAN API completely removed - all hooks replaced with empty data
+  const population = { data: null, isLoading: false, isError: false, isFetching: false };
+  const household = { data: null, isLoading: false, isError: false, isFetching: false };
+  const income = { data: null, isLoading: false, isError: false, isFetching: false };
+  const populationAge = { data: null, isLoading: false, isError: false, isFetching: false };
+  const policy = { data: [], isLoading: false, isError: false, isFetching: false };
+  const housingSupply = { data: null, isLoading: false, isError: false, isFetching: false };
+  const housingAffordability = { data: null, isLoading: false, isError: false, isFetching: false };
+  const housingDemand = { data: null, isLoading: false, isError: false, isFetching: false };
+  const expenditure = [];
+  const isLoading = false;
+  const isError = false;
 
-  // Disable prefetch
-  const { prefetchProvince } = usePrefetchProvinceData();
-
-  // Disable preloader
-  // useProvincePreloader(); // Commented out to stop background loading
+  // Prefetch disabled
+  const prefetchProvince = () => {};
   
   // URL parameters
   useEffect(() => {
