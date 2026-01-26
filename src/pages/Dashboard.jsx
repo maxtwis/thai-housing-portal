@@ -17,13 +17,13 @@ import TotalHousingChart from '../components/charts/TotalHousingChart';
 import PolicyTable from '../components/charts/PolicyTable';
 import PolicyChart from '../components/charts/PolicyChart';
 import PopulationAgeChart from '../components/charts/PopulationAgeChart';
-import HousingAffordabilityChart from '../components/charts/HousingAffordabilityChart';
+import HousingAffordabilityChart from '../components/charts/HousingAffordabilityChartECharts';
 import HousingDemandChart from '../components/charts/HousingDemandChart';
-import HouseholdByIncomeChart from '../components/charts/HouseholdByIncomeChart';
-import PopulationByYearChart from '../components/charts/PopulationByYearChart';
-import HousingSupplyByPriceChart from '../components/charts/HousingSupplyByPriceChart';
-import HousingSupplyAveragePriceChart from '../components/charts/HousingSupplyAveragePriceChart';
-import AverageExpenditureChart from '../components/charts/AverageExpenditureChart';
+import HouseholdByIncomeChart from '../components/charts/HouseholdByIncomeChartECharts';
+import PopulationByYearChart from '../components/charts/PopulationByYearChartECharts';
+import HousingSupplyByPriceChart from '../components/charts/HousingSupplyByPriceChartECharts';
+import HousingSupplyAveragePriceChart from '../components/charts/HousingSupplyAveragePriceChartECharts';
+import AverageExpenditureChart from '../components/charts/AverageExpenditureChartECharts';
 import ErrorBoundary from '../components/ErrorBoundary';
 
 // Constants
@@ -138,10 +138,10 @@ const Dashboard = () => {
   };
   
   return (
-    <div className="container mx-auto px-4 py-4">
+    <div className="container mx-auto px-4 py-4 bg-white min-h-screen">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">รายงานสถานการณ์ที่อยู่อาศัย</h1>
-        <p className="text-gray-600 mt-2">
+        <h1 className="text-3xl font-bold text-gray-900">รายงานสถานการณ์ที่อยู่อาศัย</h1>
+        <p className="text-gray-600 mt-2 text-base">
           สำรวจข้อมูลระดับจังหวัด นโยบายที่อยู่อาศัย และกรอบการทำงาน
         </p>
         
@@ -168,8 +168,8 @@ const Dashboard = () => {
       
       {/* Topic Navigation - Mobile Drop-down */}
       <div className="md:hidden mb-4">
-        <select 
-          className="w-full p-2 border rounded shadow-sm"
+        <select
+          className="w-full p-2 border border-gray-300 rounded bg-white text-sm"
           value={activeTopic}
           onChange={(e) => setActiveTopic(e.target.value)}
         >
@@ -182,16 +182,16 @@ const Dashboard = () => {
       </div>
       
       {/* Province Selector - Moved to top for better space utilization */}
-      <div className="mb-6 bg-white rounded-lg shadow p-4">
+      <div className="mb-6 bg-white border border-gray-200 p-4">
         <div className="flex flex-col sm:flex-row sm:items-center gap-4">
           <div className="flex items-center gap-3 flex-1">
-            <label className="text-sm font-semibold text-gray-700 whitespace-nowrap">
+            <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
               เลือกจังหวัด:
             </label>
             <select
               value={activeProvince}
               onChange={(e) => handleProvinceChange(parseInt(e.target.value, 10))}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm flex-1 max-w-xs bg-white shadow-sm hover:border-gray-400 transition-colors"
+              className="px-3 py-2 border border-gray-300 rounded focus:ring-1 focus:ring-gray-400 focus:border-gray-400 text-sm flex-1 max-w-xs bg-white"
               aria-label="เลือกจังหวัด"
             >
               {provinces.map(province => (
@@ -229,7 +229,7 @@ const Dashboard = () => {
           <div className="flex justify-end mb-4">
             <button
               onClick={handleGenerateReport}
-              className="flex items-center bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md shadow-sm text-sm font-medium transition-colors"
+              className="flex items-center bg-gray-900 hover:bg-gray-800 text-white px-4 py-2 rounded text-sm transition-colors"
             >
               <svg className="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -239,49 +239,49 @@ const Dashboard = () => {
           </div>
 
           {/* Topic navigation - Desktop */}
-          <div className="hidden md:flex mb-4 overflow-x-auto border-b border-gray-200 pb-1">
-            <button 
+          <div className="hidden md:flex mb-4 overflow-x-auto border-b border-gray-300">
+            <button
               onClick={() => setActiveTopic('demographics')}
-              className={`px-4 py-2 rounded-t-md text-xs font-bold mr-1 whitespace-nowrap
-                ${activeTopic === 'demographics' 
-                  ? 'bg-blue-800 text-white' 
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+              className={`px-4 py-2 text-sm mr-1 whitespace-nowrap border-b-2 transition-colors
+                ${activeTopic === 'demographics'
+                  ? 'border-gray-900 text-gray-900 font-medium'
+                  : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'}`}
             >
               ข้อมูลประชากร
             </button>
-            <button 
+            <button
               onClick={() => setActiveTopic('housing')}
-              className={`px-4 py-2 rounded-t-md text-xs font-bold mr-1 whitespace-nowrap
-                ${activeTopic === 'housing' 
-                  ? 'bg-blue-800 text-white' 
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+              className={`px-4 py-2 text-sm mr-1 whitespace-nowrap border-b-2 transition-colors
+                ${activeTopic === 'housing'
+                  ? 'border-gray-900 text-gray-900 font-medium'
+                  : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'}`}
             >
               อุปทานที่อยู่อาศัย
             </button>
-            <button 
+            <button
               onClick={() => setActiveTopic('affordability')}
-              className={`px-4 py-2 rounded-t-md text-xs font-bold mr-1 whitespace-nowrap
-                ${activeTopic === 'affordability' 
-                  ? 'bg-blue-800 text-white' 
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+              className={`px-4 py-2 text-sm mr-1 whitespace-nowrap border-b-2 transition-colors
+                ${activeTopic === 'affordability'
+                  ? 'border-gray-900 text-gray-900 font-medium'
+                  : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'}`}
             >
               ความสามารถในการจ่าย
             </button>
-            <button 
+            <button
               onClick={() => setActiveTopic('demand')}
-              className={`px-4 py-2 rounded-t-md text-xs font-bold mr-1 whitespace-nowrap
-                ${activeTopic === 'demand' 
-                  ? 'bg-blue-800 text-white' 
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+              className={`px-4 py-2 text-sm mr-1 whitespace-nowrap border-b-2 transition-colors
+                ${activeTopic === 'demand'
+                  ? 'border-gray-900 text-gray-900 font-medium'
+                  : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'}`}
             >
               ความต้องการที่อยู่อาศัย
             </button>
-            <button 
+            <button
               onClick={() => setActiveTopic('policy')}
-              className={`px-4 py-2 rounded-t-md text-xs font-bold mr-1 whitespace-nowrap
-                ${activeTopic === 'policy' 
-                  ? 'bg-blue-800 text-white' 
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+              className={`px-4 py-2 text-sm mr-1 whitespace-nowrap border-b-2 transition-colors
+                ${activeTopic === 'policy'
+                  ? 'border-gray-900 text-gray-900 font-medium'
+                  : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'}`}
             >
               นโยบาย
             </button>

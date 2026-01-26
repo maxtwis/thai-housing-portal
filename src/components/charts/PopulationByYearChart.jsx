@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, Legend, ResponsiveContainer, Area, AreaChart
+  Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
 import ExportButton from '../ExportButton';
 import { useLocalPopulationData } from '../../hooks/useLocalHouseholdData';
@@ -26,26 +26,60 @@ const PopulationByYearChart = ({ provinceName, provinceId }) => {
     }));
   }, [rawData]);
 
-  // Custom tooltip
+  // Calculate Y-axis domain and ticks using OWID-inspired "nice" scaling
+  const { yAxisTicks, yAxisDomain, yAxisUnit } = useMemo(() => {
+    if (!chartData || chartData.length === 0) return { yAxisTicks: [], yAxisDomain: [0, 'auto'], yAxisUnit: 'คน' };
+
+    const populations = chartData.map(d => d.population);
+    const minPop = Math.min(...populations);
+    const maxPop = Math.max(...populations);
+
+    // Determine appropriate interval based on max population
+    let interval;
+    let unit;
+    if (maxPop >= 1000000) {
+      interval = 1000000; // 1M for provinces 1M+
+      unit = 'ล้านคน'; // Million people
+    } else if (maxPop >= 500000) {
+      interval = 100000; // 100K for provinces 500K-1M
+      unit = 'แสนคน'; // Hundred thousand people
+    } else if (maxPop >= 100000) {
+      interval = 50000; // 50K for provinces 100K-500K
+      unit = 'แสนคน'; // Hundred thousand people
+    } else {
+      interval = 10000; // 10K for very small provinces (<100K)
+      unit = 'หมื่นคน'; // Ten thousand people
+    }
+
+    // Calculate "nice" domain bounds (OWID approach)
+    // Round min down to nearest interval, max up to nearest interval
+    const niceMax = Math.ceil(maxPop / interval) * interval;
+
+    // Always start domain at 0
+    const domainMin = 0;
+    const domainMax = niceMax;
+
+    // Generate ticks from 0 to domain end
+    const ticks = [];
+    for (let tick = domainMin; tick <= domainMax; tick += interval) {
+      ticks.push(tick);
+    }
+
+    return {
+      yAxisTicks: ticks,
+      yAxisDomain: [domainMin, domainMax],
+      yAxisUnit: unit
+    };
+  }, [chartData]);
+
+  // Custom tooltip - Our World in Data style
   const customTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white p-4 border-2 border-blue-200 rounded-lg shadow-xl max-w-xs">
-          <div className="flex items-center gap-2 mb-2 pb-2 border-b border-gray-200">
-            <div className="flex items-center justify-center w-7 h-7 bg-blue-600 text-white font-bold rounded-full text-xs">
-              {label}
-            </div>
-            <div className="flex-1">
-              <h4 className="font-bold text-gray-900 text-sm">ปี พ.ศ. {label}</h4>
-            </div>
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-xs text-gray-700">จำนวนประชากร</span>
-              <span className="text-sm font-bold text-gray-900">
-                {payload[0].value.toLocaleString()} คน
-              </span>
-            </div>
+        <div className="bg-white p-3 border border-gray-300 shadow-lg rounded">
+          <div className="text-sm font-semibold text-gray-900 mb-1">{label}</div>
+          <div className="text-sm text-gray-700">
+            จำนวนประชากร <span className="font-semibold text-gray-900">{payload[0].value.toLocaleString()}</span> คน
           </div>
         </div>
       );
@@ -76,14 +110,14 @@ const PopulationByYearChart = ({ provinceName, provinceId }) => {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-md border border-gray-200">
-      <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-white">
-        <div className="flex justify-between items-start mb-4">
+    <div className="bg-white border border-gray-200 shadow-sm">
+      <div className="px-6 py-5 border-b border-gray-200 bg-white">
+        <div className="flex justify-between items-start">
           <div>
-            <h2 className="text-lg font-bold text-gray-900 mb-1">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-1" style={{ fontFamily: 'Georgia, serif' }}>
               จำนวนประชากรตามปี
             </h2>
-            <p className="text-xs text-gray-600">
+            <p className="text-sm text-gray-600">
               {provinceName}
             </p>
           </div>
@@ -94,81 +128,87 @@ const PopulationByYearChart = ({ provinceName, provinceId }) => {
         </div>
       </div>
 
-      <div className="px-6 py-4 bg-gradient-to-b from-gray-50 to-white">
+      <div className="px-6 py-6 bg-white">
         {chartData.length > 0 ? (
           <ResponsiveContainer width="100%" height={400}>
-            <AreaChart
+            <LineChart
               data={chartData}
-              margin={{ top: 20, right: 40, left: 30, bottom: 20 }}
+              margin={{ top: 5, right: 30, left: 0, bottom: 5 }}
             >
-              <defs>
-                <linearGradient id="gradient-population" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#5470C6" stopOpacity={0.8} />
-                  <stop offset="100%" stopColor="#5470C6" stopOpacity={0.1} />
-                </linearGradient>
-              </defs>
-
               <CartesianGrid
-                strokeDasharray="3 3"
-                stroke="#e5e7eb"
+                strokeDasharray="0"
+                stroke="#e0e0e0"
                 strokeOpacity={0.5}
+                horizontal={true}
                 vertical={false}
               />
 
               <XAxis
                 dataKey="year"
-                fontSize={13}
-                fontWeight={600}
-                stroke="#6b7280"
-                tick={{ fill: '#374151' }}
-                axisLine={{ stroke: '#d1d5db', strokeWidth: 2 }}
+                fontSize={12}
+                stroke="#666"
+                tick={{ fill: '#666' }}
+                axisLine={{ stroke: '#d1d5db', strokeWidth: 1 }}
+                tickLine={false}
+                height={50}
+                dy={10}
               />
 
               <YAxis
                 fontSize={12}
-                fontWeight={500}
-                stroke="#6b7280"
-                tick={{ fill: '#374151' }}
-                axisLine={{ stroke: '#d1d5db', strokeWidth: 2 }}
-                tickFormatter={(value) => (value / 1000000).toFixed(1) + 'M'}
+                stroke="#666"
+                tick={{ fill: '#666' }}
+                axisLine={{ stroke: '#d1d5db', strokeWidth: 1 }}
+                tickLine={false}
+                tickFormatter={(value) => {
+                  if (value >= 1000000) {
+                    return (value / 1000000).toFixed(1) + 'M';
+                  } else if (value >= 1000) {
+                    return (value / 1000).toFixed(0) + 'K';
+                  }
+                  return value.toString();
+                }}
+                width={70}
+                dx={-5}
+                domain={yAxisDomain}
+                ticks={yAxisTicks}
+                allowDataOverflow={false}
                 label={{
-                  value: 'ประชากร (ล้านคน)',
+                  value: `ประชากร (${yAxisUnit})`,
                   angle: -90,
                   position: 'insideLeft',
                   style: {
-                    fontSize: 13,
-                    fontWeight: 'bold',
-                    fill: '#1f2937'
+                    textAnchor: 'middle',
+                    fontSize: 12,
+                    fill: '#666'
                   }
                 }}
               />
 
               <Tooltip
                 content={customTooltip}
-                cursor={{ stroke: '#5470C6', strokeWidth: 2, strokeDasharray: '5 5' }}
+                cursor={{ stroke: '#d1d5db', strokeWidth: 1, strokeDasharray: '3 3' }}
               />
 
               <Legend
                 wrapperStyle={{
                   fontSize: '13px',
-                  fontWeight: 500,
-                  paddingTop: '5px'
+                  paddingTop: '10px'
                 }}
-                iconType="line"
-                iconSize={20}
+                iconType="plainline"
+                iconSize={16}
               />
 
-              <Area
+              <Line
                 type="monotone"
                 dataKey="population"
                 name="จำนวนประชากร"
-                stroke="#5470C6"
-                strokeWidth={3}
-                fill="url(#gradient-population)"
-                dot={{ fill: '#5470C6', strokeWidth: 2, r: 4 }}
-                activeDot={{ r: 6, strokeWidth: 2 }}
+                stroke="#6366f1"
+                strokeWidth={2.5}
+                dot={{ r: 3, fill: '#6366f1', strokeWidth: 0 }}
+                activeDot={{ r: 6, fill: '#6366f1', strokeWidth: 2, stroke: '#fff' }}
               />
-            </AreaChart>
+            </LineChart>
           </ResponsiveContainer>
         ) : (
           <div className="flex items-center justify-center h-64">
@@ -190,24 +230,14 @@ const PopulationByYearChart = ({ provinceName, provinceId }) => {
       </div>
 
       {/* Data Source Information */}
-      <div className="px-6 py-3 border-t border-gray-200 bg-gray-50">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 text-xs">
-          <div className="flex items-center gap-2 text-gray-600">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            <span className="font-medium">
-              แหล่งข้อมูล: สำนักงานสถิติแห่งชาติ
-            </span>
+      <div className="px-6 py-3 border-t border-gray-200 bg-white">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 text-xs text-gray-600">
+          <div>
+            แหล่งข้อมูล: สำนักงานสถิติแห่งชาติ
           </div>
           {chartData.length > 0 && (
-            <div className="flex items-center gap-2 text-gray-600">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              <span className="font-medium">
-                ช่วงเวลา: {chartData[0].year} - {chartData[chartData.length - 1].year}
-              </span>
+            <div>
+              ช่วงเวลา: {chartData[0].year} - {chartData[chartData.length - 1].year}
             </div>
           )}
         </div>
