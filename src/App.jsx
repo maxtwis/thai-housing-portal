@@ -4,7 +4,7 @@ import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import Dashboard from './pages/Dashboard';
 import About from './pages/About';
-import Report from './pages/Report';
+import Report from './pages/ReportNew';
 import Homepage from './pages/Homepage';
 import OrganizationPage from './pages/OrganizationPage';
 import HousingDeliverySystem from './pages/HousingDeliverySystem';
