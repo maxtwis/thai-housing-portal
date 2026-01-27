@@ -3,10 +3,12 @@ import ReactECharts from 'echarts-for-react';
 import ExportButton from '../ExportButton';
 import { useLocalHouseholdByIncomeData } from '../../hooks/useLocalHouseholdData';
 import { useIncomeRankLabels } from '../../hooks/useLocalAffordabilityData';
+import { useResponsive, getResponsiveChartConfig } from '../../hooks/useResponsive';
 
 const HouseholdByIncomeChartECharts = ({ provinceName, provinceId }) => {
   // Use local CSV data only
   const { data: rawData, isLoading, error, isFetching } = useLocalHouseholdByIncomeData(provinceId);
+  const { isMobile } = useResponsive();
 
   // Load income rank labels for legend
   const { data: incomeRankLabels } = useIncomeRankLabels();
@@ -40,15 +42,10 @@ const HouseholdByIncomeChartECharts = ({ provinceName, provinceId }) => {
 
     const categories = chartData.map(d => d.quintile);
     const values = chartData.map(d => d.households);
-    const maxValue = Math.max(...values);
+    const responsive = getResponsiveChartConfig(isMobile, false);
 
     return {
-      grid: {
-        left: 80,
-        right: 40,
-        top: 40,
-        bottom: 100
-      },
+      grid: responsive.grid,
       xAxis: {
         type: 'category',
         data: categories,
@@ -62,10 +59,9 @@ const HouseholdByIncomeChartECharts = ({ provinceName, provinceId }) => {
           show: false
         },
         axisLabel: {
+          ...responsive.xAxisLabel,
           color: '#666',
-          fontSize: 12,
-          fontFamily: 'LINE Seed Sans TH, Sarabun, sans-serif',
-          interval: 0
+          fontFamily: 'LINE Seed Sans TH, Sarabun, sans-serif'
         }
       },
       yAxis: {
@@ -151,7 +147,7 @@ const HouseholdByIncomeChartECharts = ({ provinceName, provinceId }) => {
         }
       ]
     };
-  }, [chartData, incomeRankLabels]);
+  }, [chartData, incomeRankLabels, isMobile]);
 
   // Loading state
   if (isLoading) {

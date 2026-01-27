@@ -2,10 +2,12 @@ import React, { useState, useMemo } from 'react';
 import ReactECharts from 'echarts-for-react';
 import ExportButton from '../ExportButton';
 import { useLocalHousingSupplyData, usePriceRankLabels } from '../../hooks/useLocalHousingData';
+import { useResponsive, getResponsiveChartConfig } from '../../hooks/useResponsive';
 
 const HousingSupplyByPriceChartECharts = ({ provinceName, provinceId }) => {
   const [selectedMetric, setSelectedMetric] = useState('supply_unit');
   const [selectedHousingType, setSelectedHousingType] = useState('all');
+  const { isMobile } = useResponsive();
 
   // Use local CSV data only
   const { data: rawData, isLoading, error, isFetching } = useLocalHousingSupplyData(provinceId);
@@ -71,14 +73,10 @@ const HousingSupplyByPriceChartECharts = ({ provinceName, provinceId }) => {
 
     const categories = chartData.map(d => d.price_rank);
     const values = chartData.map(d => d[selectedMetric]);
+    const responsive = getResponsiveChartConfig(isMobile, false);
 
     return {
-      grid: {
-        left: 80,
-        right: 40,
-        top: 40,
-        bottom: 60
-      },
+      grid: responsive.grid,
       xAxis: {
         type: 'category',
         data: categories,
@@ -92,8 +90,8 @@ const HousingSupplyByPriceChartECharts = ({ provinceName, provinceId }) => {
           show: false
         },
         axisLabel: {
+          ...responsive.xAxisLabel,
           color: '#666',
-          fontSize: 12,
           fontFamily: 'LINE Seed Sans TH, Sarabun, sans-serif',
           fontWeight: 600
         }
@@ -191,7 +189,7 @@ const HousingSupplyByPriceChartECharts = ({ provinceName, provinceId }) => {
         }
       ]
     };
-  }, [chartData, selectedMetric]);
+  }, [chartData, selectedMetric, isMobile]);
 
   // Loading state
   if (isLoading) {

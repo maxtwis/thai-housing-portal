@@ -2,10 +2,12 @@ import React, { useState, useMemo } from 'react';
 import ReactECharts from 'echarts-for-react';
 import ExportButton from '../ExportButton';
 import { useLocalHousingAveragePriceData } from '../../hooks/useLocalHousingData';
+import { useResponsive, getResponsiveChartConfig } from '../../hooks/useResponsive';
 
 const HousingSupplyAveragePriceChartECharts = ({ provinceName, provinceId }) => {
   const [selectedType, setSelectedType] = useState('all');
   const { data, isLoading, isError } = useLocalHousingAveragePriceData(provinceId);
+  const { isMobile } = useResponsive();
 
   // Professional color - using orange/yellow for price data
   const chartColor = '#FAC858';
@@ -41,7 +43,7 @@ const HousingSupplyAveragePriceChartECharts = ({ provinceName, provinceId }) => 
 
     const categories = chartData.map(d => d.supply_type);
     const values = chartData.map(d => d.average_price);
-    const maxValue = Math.max(...values);
+    const responsive = getResponsiveChartConfig(isMobile, true);
 
     // Format price for Y-axis
     const formatPrice = (value) => {
@@ -55,12 +57,7 @@ const HousingSupplyAveragePriceChartECharts = ({ provinceName, provinceId }) => 
     };
 
     return {
-      grid: {
-        left: 80,
-        right: 40,
-        top: 40,
-        bottom: 100
-      },
+      grid: responsive.grid,
       xAxis: {
         type: 'category',
         data: categories,
@@ -74,12 +71,10 @@ const HousingSupplyAveragePriceChartECharts = ({ provinceName, provinceId }) => 
           show: false
         },
         axisLabel: {
+          ...responsive.xAxisLabel,
           color: '#666',
-          fontSize: 12,
           fontFamily: 'LINE Seed Sans TH, Sarabun, sans-serif',
-          fontWeight: 600,
-          rotate: 0,
-          interval: 0
+          fontWeight: 600
         }
       },
       yAxis: {
@@ -160,7 +155,7 @@ const HousingSupplyAveragePriceChartECharts = ({ provinceName, provinceId }) => 
         }
       ]
     };
-  }, [chartData]);
+  }, [chartData, isMobile]);
 
   if (isLoading) {
     return (

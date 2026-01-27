@@ -2,10 +2,12 @@ import React, { useState, useMemo } from 'react';
 import ReactECharts from 'echarts-for-react';
 import ExportButton from '../ExportButton';
 import { useLocalAffordabilityData, useIncomeRankLabels } from '../../hooks/useLocalAffordabilityData';
+import { useResponsive, getResponsiveChartConfig } from '../../hooks/useResponsive';
 
 const HousingAffordabilityChartECharts = ({ provinceName, provinceId }) => {
   const [selectedDemandType, setSelectedDemandType] = useState('กลุ่มประชากรทั่วไป');
   const [selectedMetric, setSelectedMetric] = useState('Total_Hburden');
+  const { isMobile } = useResponsive();
 
   // Use local CSV data only
   const localDataQuery = useLocalAffordabilityData(provinceId);
@@ -148,13 +150,10 @@ const HousingAffordabilityChartECharts = ({ provinceName, provinceId }) => {
       };
     });
 
+    const responsive = getResponsiveChartConfig(isMobile, false);
+
     return {
-      grid: {
-        left: 80,
-        right: 40,
-        top: 40,
-        bottom: 100
-      },
+      grid: responsive.grid,
       xAxis: {
         type: 'category',
         data: categories,
@@ -168,8 +167,8 @@ const HousingAffordabilityChartECharts = ({ provinceName, provinceId }) => {
           show: false
         },
         axisLabel: {
+          ...responsive.xAxisLabel,
           color: '#666',
-          fontSize: 12,
           fontFamily: 'LINE Seed Sans TH, Sarabun, sans-serif',
           fontWeight: 600
         }
@@ -267,7 +266,7 @@ const HousingAffordabilityChartECharts = ({ provinceName, provinceId }) => {
       },
       series: series
     };
-  }, [chartData, selectedMetric, incomeRankLabels]);
+  }, [chartData, selectedMetric, incomeRankLabels, isMobile]);
 
   // Loading state
   if (isLoading) {

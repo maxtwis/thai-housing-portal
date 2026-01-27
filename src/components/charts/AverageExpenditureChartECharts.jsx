@@ -3,11 +3,13 @@ import ReactECharts from 'echarts-for-react';
 import ExportButton from '../ExportButton';
 import { useLocalExpenditureData } from '../../hooks/useLocalExpenditureData';
 import { useIncomeRankLabels } from '../../hooks/useLocalAffordabilityData';
+import { useResponsive, getResponsiveChartConfig } from '../../hooks/useResponsive';
 
 const AverageExpenditureChartECharts = ({ provinceName, provinceId }) => {
   const [selectedExpType, setSelectedExpType] = useState('all');
   const { data, isLoading, isError } = useLocalExpenditureData(provinceId);
   const { data: incomeRankLabels } = useIncomeRankLabels();
+  const { isMobile } = useResponsive();
 
   // Professional color - using purple for expenditure
   const chartColor = '#9A60B4';
@@ -74,6 +76,7 @@ const AverageExpenditureChartECharts = ({ provinceName, provinceId }) => {
 
     const categories = chartData.map(d => d.income_rank);
     const values = chartData.map(d => d.value);
+    const responsive = getResponsiveChartConfig(isMobile, false);
 
     // Format Y-axis
     const formatYAxis = (value) => {
@@ -84,12 +87,7 @@ const AverageExpenditureChartECharts = ({ provinceName, provinceId }) => {
     };
 
     return {
-      grid: {
-        left: 80,
-        right: 40,
-        top: 40,
-        bottom: 60
-      },
+      grid: responsive.grid,
       xAxis: {
         type: 'category',
         data: categories,
@@ -103,8 +101,8 @@ const AverageExpenditureChartECharts = ({ provinceName, provinceId }) => {
           show: false
         },
         axisLabel: {
+          ...responsive.xAxisLabel,
           color: '#666',
-          fontSize: 12,
           fontFamily: 'LINE Seed Sans TH, Sarabun, sans-serif',
           fontWeight: 600
         }
@@ -196,7 +194,7 @@ const AverageExpenditureChartECharts = ({ provinceName, provinceId }) => {
         }
       ]
     };
-  }, [chartData, incomeRankLabels]);
+  }, [chartData, incomeRankLabels, isMobile]);
 
   if (isLoading) {
     return (

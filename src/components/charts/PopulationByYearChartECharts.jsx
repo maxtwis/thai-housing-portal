@@ -2,10 +2,12 @@ import React, { useMemo } from 'react';
 import ReactECharts from 'echarts-for-react';
 import ExportButton from '../ExportButton';
 import { useLocalPopulationData } from '../../hooks/useLocalHouseholdData';
+import { useResponsive, getResponsiveChartConfig } from '../../hooks/useResponsive';
 
 const PopulationByYearChartECharts = ({ provinceName, provinceId }) => {
   // Use local CSV data only
   const { data: rawData, isLoading, error, isFetching } = useLocalPopulationData(provinceId);
+  const { isMobile } = useResponsive();
 
   // Process data for chart - Convert AD year to BE year
   const chartData = useMemo(() => {
@@ -105,12 +107,12 @@ const PopulationByYearChartECharts = ({ provinceName, provinceId }) => {
       }
     }
 
+    const responsive = getResponsiveChartConfig(isMobile, false);
+
     return {
       grid: {
-        left: 80,
-        right: 40,
-        top: 80,
-        bottom: 60
+        ...responsive.grid,
+        top: 80
       },
       xAxis: {
         type: 'category',
@@ -125,8 +127,8 @@ const PopulationByYearChartECharts = ({ provinceName, provinceId }) => {
           show: false
         },
         axisLabel: {
+          ...responsive.xAxisLabel,
           color: '#666',
-          fontSize: 12,
           fontFamily: 'LINE Seed Sans TH, Sarabun, sans-serif'
         }
       },
@@ -295,7 +297,7 @@ const PopulationByYearChartECharts = ({ provinceName, provinceId }) => {
         }
       ]
     };
-  }, [chartData, yAxisConfig]);
+  }, [chartData, yAxisConfig, isMobile]);
 
   // Loading state
   if (isLoading) {
