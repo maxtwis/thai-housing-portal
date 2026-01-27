@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { provinces } from '../utils/dataUtils';
 import { useLocalPopulationData, useLocalHouseholdByIncomeData } from '../hooks/useLocalHouseholdData';
@@ -8,6 +8,26 @@ import { useLocalExpenditureData } from '../hooks/useLocalExpenditureData';
 
 const ReportNew = () => {
   const { provinceId } = useParams();
+  const [visitorCount, setVisitorCount] = useState(0);
+
+  // Simple visitor counter using localStorage
+  useEffect(() => {
+    const countKey = 'housingPortalVisitorCount';
+    const lastVisitKey = 'housingPortalLastVisit';
+    const now = new Date().getTime();
+    const lastVisit = localStorage.getItem(lastVisitKey);
+
+    // Count as new visit if more than 30 minutes since last visit
+    if (!lastVisit || (now - parseInt(lastVisit)) > 30 * 60 * 1000) {
+      const currentCount = parseInt(localStorage.getItem(countKey) || '0');
+      const newCount = currentCount + 1;
+      localStorage.setItem(countKey, newCount.toString());
+      localStorage.setItem(lastVisitKey, now.toString());
+      setVisitorCount(newCount);
+    } else {
+      setVisitorCount(parseInt(localStorage.getItem(countKey) || '0'));
+    }
+  }, []);
   const activeProvince = parseInt(provinceId) || 10;
   const provinceName = provinces.find(p => p.id === activeProvince)?.name || '';
 
@@ -131,19 +151,19 @@ const ReportNew = () => {
       `}</style>
 
       {/* Navigation Bar - No Print */}
-      <div className="no-print bg-white border-b border-gray-200 px-6 py-4 sticky top-0 z-10 shadow-sm">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <Link to="/" className="text-blue-600 hover:text-blue-800 flex items-center gap-2">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="no-print bg-white border-b border-gray-200 px-4 md:px-6 py-3 md:py-4 sticky top-0 z-10 shadow-sm">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
+          <Link to="/" className="text-blue-600 hover:text-blue-800 flex items-center gap-2 text-sm md:text-base">
+            <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
             กลับสู่หน้าหลัก
           </Link>
           <button
             onClick={() => window.print()}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-3 md:px-4 py-2 rounded-lg flex items-center gap-2 transition-colors text-sm md:text-base"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
             </svg>
             พิมพ์รายงาน
@@ -152,28 +172,28 @@ const ReportNew = () => {
       </div>
 
       {/* Report Content */}
-      <div className="max-w-5xl mx-auto bg-white shadow-lg my-8 print:my-0 print:shadow-none">
+      <div className="max-w-5xl mx-auto bg-white shadow-lg my-4 md:my-8 print:my-0 print:shadow-none">
 
         {/* Header Section */}
-        <div className="bg-gradient-to-r from-blue-700 to-blue-900 text-white px-12 py-10">
-          <div className="flex items-start justify-between">
+        <div className="bg-gradient-to-r from-blue-700 to-blue-900 text-white px-4 md:px-8 lg:px-12 py-6 md:py-10">
+          <div className="flex flex-col md:flex-row items-start justify-between gap-4">
             <div className="flex-1">
-              <div className="flex items-center gap-3 mb-4">
-                <svg className="w-16 h-16 text-orange-400" fill="currentColor" viewBox="0 0 24 24">
+              <div className="flex items-center gap-2 md:gap-3 mb-3 md:mb-4">
+                <svg className="w-10 h-10 md:w-16 md:h-16 text-orange-400 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
                 </svg>
                 <div>
-                  <p className="text-sm text-blue-200 uppercase tracking-wide font-semibold">
+                  <p className="text-xs md:text-sm text-blue-200 uppercase tracking-wide font-semibold">
                     {stats.year + 543} รายงานสถานการณ์ที่อยู่อาศัย
                   </p>
-                  <h1 className="text-4xl font-bold mt-1">{provinceName}</h1>
+                  <h1 className="text-2xl md:text-4xl font-bold mt-1">{provinceName}</h1>
                 </div>
               </div>
-              <div className="text-2xl font-bold text-blue-100 mt-4">
+              <div className="text-xl md:text-2xl font-bold text-blue-100 mt-3 md:mt-4">
                 {stats.totalHouseholds.toLocaleString('th-TH')} ครัวเรือน
               </div>
             </div>
-            <div className="text-right text-sm text-blue-200">
+            <div className="text-left md:text-right text-xs md:text-sm text-blue-200">
               <p>ข้อมูลอ้างอิงจากปีล่าสุด</p>
               <p>ของข้อมูลที่มี: {stats.year + 543}</p>
             </div>
@@ -181,28 +201,28 @@ const ReportNew = () => {
         </div>
 
         {/* Key Statistics Section */}
-        <div className="grid grid-cols-2 divide-x divide-gray-200 border-b border-gray-200">
+        <div className="grid grid-cols-1 md:grid-cols-2 md:divide-x divide-gray-200 border-b border-gray-200">
 
           {/* Renter Households */}
-          <div className="px-12 py-8 bg-green-50">
-            <div className="flex items-start gap-4">
-              <div className="bg-green-600 p-4 rounded-lg">
-                <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="px-4 md:px-8 lg:px-12 py-6 md:py-8 bg-green-50 border-b md:border-b-0 border-gray-200">
+            <div className="flex items-start gap-3 md:gap-4">
+              <div className="bg-green-600 p-3 md:p-4 rounded-lg flex-shrink-0">
+                <svg className="w-8 h-8 md:w-12 md:h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                 </svg>
               </div>
-              <div className="flex-1">
-                <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-1">
+              <div className="flex-1 min-w-0">
+                <h3 className="text-xs md:text-sm font-semibold text-gray-600 uppercase tracking-wide mb-1">
                   ครัวเรือนผู้เช่า
                 </h3>
-                <div className="text-3xl font-bold text-gray-900">
+                <div className="text-2xl md:text-3xl font-bold text-gray-900">
                   {stats.renterHouseholds.toLocaleString('th-TH')}
                 </div>
-                <div className="text-sm text-gray-600 mt-1">
+                <div className="text-xs md:text-sm text-gray-600 mt-1">
                   {((stats.renterHouseholds / stats.totalHouseholds) * 100).toFixed(0)}% ของครัวเรือนทั้งหมด
                 </div>
-                <div className="flex items-center gap-2 mt-2">
-                  <span className="text-xs text-gray-500">การเปลี่ยนแปลง ({stats.year - 1 + 543}-{stats.year + 543}):</span>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mt-2">
+                  <span className="text-xs text-gray-500 whitespace-nowrap">การเปลี่ยนแปลง ({stats.year - 1 + 543}-{stats.year + 543}):</span>
                   <span className="text-sm font-semibold text-green-600 flex items-center">
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd"/>
@@ -215,25 +235,25 @@ const ReportNew = () => {
           </div>
 
           {/* Owner Households */}
-          <div className="px-12 py-8 bg-orange-50">
-            <div className="flex items-start gap-4">
-              <div className="bg-orange-600 p-4 rounded-lg">
-                <svg className="w-12 h-12 text-white" fill="currentColor" viewBox="0 0 24 24">
+          <div className="px-4 md:px-8 lg:px-12 py-6 md:py-8 bg-orange-50">
+            <div className="flex items-start gap-3 md:gap-4">
+              <div className="bg-orange-600 p-3 md:p-4 rounded-lg flex-shrink-0">
+                <svg className="w-8 h-8 md:w-12 md:h-12 text-white" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
                 </svg>
               </div>
-              <div className="flex-1">
-                <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-1">
+              <div className="flex-1 min-w-0">
+                <h3 className="text-xs md:text-sm font-semibold text-gray-600 uppercase tracking-wide mb-1">
                   ครัวเรือนเจ้าของบ้าน
                 </h3>
-                <div className="text-3xl font-bold text-gray-900">
+                <div className="text-2xl md:text-3xl font-bold text-gray-900">
                   {stats.ownerHouseholds.toLocaleString('th-TH')}
                 </div>
-                <div className="text-sm text-gray-600 mt-1">
+                <div className="text-xs md:text-sm text-gray-600 mt-1">
                   {((stats.ownerHouseholds / stats.totalHouseholds) * 100).toFixed(0)}% ของครัวเรือนทั้งหมด
                 </div>
-                <div className="flex items-center gap-2 mt-2">
-                  <span className="text-xs text-gray-500">การเปลี่ยนแปลง ({stats.year - 1 + 543}-{stats.year + 543}):</span>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mt-2">
+                  <span className="text-xs text-gray-500 whitespace-nowrap">การเปลี่ยนแปลง ({stats.year - 1 + 543}-{stats.year + 543}):</span>
                   <span className="text-sm font-semibold text-red-600 flex items-center">
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" clipRule="evenodd"/>
@@ -247,31 +267,31 @@ const ReportNew = () => {
         </div>
 
         {/* Key Message Banner */}
-        <div className="bg-gray-100 px-12 py-6 border-b-4 border-gray-300">
-          <p className="text-lg text-gray-800 leading-relaxed">
+        <div className="bg-gray-100 px-4 md:px-8 lg:px-12 py-4 md:py-6 border-b-4 border-gray-300">
+          <p className="text-sm md:text-lg text-gray-800 leading-relaxed">
             ค่าใช้จ่ายด้านที่อยู่อาศัยส่งผลกระทบอย่างมากต่อครัวเรือนที่มีรายได้น้อย
           </p>
         </div>
 
         {/* Content Section */}
-        <div className="px-12 py-10 space-y-12">
+        <div className="px-4 md:px-8 lg:px-12 py-6 md:py-10 space-y-8 md:space-y-12">
 
           {/* Cost Burden Rates Section */}
           <div>
-            <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">
-              <div className="w-1 h-8 bg-blue-600"></div>
+            <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-4 md:mb-6 flex items-center gap-2 md:gap-3">
+              <div className="w-1 h-6 md:h-8 bg-blue-600"></div>
               อัตราภาระค่าใช้จ่ายด้านที่อยู่อาศัย
             </h2>
 
-            <div className="bg-gray-50 rounded-lg p-8 border border-gray-200">
-              <div className="grid grid-cols-3 gap-8 items-center">
+            <div className="bg-gray-50 rounded-lg p-4 md:p-8 border border-gray-200">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8 items-center">
 
                 {/* Total Cost-Burdened */}
-                <div className="text-center">
-                  <div className="text-sm text-gray-600 uppercase tracking-wide font-semibold mb-2">
+                <div className="text-center pb-6 lg:pb-0 border-b lg:border-b-0 border-gray-200">
+                  <div className="text-xs md:text-sm text-gray-600 uppercase tracking-wide font-semibold mb-2">
                     ครัวเรือนที่มีภาระค่าใช้จ่ายสูง
                   </div>
-                  <div className="text-5xl font-bold text-red-600 mb-2">
+                  <div className="text-4xl md:text-5xl font-bold text-red-600 mb-2">
                     {stats.burdenRate}%
                   </div>
                   <div className="text-xs text-gray-500">
@@ -283,7 +303,7 @@ const ReportNew = () => {
                 </div>
 
                 {/* Pie Charts */}
-                <div className="col-span-2 grid grid-cols-3 gap-4">
+                <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-4">
                   {/* Renters with Severe Cost Burden */}
                   <div className="text-center">
                     <div className="relative w-32 h-32 mx-auto mb-3">
@@ -346,14 +366,14 @@ const ReportNew = () => {
                 </div>
               </div>
 
-              <div className="mt-6 pt-6 border-t border-gray-300 text-sm text-gray-600 flex items-start gap-2">
-                <svg className="w-5 h-5 text-gray-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+              <div className="mt-4 md:mt-6 pt-4 md:pt-6 border-t border-gray-300 text-xs md:text-sm text-gray-600 flex flex-col sm:flex-row items-start gap-2">
+                <svg className="w-4 h-4 md:w-5 md:h-5 text-gray-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd"/>
                 </svg>
-                <div>
-                  <strong>ภาระค่าใช้จ่าย:</strong> เมื่อครัวเรือนใช้จ่ายมากกว่า 30% ของรายได้เพื่อค่าใช้จ่ายด้านที่อยู่อาศัย |
-                  <strong className="ml-2">ภาระค่าใช้จ่ายรุนแรง:</strong> เมื่อครัวเรือนใช้จ่ายมากกว่า 50% |
-                  <span className="ml-2">* หมายเหตุ: ค่าใช้จ่ายมากกว่า 100,000 บาท/เดือน ไม่รวม</span>
+                <div className="space-y-1">
+                  <div><strong>ภาระค่าใช้จ่าย:</strong> เมื่อครัวเรือนใช้จ่ายมากกว่า 30% ของรายได้เพื่อค่าใช้จ่ายด้านที่อยู่อาศัย</div>
+                  <div><strong>ภาระค่าใช้จ่ายรุนแรง:</strong> เมื่อครัวเรือนใช้จ่ายมากกว่า 50%</div>
+                  <div>* หมายเหตุ: ค่าใช้จ่ายมากกว่า 100,000 บาท/เดือน ไม่รวม</div>
                 </div>
               </div>
             </div>
@@ -361,31 +381,33 @@ const ReportNew = () => {
 
           {/* Income Distribution Section */}
           <div>
-            <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">
-              <div className="w-1 h-8 bg-blue-600"></div>
+            <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-4 md:mb-6 flex items-center gap-2 md:gap-3">
+              <div className="w-1 h-6 md:h-8 bg-blue-600"></div>
               การกระจายรายได้ของครัวเรือน
             </h2>
 
-            <div className="space-y-3">
+            <div className="space-y-2 md:space-y-3">
               {incomeStats.map((stat, index) => (
-                <div key={stat.quintile} className="flex items-center gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
-                  <div className="flex items-center justify-center w-12 h-12 bg-blue-600 text-white font-bold rounded-full text-lg shrink-0">
+                <div key={stat.quintile} className="flex items-center gap-2 md:gap-4 bg-gray-50 p-3 md:p-4 rounded-lg border border-gray-200">
+                  <div className="flex items-center justify-center w-10 h-10 md:w-12 md:h-12 bg-blue-600 text-white font-bold rounded-full text-base md:text-lg shrink-0">
                     {stat.quintile}
                   </div>
-                  <div className="flex-1">
-                    <div className="text-sm font-semibold text-gray-700">{stat.label}</div>
-                    <div className="flex items-center gap-3 mt-1">
-                      <div className="flex-1 bg-gray-200 rounded-full h-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs md:text-sm font-semibold text-gray-700">{stat.label}</div>
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 mt-1">
+                      <div className="flex-1 w-full bg-gray-200 rounded-full h-3">
                         <div
                           className="bg-blue-600 h-3 rounded-full transition-all duration-500"
                           style={{ width: `${(stat.households / stats.totalHouseholds * 100)}%` }}
                         />
                       </div>
-                      <div className="text-lg font-bold text-gray-900 w-32 text-right">
-                        {stat.households.toLocaleString('th-TH')}
-                      </div>
-                      <div className="text-sm text-gray-600 w-16">
-                        ({((stat.households / stats.totalHouseholds) * 100).toFixed(1)}%)
+                      <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+                        <div className="text-base md:text-lg font-bold text-gray-900 text-right">
+                          {stat.households.toLocaleString('th-TH')}
+                        </div>
+                        <div className="text-xs md:text-sm text-gray-600 whitespace-nowrap">
+                          ({((stat.households / stats.totalHouseholds) * 100).toFixed(1)}%)
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -397,37 +419,37 @@ const ReportNew = () => {
           {/* Housing Supply Summary */}
           {supplyStats && (
             <div>
-              <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">
-                <div className="w-1 h-8 bg-blue-600"></div>
+              <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-4 md:mb-6 flex items-center gap-2 md:gap-3">
+                <div className="w-1 h-6 md:h-8 bg-blue-600"></div>
                 สรุปอุปทานที่อยู่อาศัย
               </h2>
 
-              <div className="grid grid-cols-3 gap-6">
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
-                  <div className="text-sm font-semibold text-blue-800 uppercase tracking-wide mb-2">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 md:p-6 text-center">
+                  <div className="text-xs md:text-sm font-semibold text-blue-800 uppercase tracking-wide mb-2">
                     อุปทานรวม
                   </div>
-                  <div className="text-4xl font-bold text-blue-900 mb-1">
+                  <div className="text-3xl md:text-4xl font-bold text-blue-900 mb-1">
                     {supplyStats.totalSupply.toLocaleString('th-TH')}
                   </div>
                   <div className="text-xs text-blue-700">หน่วย</div>
                 </div>
 
-                <div className="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
-                  <div className="text-sm font-semibold text-green-800 uppercase tracking-wide mb-2">
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4 md:p-6 text-center">
+                  <div className="text-xs md:text-sm font-semibold text-green-800 uppercase tracking-wide mb-2">
                     ค่าเช่าเฉลี่ย
                   </div>
-                  <div className="text-4xl font-bold text-green-900 mb-1">
+                  <div className="text-3xl md:text-4xl font-bold text-green-900 mb-1">
                     {supplyStats.avgRent.toLocaleString('th-TH', { maximumFractionDigits: 0 })}
                   </div>
                   <div className="text-xs text-green-700">บาท/เดือน</div>
                 </div>
 
-                <div className="bg-orange-50 border border-orange-200 rounded-lg p-6 text-center">
-                  <div className="text-sm font-semibold text-orange-800 uppercase tracking-wide mb-2">
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 md:p-6 text-center">
+                  <div className="text-xs md:text-sm font-semibold text-orange-800 uppercase tracking-wide mb-2">
                     ราคาขายเฉลี่ย
                   </div>
-                  <div className="text-4xl font-bold text-orange-900 mb-1">
+                  <div className="text-3xl md:text-4xl font-bold text-orange-900 mb-1">
                     {(supplyStats.avgSale / 1000000).toFixed(1)}M
                   </div>
                   <div className="text-xs text-orange-700">บาท</div>
@@ -439,25 +461,52 @@ const ReportNew = () => {
         </div>
 
         {/* Footer */}
-        <div className="bg-gray-100 px-12 py-8 border-t border-gray-300">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-2">
-                <svg className="w-6 h-6 text-orange-600" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
-                </svg>
-                <span className="font-bold text-gray-800">Housing Profile Thailand</span>
+        <div className="bg-gray-100 px-4 md:px-8 lg:px-12 py-6 md:py-8 border-t border-gray-300">
+          <div className="flex flex-col gap-6">
+            {/* Main Footer Content */}
+            <div className="flex flex-col md:flex-row items-start justify-between gap-4">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-3">
+                  <svg className="w-5 h-5 md:w-6 md:h-6 text-orange-600" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+                  </svg>
+                  <span className="font-bold text-sm md:text-base text-gray-800">Thailand Housing Data Portal</span>
+                </div>
+                <p className="text-xs md:text-sm text-gray-600 max-w-2xl leading-relaxed mb-3">
+                  แหล่งข้อมูล: สำนักงานสถิติแห่งชาติ, การเคหะแห่งชาติ, กรมที่ดิน
+                </p>
+                <div className="flex items-center gap-3 text-xs text-gray-600 mb-2">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                    <span>จำนวนผู้เข้าชม: <strong>{visitorCount.toLocaleString('th-TH')}</strong></span>
+                  </div>
+                </div>
               </div>
-              <p className="text-sm text-gray-600 max-w-2xl leading-relaxed">
-                แหล่งข้อมูล: สำนักงานสถิติแห่งชาติ, การเคหะแห่งชาติ, กรมที่ดิน
+              <div className="text-left md:text-right text-xs md:text-sm text-gray-600">
+                <p>จัดทำโดย</p>
+                <p className="font-semibold text-gray-800">Urban Studies Lab</p>
+              </div>
+            </div>
+
+            {/* Funding Information */}
+            <div className="border-t border-gray-300 pt-4 space-y-2">
+              <p className="text-xs text-gray-600 leading-relaxed">
+                แพลตฟอร์มนี้ได้รับการสนับสนุนทุนวิจัยจากหน่วยบริหารและจัดการทุนด้านการพัฒนาระดับพื้นที่ (บพท.)
+                กระทรวงการอุดมศึกษา วิทยาศาสตร์ วิจัยและนวัตกรรม (อว.)
               </p>
-              <p className="text-xs text-gray-500 mt-2">
-                © {new Date().getFullYear()} Housing Profile Thailand Platform. All rights reserved.
+              <p className="text-xs text-gray-500 italic">
+                *แพลตฟอร์มนี้อยู่ในขั้นตอนพัฒนาและทดสอบ
               </p>
             </div>
-            <div className="text-right text-sm text-gray-600">
-              <p>จัดทำโดย</p>
-              <p className="font-semibold text-gray-800">Urban Studies Lab</p>
+
+            {/* Copyright */}
+            <div className="border-t border-gray-300 pt-4">
+              <p className="text-xs text-gray-500 text-center">
+                © 2025 Thailand Housing Data Portal. All rights reserved.
+              </p>
             </div>
           </div>
         </div>
