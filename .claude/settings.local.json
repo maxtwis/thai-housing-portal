@@ -48,7 +48,8 @@
       "Bash(git push:*)",
       "Bash(curl:*)",
       "Bash(start http://localhost:5001)",
-      "Bash(npx @playwright/mcp@latest:*)"
+      "Bash(npx @playwright/mcp@latest:*)",
+      "Bash(ssh:*)"
     ],
     "deny": [],
     "ask": []
