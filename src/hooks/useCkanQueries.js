@@ -3,7 +3,7 @@ import { getCkanData } from '../utils/ckanClient';
 import { getPolicyData } from '../utils/policyUtils';
 
 // Updated API resource IDs
-const POPULATION_RESOURCE_ID = '4ef48676-1a0d-44b7-a450-517c61190344';
+const POPULATION_RESOURCE_ID = 'a4b22f27-7fca-4f1e-8267-ec1738529272'; // Updated: thaihousingportal.com
 const POPULATION_AGE_RESOURCE_ID = 'b22dd69b-790f-475b-9c6a-c346fbb40daa';
 const INCOME_RESOURCE_ID = '6a63d6c9-792c-450a-8f82-60e025bee415';
 const EXPENDITURE_RESOURCE_ID = '98eb6fce-d04e-44e6-b3af-408ad2957653';
