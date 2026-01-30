@@ -1,4 +1,4 @@
-const CKAN_BASE_URL = 'http://147.50.228.205/api/3/action';
+const CKAN_BASE_URL = 'https://data.thaihousingportal.com/api/3/action';
 
 /**
  * Get data from a CKAN dataset using datastore_search
